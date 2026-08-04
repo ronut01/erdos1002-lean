@@ -26,3 +26,27 @@ The Lean toolchain, axiom policy, treatment of work-in-progress placeholders, CI
 ## License
 
 Apache License 2.0. See [LICENSE](LICENSE).
+
+## Current state (2026-08-04)
+
+The Lean development from the pre-collaboration work has been migrated here.
+It builds against Lean v4.27.0 and mathlib pinned in `lake-manifest.json`.
+
+At migration: **1,081 theorems, 919 axiom-clean** under the discipline this
+project enforces in CI, axioms exactly `propext`, `Classical.choice`,
+`Quot.sound`, with no `sorry` in any completed result, no `native_decide`,
+and no custom axioms anywhere, including the vendored infrastructure.
+
+Sections 2 and 3 of the manuscript are formalized (except Lemma 3.1(i),
+which this development does not use: Lemma 3.2 is obtained through an exact
+cylinder-transfer identity together with a bounded-variation Lasota-Yorke
+inequality proved here, and Lemma 3.3 through the word-reversal argument).
+Section 5's analytic core is formalized, including the characteristic
+function of the limit law; the scale 1/(2π) is confirmed by three
+independent routes inside Lean. Sections 4 and 6 are in progress.
+
+`wang_substrate/` contains Shouqiao Wang's MIT-licensed infrastructure,
+vendored verbatim at commit `d28713ac8245` with a provenance header added to
+each file, and used with his explicit agreement. See `wang_substrate/PROVENANCE.md`.
+
+`manuscript/` pins the v5 manuscript this formalization targets.
