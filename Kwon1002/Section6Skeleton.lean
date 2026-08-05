@@ -249,56 +249,8 @@ def windowProj {R' R : ℕ} (h : R ≤ R') (w : WindowSpace R') : WindowSpace R 
    fun i => w.2.1 ⟨(i : ℕ) + (R' - R), by have := i.isLt; omega⟩,
    fun i => w.2.2 ⟨(i : ℕ) + (R' - R), by have := i.isLt; omega⟩)
 
-theorem measurable_windowProj {R' R : ℕ} (h : R ≤ R') :
-    Measurable (windowProj (R' := R') (R := R) h) := by
-  unfold windowProj
-  apply Measurable.prodMk
-  · exact measurable_pi_lambda _ fun i => (measurable_pi_apply _).comp measurable_fst
-  · apply Measurable.prodMk
-    · exact measurable_pi_lambda _ fun i =>
-        (measurable_pi_apply _).comp (measurable_fst.comp measurable_snd)
-    · exact measurable_pi_lambda _ fun i =>
-        (measurable_pi_apply _).comp (measurable_snd.comp measurable_snd)
 
-/-- The projection is compatible with the actual windows: whenever both
-are defined, `π_{R',R}(W^{(R')}_{n,j}) = W^{(R)}_{n,j}` (v5 line 1165). -/
-theorem windowProj_actualWindow {R' R : ℕ} (h : R ≤ R') (α : ℝ) (n j : ℕ)
-    (hj : R' + 1 ≤ j) :
-    windowProj h (actualWindow R' α n j) = actualWindow R α n j := by
-  have hd : ∀ i : ℕ, i < 2 * R + 1 → j + (i + (R' - R)) - R' = j + i - R := by
-    intro i hi; omega
-  have ht : ∀ i : ℕ, i < 2 * R + 2 → j + (i + (R' - R)) - R' - 1 = j + i - R - 1 := by
-    intro i hi; omega
-  simp only [windowProj, actualWindow, Prod.mk.injEq, Fin.val_mk]
-  refine ⟨funext fun i => ?_, funext fun i => ?_, funext fun i => ?_⟩
-  · rw [hd i i.isLt]
-  · rw [hd i i.isLt]
-  · rw [ht i i.isLt]
 
-/-- The projection is compatible with the stationary windows. -/
-theorem windowProj_stationaryWindow {R' R : ℕ} (h : R ≤ R') (z : NatExtTorus) :
-    windowProj h (stationaryWindow R' z) = stationaryWindow R z := by
-  have hd : ∀ i : ℕ, ((i + (R' - R) : ℕ) : ℤ) - (R' : ℤ) = (i : ℤ) - (R : ℤ) := by
-    intro i; omega
-  have ht : ∀ i : ℕ,
-      ((i + (R' - R) : ℕ) : ℤ) - (R' : ℤ) - 1 = (i : ℤ) - (R : ℤ) - 1 := by
-    intro i; omega
-  simp only [windowProj, stationaryWindow, Prod.mk.injEq, Fin.val_mk]
-  refine ⟨funext fun i => ?_, funext fun i => ?_, funext fun i => ?_⟩
-  · rw [hd i]
-  · rw [hd i]
-  · rw [ht i]
-
-theorem measurable_stationaryWindow (R : ℕ) : Measurable (stationaryWindow R) := by
-  sorry
-
-/-- **(`(π_{R',R})_* μ_{R'} = μ_R`)**, v5 line 1165. -/
-theorem windowProj_map_windowLaw {R' R : ℕ} (h : R ≤ R') :
-    (windowLaw R').map (windowProj h) = windowLaw R := by
-  rw [windowLaw, windowLaw, Measure.map_map (measurable_windowProj h)
-    (measurable_stationaryWindow R')]
-  congr 1
-  exact funext fun z => windowProj_stationaryWindow h z
 
 /-! ## Lemma 6.3: uniform full-state transfer -/
 

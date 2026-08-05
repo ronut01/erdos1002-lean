@@ -56,3 +56,8 @@ import Kwon1002.V5Lemma33
 import Kwon1002.V5Lemma34
 import Kwon1002.V5Prop42
 import Kwon1002.Section6Skeleton
+import Kwon1002.Lemma61
+import Kwon1002.WindowLaws
+import Kwon1002.Lemma62
+import Kwon1002.Lemma63
+import Kwon1002.Prop64
