@@ -42,9 +42,15 @@ remaining 206 are the open goals and the results downstream of them: 106
 carry a placeholder directly, and the other 100 depend on one.
 
 Section 2 is formalized. Section 3 is formalized apart from Lemma 3.1(i),
-which this development does not use: Lemma 3.2 is obtained through an exact
-cylinder-transfer identity together with a bounded-variation Lasota-Yorke
-inequality proved here, and Lemma 3.3 through the word-reversal argument.
+which this development does not use. The conditional multi-block mixing
+estimate is obtained instead by taking Shouqiao Wang's Lipschitz contraction
+from the vendored substrate (rate `527/540`) and transferring it to bounded
+variation by an explicit mollification, giving a spectral gap at rate
+`√(527/540)` with the constant depending on the BV norm as Lemma 3.2
+requires. A BV Lasota-Yorke inequality, `Var(Lf) ≤ (3/4)·Var f + ‖f‖₁`, is
+separately proved here but is deliberately not on that critical path; it is
+used for its variation lemmas. Lemma 3.3 comes through the word-reversal
+argument.
 Section 5's analytic core is formalized, including the characteristic
 function of the limit law; the scale 1/(2π) is confirmed by three
 independent routes inside Lean. Section 6 is under way, with Lemma 6.1 and
