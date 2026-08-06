@@ -28,17 +28,17 @@ The Lean toolchain, axiom policy, treatment of work-in-progress placeholders, CI
 
 Apache License 2.0. See [LICENSE](LICENSE).
 
-## Current state (2026-08-05)
+## Current state (2026-08-06)
 
 The Lean development builds against Lean v4.27.0 and mathlib pinned in
 `lake-manifest.json`.
 
-**1,271 theorems, 1,065 of them axiom-clean**, under the discipline this
+**1,285 theorems, 1,084 of them axiom-clean**, under the discipline this
 project enforces in CI: axioms exactly `propext`, `Classical.choice`,
 `Quot.sound`, with no `sorry` in any completed result, no `native_decide`,
 and no custom axioms anywhere, including the vendored infrastructure. The
 current measurement reports **zero** theorems on a non-standard axiom. The
-remaining 206 are the open goals and the results downstream of them: 106
+remaining 201 are the open goals and the results downstream of them: 101
 carry a placeholder directly, and the other 100 depend on one.
 
 Section 2 is formalized. Section 3 is formalized apart from Lemma 3.1(i),
@@ -53,8 +53,10 @@ used for its variation lemmas. Lemma 3.3 comes through the word-reversal
 argument.
 Section 5's analytic core is formalized, including the characteristic
 function of the limit law; the scale 1/(2π) is confirmed by three
-independent routes inside Lean. Section 6 is under way, with Lemma 6.1 and
-the window laws proved. Sections 4 and 7 are open.
+independent routes inside Lean. Section 6 is under way, with Lemma 6.1, the
+window laws, the resonance obstruction (50), the measurability layer of the
+window space, and the positivity of the reset set proved. Sections 4 and 7
+are open.
 
 `wang_substrate/` contains Shouqiao Wang's MIT-licensed infrastructure,
 vendored verbatim at commit `d28713ac8245` with a provenance header added to

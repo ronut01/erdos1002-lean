@@ -821,9 +821,33 @@ replacing `x_{j+t}` by `[0; a_{j+t+1}, …, a_{j+t+M}]` for `|t| ≤ R` moves
 each of the finitely many continuous factors `g_ℓ` by `o(1)` as `M → ∞`,
 uniformly, because `max_{|t| ≤ R} |x_{j+t} - x^{[M]}_{j+t}| = O_R(F_M^{-2})`.
 
-**Obstruction.**  The continued-fraction contraction estimate at a
-Fibonacci rate and the uniform continuity of `g_ℓ` on the compact block
-`[0,1]^{2R+1}` are both unformalised here. -/
+**Obstruction, precisely.**  Three inputs are missing, and the first of
+them is a structural one rather than an estimate.
+
+1. **The support of `μ_{R+M}`.**  The statement is *not* pointwise true.
+   At an arbitrary `w : WindowSpace (R + M)` the digit block `w.1` and the
+   real block `w.2.1` are unrelated -- nothing in the type ties `x_t` to
+   the digits `a_t, a_{t+1}, …` -- so `digitTruncWindow R M w` need not be
+   anywhere near `windowProj _ w`, and `G.eval` of the two can differ by
+   as much as `G` varies.  What makes the display true is that
+   `windowLaw (R + M)` is `hatMu0` pushed forward along
+   `stationaryWindow (R + M)`, and on the image of that map the blocks
+   *are* linked: `stationaryWindow` reads `x_i` off `hatSzpow (i - R') z`
+   and `a_i = digit x_i 0`, so consecutive real coordinates satisfy
+   `x_{i+1} = gaussMap x_i` and hence `x_i = 1/(a_i + x_{i+1})`, which is
+   exactly the recursion `cfFinite` unwinds.  That marginal description of
+   `windowLaw` is not in the tree; it is the same missing ingredient the
+   sibling input `event_truncation` names.
+2. **The contraction estimate.**  Given the link of item 1, one needs
+   `|x - [0; a_1, …, a_M]| ≤ 1/(q_M q_{M+1}) = O(F_M^{-2})`.  Mathlib's
+   `Mathlib/Algebra/ContinuedFractions/Computation/Approximations.lean` and
+   `ApproximationCorollaries.lean` carry this for `GenContFract.of`, but
+   `cfFinite` here is a bare recursion on a digit family and is not yet
+   identified with a Mathlib convergent.
+3. **Uniform continuity of the `g_ℓ`.**  `DenseElt.g_continuous` gives
+   continuity on all of `Fin (2R+1) → ℝ`, which is not compact, so a
+   uniform modulus needs the real block confined to a cube -- again item 1,
+   and then `isCompact_digitCapCube` above supplies the compact set. -/
 theorem digit_truncation (R : ℕ) (G : DenseElt R) (ε : ℝ) (hε : 0 < ε) :
     ∃ M : ℕ,
       eLpNorm (fun w : WindowSpace (R + M) =>
