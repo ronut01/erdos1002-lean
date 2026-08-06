@@ -158,12 +158,18 @@ radius-`R` word `w`.
 
 **Reading.**  "Depending only on `w`" is rendered by quantifying `A`, `B`
 as functions of the word *before* `α`, `n`, `j` are introduced; the
-`(mod 1)` of (31) is the existential integer `m`. -/
-theorem window_character_reduction (R : ℕ) (c : Fin (2 * R + 1) → ℤ) :
+`(mod 1)` of (31) is the existential integer `m`.
+
+**Range.**  The manuscript sums `t = -R-1, …, R`, so the window reaches
+`θ_{j-R-1}` and the identity requires `j ≥ R+1`.  An earlier form of this
+statement summed only `t = -R, …, R` under `R ≤ j`, one coordinate short of
+the manuscript; it is widened here to the manuscript's own window.  Proved
+at that range as `V5Identity31.window_character_reduction_v5`. -/
+theorem window_character_reduction (R : ℕ) (c : Fin (2 * R + 2) → ℤ) :
     ∃ A B : (Fin (2 * R) → ℕ) → ℤ,
-      ∀ α : ℝ, Irrational α → α ∈ Ioo (0 : ℝ) 1 → ∀ n j : ℕ, R ≤ j →
+      ∀ α : ℝ, Irrational α → α ∈ Ioo (0 : ℝ) 1 → ∀ n j : ℕ, R + 1 ≤ j →
         ∃ m : ℤ,
-          (∑ i : Fin (2 * R + 1), (c i : ℝ) * theta α n (j + (i : ℕ) - R))
+          (∑ i : Fin (2 * R + 2), (c i : ℝ) * theta α n (j + (i : ℕ) - (R + 1)))
             = (A (windowWord R α j) : ℝ) * theta α n j
               + (B (windowWord R α j) : ℝ) * thetaPred α n j + (m : ℝ) := by
   sorry
@@ -178,8 +184,21 @@ def Qfreq (α : ℝ) (j : ℕ) (r s : ℤ) : ℤ :=
 /-- **(33)**, the sentence "Its frequency is `(-1)^j Q_j(r,s)`": by (8)
 the torus part of a monomial at time `j` is the pure phase
 `e^{2πi n (-1)^j Q_j(r,s) α}`.  Needs `j ≥ 1`, since `Qfreq` reads
-`q_{j-1}` through truncated subtraction. -/
-theorem torusChar_monomial_frequency (α : ℝ) (n j : ℕ) (hj : 1 ≤ j) (r s : ℤ) :
+`q_{j-1}` through truncated subtraction.
+
+**The standing §2 hypotheses on `α` are required.**  Without them the
+statement is false: `CharacterReduction.torusChar_monomial_frequency_false`
+refutes it at `α = 1/2`, `n = 1`, `j = 2`, `(r,s) = (0,1)`, where (8) fails
+because `α` is rational.  The manuscript carries `α` irrational in `(0,1)`
+throughout §2-§4, so this restores a hypothesis the prose assumes rather
+than changing the claim.
+
+Proved as `CharacterReduction.torusChar_monomial_frequency'`.  It cannot be
+discharged here, since its proof runs through `theta_eq_mod`, which lives
+downstream of this module; `CharacterReduction` carries a type-check guard
+tying that proof to this statement. -/
+theorem torusChar_monomial_frequency {α : ℝ} (hα : α ∈ Ioo (0 : ℝ) 1)
+    (hirr : Irrational α) (n j : ℕ) (hj : 1 ≤ j) (r s : ℤ) :
     torusChar ((r : ℝ) * thetaPred α n j + (s : ℝ) * theta α n j)
       = torusChar ((-1 : ℝ) ^ j * (Qfreq α j r s : ℝ) * (n : ℝ) * α) := by
   sorry

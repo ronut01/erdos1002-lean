@@ -441,9 +441,14 @@ not a sorried theorem: nothing is assumed here. -/
 /-- **Display (20)** of the manuscript, as a predicate: outside a set of
 Lebesgue measure `C e^{−c√L}`, every bulk continuant obeys the two-sided Lévy
 bound at deviation `δH`.  Nothing in this file assumes it; it is stated so that
-the gap identified in §4 has a name. -/
+the gap identified in §4 has a name.
+
+**Range.**  The manuscript quantifies over *every integer* `0 ≤ t ≤ 2 m_n`,
+not only over the bulk `J_n`.  The wider range is the one §4 needs: the
+predicate is consumed at `t₋` and `t₊`, which lie outside `J_n`, so the
+bulk-only form was too narrow to serve its own consumers. -/
 def Display20 (C δ c : ℝ) : Prop :=
-  ∀ᶠ n : ℕ in atTop, ∀ j ∈ bulkJ n,
+  ∀ᶠ n : ℕ in atTop, ∀ j : ℕ, j ≤ 2 * mIndex n →
     volume.real {α ∈ Ioo (0 : ℝ) 1 |
         ¬ (Real.exp (lyapunov * (j : ℝ) - δ * Hscale n) ≤ (denom α j : ℝ)
             ∧ (denom α j : ℝ) ≤ Real.exp (lyapunov * (j : ℝ) + δ * Hscale n))}

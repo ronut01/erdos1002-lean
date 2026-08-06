@@ -203,7 +203,11 @@ First the skeleton's statement, reproduced token for token as a `Prop`, then
 its refutation, then the corrected forms. -/
 
 /-- Token-identical reproduction of the conclusion of
-`Kwon1002.lemma_6_3_good_cylinder_selection`. -/
+`Kwon1002.lemma_6_3_good_cylinder_selection` **as it was stated before the
+amendment**, with `∃ E` outermost.  Kept because `not_goodCylinderSelection`
+below refutes exactly this form, and that refutation is the reason the
+skeleton statement was reordered.  The amended skeleton statement is
+`GoodCylinderSelectionPairFirst`. -/
 def GoodCylinderSelection (κ δ : ℝ) : Prop :=
   ∃ C c : ℝ, 0 < C ∧ 0 < c ∧ ∀ᶠ n : ℕ in atTop, ∀ j ∈ bulkJ n,
     ∃ E : Set ℝ, MeasurableSet E ∧
@@ -213,11 +217,24 @@ def GoodCylinderSelection (κ δ : ℝ) : Prop :=
         ∀ A B : ℤ, (A, B) ≠ (0, 0) →
           Real.exp (-κ * Hscale n) * (denom α j : ℝ) ≤ |(Qfreq α j B A : ℝ)|
 
-/-- Statement identity: `GoodCylinderSelection` is the skeleton's statement.
-This `example` elaborates the skeleton's sorried theorem as a term; it is a
-type check only, and nothing below uses it. -/
+/-- Token-identical reproduction of the conclusion of the **amended**
+`Kwon1002.lemma_6_3_good_cylinder_selection`, with the nonzero pair
+quantified before the exceptional set. -/
+def GoodCylinderSelectionPairFirst (κ δ : ℝ) : Prop :=
+  ∃ C c : ℝ, 0 < C ∧ 0 < c ∧ ∀ᶠ n : ℕ in atTop, ∀ j ∈ bulkJ n,
+    ∀ A B : ℤ, (A, B) ≠ (0, 0) →
+    ∃ E : Set ℝ, MeasurableSet E ∧
+      (volume.restrict (Ioo (0 : ℝ) 1)).real E ≤ C * Real.exp (-c * Hscale n) ∧
+      ∀ α ∈ Ioo (0 : ℝ) 1 \ E, Irrational α →
+        Real.exp (lyapunov * j - δ * Hscale n) ≤ (denom α j : ℝ) ∧
+        Real.exp (-κ * Hscale n) * (denom α j : ℝ) ≤ |(Qfreq α j B A : ℝ)|
+
+/-- Statement identity: `GoodCylinderSelectionPairFirst` is the skeleton's
+amended statement.  This `example` elaborates the skeleton's sorried theorem
+as a term; it is a type check only, and nothing below uses it.  It is what
+detects any future drift between the two files. -/
 example : ∀ (κ δ : ℝ), 0 < κ → 0 < δ → κ + 3 * δ < 80 * lyapunov →
-    GoodCylinderSelection κ δ :=
+    GoodCylinderSelectionPairFirst κ δ :=
   _root_.Kwon1002.lemma_6_3_good_cylinder_selection
 
 /-- The defeating pair.  `Q_j` of (33) at `(A, B) = (q_{j-1}, q_j)` is
@@ -444,7 +461,13 @@ theorem lemma_6_3_good_cylinder_selection_corrected (κ δ : ℝ) (hκ : 0 < κ)
           ∧ (denom α j : ℝ) ≤ Real.exp (lyapunov * (j : ℝ) + δ * Hscale n))} with hTdef
   have hTsub : T ⊆ Ioo (0 : ℝ) 1 := fun α hα => hα.1
   have hTbound : (volume T).toReal ≤ C₀ * Real.exp (-c₀ * Real.sqrt (Lnorm n)) := by
-    have := h20n j hj
+    -- `Display20` now runs over every `j ≤ 2 m_n`, the manuscript's own range;
+    -- the bulk sits inside it, since `bulkJ n ⊆ range (m_n + 1)`.
+    have hjm : j ≤ 2 * mIndex n := by
+      have := Finset.mem_filter.mp hj
+      have hlt := Finset.mem_range.mp this.1
+      omega
+    have := h20n j hjm
     rwa [measureReal_def] at this
   refine ⟨E₁ ∪ toMeasurable volume T,
     hE₁meas.union (measurableSet_toMeasurable volume T), ?_, ?_⟩

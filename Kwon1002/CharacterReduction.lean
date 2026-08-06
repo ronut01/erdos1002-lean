@@ -236,8 +236,20 @@ lemma denom_half_two : denom (1 / 2 : ℝ) 2 = 1 := by
   show 0 * denom (1 / 2 : ℝ) 1 + 1 = 1
   ring
 
-/-- **Finding (manuscript-vs-formalisation).**  `torusChar_monomial_frequency`
-as stated in `Section4.lean`, with no hypotheses on `α`, is **false**.
+/-- Type-check guard.  The amended canonical statement in `Section4.lean`,
+which now carries the standing §2 hypotheses, is discharged by the proof
+here.  Its `sorry` there is plumbing forced by the import direction, not
+mathematical debt: this `example` fails to elaborate if the two statements
+ever drift apart. -/
+example : ∀ {α : ℝ}, α ∈ Ioo (0 : ℝ) 1 → Irrational α → ∀ (n j : ℕ), 1 ≤ j →
+    ∀ (r s : ℤ),
+      torusChar ((r : ℝ) * thetaPred α n j + (s : ℝ) * theta α n j)
+        = torusChar ((-1 : ℝ) ^ j * (Qfreq α j r s : ℝ) * (n : ℝ) * α) :=
+  fun hα hirr n j hj r s => torusChar_monomial_frequency' hα hirr n j hj r s
+
+/-- **Finding (manuscript-vs-formalisation).**  The hypothesis-free form of
+`torusChar_monomial_frequency`, as `Section4.lean` stated it before the
+amendment, is **false**.
 Counterexample: `α = 1/2`, `n = 1`, `j = 2`, `(r,s) = (0,1)`; the left side is
 `1`, the right side is `-1`.  The Gauss orbit of a rational reaches `0`, where
 Lean's `0⁻¹ = 0` convention makes the digit `0` and breaks the `β`-recursion.

@@ -295,16 +295,26 @@ local `q`-estimate leaves `q_j ≥ e^{λj - δH}`.
 **Reading.**  `Qfreq α j B A = A q_j - B q_{j-1}` is the manuscript's
 `Q_j` for the pair `(A_w, B_w)`, since `Qfreq α j r s = s q_j - r q_{j-1}`.
 The bound is uniform in the nonzero pair, which is what makes the sum
-over the finitely many words in `words` harmless. -/
+over the finitely many words in `words` harmless.
+
+**Order of quantifiers.**  The exceptional set must be chosen *after* the
+pair `(A,B)`, not before it.  With `∃ E` outermost the statement is false
+for every `κ` and `δ`, and `Lemma63.not_goodCylinderSelection` proves it so:
+a single `E` cannot serve all pairs at once, since `(A,B) = (q_{j-1}, q_j)`
+makes `Q_j` vanish at every irrational `α`.  The manuscript's Lemma 3.3 is
+uniform in the nonzero pair, which is exactly the form below.  The
+anti-concentration half is proved at this order as
+`Lemma63.good_cylinder_selection_antiConc`; the continuant half is display
+(20). -/
 theorem lemma_6_3_good_cylinder_selection (κ δ : ℝ) (hκ : 0 < κ) (hδ : 0 < δ)
     (hκδ : κ + 3 * δ < 80 * lyapunov) :
     ∃ C c : ℝ, 0 < C ∧ 0 < c ∧ ∀ᶠ n : ℕ in atTop, ∀ j ∈ bulkJ n,
+      ∀ A B : ℤ, (A, B) ≠ (0, 0) →
       ∃ E : Set ℝ, MeasurableSet E ∧
         (volume.restrict (Ioo (0 : ℝ) 1)).real E ≤ C * Real.exp (-c * Hscale n) ∧
         ∀ α ∈ Ioo (0 : ℝ) 1 \ E, Irrational α →
           Real.exp (lyapunov * j - δ * Hscale n) ≤ (denom α j : ℝ) ∧
-          ∀ A B : ℤ, (A, B) ≠ (0, 0) →
-            Real.exp (-κ * Hscale n) * (denom α j : ℝ) ≤ |(Qfreq α j B A : ℝ)| := by
+          Real.exp (-κ * Hscale n) * (denom α j : ℝ) ≤ |(Qfreq α j B A : ℝ)| := by
   sorry
 
 /-- The one-block step of Lemma 6.3 (v5 lines 1180-1216): the required

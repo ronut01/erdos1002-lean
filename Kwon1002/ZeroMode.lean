@@ -667,7 +667,15 @@ constants into the single bracket of (30).
   proved) is what makes the frequency non-degenerate on the retained set.
   Both are available; what is missing is the cylinder bookkeeping that puts
   `modeTerm` into the shape `∑_w ‖∑_v c_{w,v} ∫ e(nQ_wα)‖` those lemmas
-  consume. -/
+  consume.
+
+**Error budget.**  Step 2 carries the `e^{-c√L}` summand as well as the two
+`H`-summands.  The manuscript restores the discarded depth-`k_+` cylinders
+*after* the stationary-mean replacement, at cost `L^{O(1)} e^{-cL^{1/2}}`,
+so that cost falls in step 2 and not only in step 1.  Charging it to step 1
+alone made the chain underivable, since `e^{-c√L}` dominates `e^{-cH}` at
+`H = L^{3/4}`.  The consumer `ErrorShape.nonzero_mode_small` already sums
+all three summands, so widening step 2 is downstream-safe. -/
 theorem nonzero_mode_three_step (r : ℕ) (D : ℝ) (hD : 0 < D) :
     ∃ C c₀ ρ : ℝ, 0 < C ∧ 0 < c₀ ∧ 0 < ρ ∧ ρ < 1 ∧ ∀ᶠ n : ℕ in atTop,
       ∀ j : ℕ → ℕ, GoodTuple n r j →
@@ -679,7 +687,8 @@ theorem nonzero_mode_three_step (r : ℕ) (D : ℝ) (hD : 0 < D) :
               ≤ C * (Lnorm n) ^ (D * r) * Real.exp (-c₀ * Real.sqrt (Lnorm n)) ∧
             ‖T₁ - T₂‖
               ≤ C * (Lnorm n) ^ (D * r) *
-                  (Real.exp (-c₀ * Hscale n) + ρ ^ (c₀ * Hscale n)) ∧
+                  (Real.exp (-c₀ * Real.sqrt (Lnorm n))
+                    + Real.exp (-c₀ * Hscale n) + ρ ^ (c₀ * Hscale n)) ∧
             ‖T₂‖ ≤ C * (Lnorm n) ^ (D * r) * Real.exp (-c₀ * Hscale n) := by
   sorry
 
