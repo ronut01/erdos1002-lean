@@ -408,9 +408,126 @@ theorem carryMap_eq_zero_of_mem_resetSet (D : ℕ) (z : NatExtTorus)
   simp only [carryMap, Int.ceil_eq_zero_iff, Set.mem_Ioc]
   constructor <;> linarith
 
-/-- The `μ̂₀`-measure of the reset set is positive (v5 line 1269). -/
+/-- The `μ̂₀`-measure of the reset set is positive (v5 line 1269).
+
+No dynamics is involved.  `μ̂₀` is Lebesgue measure on the box
+`(0,1)⁴` weighted by `1/(log 2 (1+xy)²)`, a density that on that box lies
+strictly between `1/(4 log 2)` and `1/log 2`.  The explicit sub-box
+`(0, 1/(4(D+1))) × (0,1) × (0,1) × (1/2, 3/4)` is contained in the reset
+set, so the lower bound on the density times its positive Lebesgue volume
+bounds `μ̂₀(R)` from below; the upper bound on the density gives
+`μ̂₀(R) ≤ μ̂₀(X) ≤ 1/log 2 < ∞`, which is what makes the real-valued
+`Measure.real` positive rather than merely nonzero. -/
 theorem resetSet_measure_pos (D : ℕ) : 0 < hatMu0.real (resetSet D) := by
-  sorry
+  have hlog2 : (0 : ℝ) < Real.log 2 := Real.log_pos (by norm_num)
+  have hdens : Measurable (fun z : NatExtTorus =>
+      ENNReal.ofReal (1 / (Real.log 2 * (1 + z.1.1 * z.1.2) ^ 2))) := by
+    refine Measurable.ennreal_ofReal ?_
+    fun_prop
+  set c : ℝ := 1 / (4 * ((D : ℝ) + 1)) with hc
+  have hDpos : (0 : ℝ) < (D : ℝ) + 1 := by positivity
+  have hcpos : 0 < c := by rw [hc]; positivity
+  have hcle : c ≤ 1 := by
+    rw [hc, div_le_one (by positivity)]
+    have hD : (0 : ℝ) ≤ (D : ℝ) := Nat.cast_nonneg _
+    linarith
+  set Box : Set NatExtTorus :=
+    (Ioo (0 : ℝ) 1 ×ˢ Ioo (0 : ℝ) 1) ×ˢ (Ioo (0 : ℝ) 1 ×ˢ Ioo (0 : ℝ) 1) with hBox
+  set S : Set NatExtTorus :=
+    (Ioo (0 : ℝ) c ×ˢ Ioo (0 : ℝ) 1) ×ˢ (Ioo (0 : ℝ) 1 ×ˢ Ioo (1 / 2 : ℝ) (3 / 4)) with hS
+  have hBoxMeas : MeasurableSet Box :=
+    (measurableSet_Ioo.prod measurableSet_Ioo).prod
+      (measurableSet_Ioo.prod measurableSet_Ioo)
+  have hSMeas : MeasurableSet S :=
+    (measurableSet_Ioo.prod measurableSet_Ioo).prod
+      (measurableSet_Ioo.prod measurableSet_Ioo)
+  have hvolBox : volume Box = 1 := by
+    simp only [hBox, Measure.volume_eq_prod, Measure.prod_prod, Real.volume_Ioo]
+    norm_num
+  have hvolS : volume S ≠ 0 := by
+    simp only [hS, Measure.volume_eq_prod, Measure.prod_prod, Real.volume_Ioo]
+    have h1 : ENNReal.ofReal (c - 0) ≠ 0 := by
+      simp only [ne_eq, ENNReal.ofReal_eq_zero, not_le]; linarith
+    have h2 : ENNReal.ofReal ((1 : ℝ) - 0) ≠ 0 := by
+      simp only [ne_eq, ENNReal.ofReal_eq_zero, not_le]; norm_num
+    have h3 : ENNReal.ofReal ((3 / 4 : ℝ) - 1 / 2) ≠ 0 := by
+      simp only [ne_eq, ENNReal.ofReal_eq_zero, not_le]; norm_num
+    exact mul_ne_zero (mul_ne_zero h1 h2) (mul_ne_zero h2 h3)
+  -- `S` sits inside the ambient box and inside the reset set
+  have hSsubBox : S ⊆ Box := by
+    intro z hz
+    rw [hS] at hz
+    rw [hBox]
+    simp only [Set.mem_prod, Set.mem_Ioo] at hz ⊢
+    obtain ⟨⟨⟨hx0, hx1⟩, hy⟩, ht1, ht20, ht21⟩ := hz
+    exact ⟨⟨⟨hx0, lt_of_lt_of_le hx1 hcle⟩, hy⟩, ht1, by linarith, by linarith⟩
+  have hSsubReset : S ⊆ resetSet D := by
+    intro z hz
+    rw [hS] at hz
+    simp only [Set.mem_prod, Set.mem_Ioo] at hz
+    obtain ⟨⟨⟨_, hx1⟩, _⟩, _, ht20, ht21⟩ := hz
+    refine ⟨?_, ht20, ht21⟩
+    rw [← hc]
+    exact hx1
+  -- the measure is finite: the density is at most `1 / log 2` on the box
+  have hupper : hatMu0 Set.univ ≤ ENNReal.ofReal (1 / Real.log 2) := by
+    rw [show hatMu0 = (volume.restrict Box).withDensity
+        (fun z => ENNReal.ofReal (1 / (Real.log 2 * (1 + z.1.1 * z.1.2) ^ 2))) from rfl,
+      withDensity_apply _ MeasurableSet.univ, Measure.restrict_univ]
+    have hle : ∀ z ∈ Box, ENNReal.ofReal (1 / (Real.log 2 * (1 + z.1.1 * z.1.2) ^ 2))
+        ≤ ENNReal.ofReal (1 / Real.log 2) := by
+      intro z hz
+      rw [hBox] at hz
+      simp only [Set.mem_prod, Set.mem_Ioo] at hz
+      obtain ⟨⟨⟨hx0, _⟩, hy0, _⟩, _⟩ := hz
+      refine ENNReal.ofReal_le_ofReal ?_
+      have hxy : 0 < z.1.1 * z.1.2 := mul_pos hx0 hy0
+      have h1 : (1 : ℝ) ≤ (1 + z.1.1 * z.1.2) ^ 2 := by nlinarith
+      have h2 : Real.log 2 ≤ Real.log 2 * (1 + z.1.1 * z.1.2) ^ 2 := by nlinarith
+      exact one_div_le_one_div_of_le hlog2 h2
+    calc ∫⁻ z in Box, ENNReal.ofReal (1 / (Real.log 2 * (1 + z.1.1 * z.1.2) ^ 2))
+        ≤ ∫⁻ _ in Box, ENNReal.ofReal (1 / Real.log 2) :=
+          setLIntegral_mono measurable_const hle
+      _ = ENNReal.ofReal (1 / Real.log 2) * volume Box := setLIntegral_const _ _
+      _ = ENNReal.ofReal (1 / Real.log 2) := by rw [hvolBox, mul_one]
+  have hfin : hatMu0 (resetSet D) ≠ ⊤ := by
+    have h1 : hatMu0 (resetSet D) ≤ ENNReal.ofReal (1 / Real.log 2) :=
+      le_trans (measure_mono (subset_univ _)) hupper
+    exact ne_top_of_le_ne_top ENNReal.ofReal_ne_top h1
+  -- the measure is positive: the density is at least `1 / (4 log 2)` on `S`
+  have hSpos : 0 < hatMu0 S := by
+    rw [show hatMu0 = (volume.restrict Box).withDensity
+        (fun z => ENNReal.ofReal (1 / (Real.log 2 * (1 + z.1.1 * z.1.2) ^ 2))) from rfl,
+      withDensity_apply _ hSMeas, Measure.restrict_restrict hSMeas,
+      Set.inter_eq_self_of_subset_left hSsubBox]
+    have hge : ∀ z ∈ S, ENNReal.ofReal (1 / (4 * Real.log 2))
+        ≤ ENNReal.ofReal (1 / (Real.log 2 * (1 + z.1.1 * z.1.2) ^ 2)) := by
+      intro z hz
+      rw [hS] at hz
+      simp only [Set.mem_prod, Set.mem_Ioo] at hz
+      obtain ⟨⟨⟨hx0, hx1⟩, hy0, hy1⟩, _⟩ := hz
+      refine ENNReal.ofReal_le_ofReal ?_
+      have hx1' : z.1.1 < 1 := lt_of_lt_of_le hx1 hcle
+      have hxy0 : 0 < z.1.1 * z.1.2 := mul_pos hx0 hy0
+      have hxy1 : z.1.1 * z.1.2 < 1 := by nlinarith
+      have hden : 0 < Real.log 2 * (1 + z.1.1 * z.1.2) ^ 2 := by positivity
+      have hsq : (1 + z.1.1 * z.1.2) ^ 2 ≤ 4 := by nlinarith
+      have h2 : Real.log 2 * (1 + z.1.1 * z.1.2) ^ 2 ≤ 4 * Real.log 2 := by
+        have hmul := mul_le_mul_of_nonneg_left hsq hlog2.le
+        linarith
+      exact one_div_le_one_div_of_le hden h2
+    have hlow : ENNReal.ofReal (1 / (4 * Real.log 2)) * volume S
+        ≤ ∫⁻ z in S, ENNReal.ofReal (1 / (Real.log 2 * (1 + z.1.1 * z.1.2) ^ 2)) := by
+      calc ENNReal.ofReal (1 / (4 * Real.log 2)) * volume S
+          = ∫⁻ _ in S, ENNReal.ofReal (1 / (4 * Real.log 2)) := (setLIntegral_const _ _).symm
+        _ ≤ ∫⁻ z in S, ENNReal.ofReal (1 / (Real.log 2 * (1 + z.1.1 * z.1.2) ^ 2)) :=
+            setLIntegral_mono hdens hge
+    refine lt_of_lt_of_le ?_ hlow
+    refine ENNReal.mul_pos ?_ hvolS
+    simp only [ne_eq, ENNReal.ofReal_eq_zero, not_le]
+    positivity
+  have hpos : 0 < hatMu0 (resetSet D) := lt_of_lt_of_le hSpos (measure_mono hSsubReset)
+  exact ENNReal.toReal_pos (ne_of_gt hpos) hfin
 
 /-- **(56)** The stationary carry extension is a measurable invariant
 graph `d_*` with `d_*(Sz) = φ_z(d_*(z))` (v5 lines 1269-1279). -/

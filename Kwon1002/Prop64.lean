@@ -719,6 +719,85 @@ theorem measurableSet_digitCapEvent (R' K : ℕ) : MeasurableSet (digitCapEvent 
   rw [hpre]
   exact hm MeasurableSet.of_discrete
 
+/-! ### `E_{M,K}` is closed but **not** compact
+
+`Kwon1002/Lemma63.lean` lines 585-589 record, as the obstruction to the
+Stone-Weierstrass step of Lemma 6.3, that "`WindowSpace R` is not compact
+(the digit block is `ℕ`-valued), so the argument has to run on each compact
+digit truncation".  The compact digit truncation the manuscript has in mind
+is `X_{R,K}`, and `digitCapEvent` is *not* it.
+
+Capping the digits is not enough.  In the reading fixed by
+`Section6Skeleton` (reading 3) the real and torus blocks of `X_R` are
+`[0,1]^{2R+1}` and `T^{2R+2}`, but the Lean type `WindowSpace R` carries
+them as full copies of `ℝ`, with the interval and the torus reduction
+imposed only where a statement needs them.  `digitCapEvent R' K`
+constrains the digit block alone, so it contains a whole affine copy of
+`ℝ^{2R'+1}` and is unbounded.  `not_isCompact_digitCapEvent` proves this,
+and `digitCapCube` supplies the set that *is* compact: the digit cap times
+the closed unit cube on the other two blocks. -/
+
+/-- `E_{M,K}` is closed: `{n | n ≤ K}` is clopen in the discrete space `ℕ`
+and each digit coordinate reader is continuous. -/
+theorem isClosed_digitCapEvent (R' K : ℕ) : IsClosed (digitCapEvent R' K) := by
+  have hrw : digitCapEvent R' K
+      = ⋂ i : Fin (2 * R' + 1), {w : WindowSpace R' | w.1 i ≤ K} := by
+    ext w; simp [digitCapEvent]
+  rw [hrw]
+  refine isClosed_iInter fun i => ?_
+  have hcont : Continuous fun w : WindowSpace R' => w.1 i :=
+    (continuous_apply i).comp continuous_fst
+  have hpre : {w : WindowSpace R' | w.1 i ≤ K}
+      = (fun w : WindowSpace R' => w.1 i) ⁻¹' {n : ℕ | n ≤ K} := rfl
+  rw [hpre]
+  exact IsClosed.preimage hcont (isClosed_discrete _)
+
+/-- **`E_{M,K}` is not compact.**  The digit cap says nothing about the real
+block, so the image of `digitCapEvent R' K` under the (continuous) reader of
+the first real coordinate is all of `ℝ`, which is not bounded above.  Hence
+`digitCapEvent` cannot serve as the compact exhaustion `X_{R,K}` asked for at
+`Kwon1002/Lemma63.lean` lines 585-589; use `digitCapCube` for that. -/
+theorem not_isCompact_digitCapEvent (R' K : ℕ) : ¬ IsCompact (digitCapEvent R' K) := by
+  intro hK
+  have hcont : Continuous fun w : WindowSpace R' => w.2.1 ⟨0, by omega⟩ :=
+    (continuous_apply _).comp (continuous_fst.comp continuous_snd)
+  obtain ⟨b, hb⟩ := (hK.image hcont).bddAbove
+  have hmem : (b + 1) ∈ (fun w : WindowSpace R' => w.2.1 ⟨0, by omega⟩) '' digitCapEvent R' K := by
+    refine ⟨(fun _ => 0, fun _ => b + 1, fun _ => 0), ?_, rfl⟩
+    intro i; simp
+  have := hb hmem
+  linarith
+
+/-- **The compact digit truncation `X_{R,K}`.**  The digit cap of
+`digitCapEvent` together with the interval constraint that reading 3 of
+`Section6Skeleton` places on the real and torus blocks of `X_R`.  This is
+the set the Stone-Weierstrass step of Lemma 6.3 has to run on. -/
+def digitCapCube (R' K : ℕ) : Set (WindowSpace R') :=
+  {w : Fin (2 * R' + 1) → ℕ | ∀ i, w i ≤ K} ×ˢ
+    ((Set.univ.pi fun _ : Fin (2 * R' + 1) => Icc (0 : ℝ) 1) ×ˢ
+      (Set.univ.pi fun _ : Fin (2 * R' + 2) => Icc (0 : ℝ) 1))
+
+theorem digitCapCube_subset (R' K : ℕ) : digitCapCube R' K ⊆ digitCapEvent R' K := by
+  rintro w ⟨hw, -⟩
+  exact hw
+
+/-- **`X_{R,K}` is compact**: a finite digit block times two closed cubes. -/
+theorem isCompact_digitCapCube (R' K : ℕ) : IsCompact (digitCapCube R' K) := by
+  refine IsCompact.prod ?_ (IsCompact.prod ?_ ?_)
+  · refine Set.Finite.isCompact ?_
+    have hrw : {w : Fin (2 * R' + 1) → ℕ | ∀ i, w i ≤ K}
+        = Set.univ.pi fun _ : Fin (2 * R' + 1) => Set.Iic K := by
+      ext w; simp [Pi.le_def]
+    rw [hrw]
+    exact Set.Finite.pi fun _ => Set.finite_Iic K
+  · exact isCompact_univ_pi fun _ => isCompact_Icc
+  · exact isCompact_univ_pi fun _ => isCompact_Icc
+
+theorem measurableSet_digitCapCube (R' K : ℕ) : MeasurableSet (digitCapCube R' K) := by
+  refine MeasurableSet.prod MeasurableSet.of_discrete
+    (MeasurableSet.prod ?_ ?_) <;>
+  exact MeasurableSet.univ_pi fun _ => measurableSet_Icc
+
 /-! ### Named inputs for display (55) -/
 
 /-- **Input (step 1, density bridge).**  v5 lines 1316-1330: the algebra
