@@ -77,8 +77,8 @@ a convenience; it decides the shape of the project.
 
 ## Skeleton status (superseded, see AUDIT.md for current, audited numbers)
 
-The counts below were accurate when written and are now stale: the project
-has grown to 625 declarations, 458 of them axiom-clean. See AUDIT.md.
+The counts below were accurate when written and are now stale. For the
+current measurement see the README; for the audit record see AUDIT.md.
 
 ### Original note (2026-08-03)
 

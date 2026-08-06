@@ -7,6 +7,10 @@ findings against us.
 
 ## Machine-determined inventory
 
+These are the figures **as the audit found them**, and are left unchanged so
+the record stands. The development has grown since; for the current
+measurement see the README.
+
 | | count |
 |---|---|
 | Declarations in `Kwon1002` | 625 |
