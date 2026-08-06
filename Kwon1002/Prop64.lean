@@ -329,11 +329,60 @@ theorem memLp_BremainderTrunc (R n j : ℕ) :
     MemLp (fun α => BremainderTrunc α n R j) 2 (volume.restrict (Ioo (0 : ℝ) 1)) := by
   sorry
 
+/-- A window symbol placed at time `j` is a measurable function of `α`:
+the word `w_j(α)` lands in the discrete space `Fin (2R) → ℕ`, so the
+coefficient is measurable with no hypothesis, and the character is
+continuous in `(θ_{j-1}, θ_j)`. -/
+theorem measurable_symbolAt {R K : ℕ} (P : WindowSymbol R K) (n j : ℕ) :
+    Measurable fun α : ℝ => P.at α n j := by
+  unfold WindowSymbol.at
+  refine Finset.measurable_sum _ fun r _ => Finset.measurable_sum _ fun s _ =>
+    Measurable.mul ?_ ?_
+  · exact (Measurable.of_discrete (f := fun v : Fin (2 * R) → ℕ => P.coeff v r s)).comp
+      (measurable_pi_lambda _ fun _ => Prop42.measurable_digitNat _)
+  · exact Prop42.continuous_torusChar.measurable.comp
+      (((Prop42.measurable_thetaPred n j).const_mul _).add
+        ((measurable_theta n j).const_mul _))
+
+/-- A window symbol is bounded by the total mass of its coefficients: each
+monomial has modulus `1`, and the coefficients vanish off the finite word
+set `P.words`. -/
+theorem norm_symbolAt_le {R K : ℕ} (P : WindowSymbol R K) (α : ℝ) (n j : ℕ) :
+    ‖P.at α n j‖
+      ≤ ∑ w ∈ P.words, ∑ r ∈ Finset.Icc (-(K : ℤ)) (K : ℤ),
+          ∑ s ∈ Finset.Icc (-(K : ℤ)) (K : ℤ), ‖P.coeff w r s‖ := by
+  classical
+  have hstep : ‖P.at α n j‖
+      ≤ ∑ r ∈ Finset.Icc (-(K : ℤ)) (K : ℤ), ∑ s ∈ Finset.Icc (-(K : ℤ)) (K : ℤ),
+          ‖P.coeff (windowWord R α j) r s‖ := by
+    refine (norm_sum_le _ _).trans (Finset.sum_le_sum fun r _ => ?_)
+    refine (norm_sum_le _ _).trans (Finset.sum_le_sum fun s _ => ?_)
+    rw [norm_mul, Prop42.norm_torusChar, mul_one]
+  refine hstep.trans ?_
+  by_cases hw : windowWord R α j ∈ P.words
+  · exact Finset.single_le_sum
+      (f := fun w => ∑ r ∈ Finset.Icc (-(K : ℤ)) (K : ℤ),
+        ∑ s ∈ Finset.Icc (-(K : ℤ)) (K : ℤ), ‖P.coeff w r s‖)
+      (fun w _ => Finset.sum_nonneg fun _ _ => Finset.sum_nonneg fun _ _ => norm_nonneg _) hw
+  · have hzero : ∀ r s : ℤ, P.coeff (windowWord R α j) r s = 0 :=
+      fun r s => P.coeff_support _ r s hw
+    simp only [hzero, norm_zero, Finset.sum_const_zero]
+    exact Finset.sum_nonneg fun _ _ =>
+      Finset.sum_nonneg fun _ _ => Finset.sum_nonneg fun _ _ => norm_nonneg _
+
 /-- **Input (`L²` membership).**  A window symbol placed at time `j` is a
 finite sum of bounded measurable functions of `α`. -/
 theorem memLp_symbolAt {R K : ℕ} (P : WindowSymbol R K) (n j : ℕ) :
     MemLp (fun α => (P.at α n j).re) 2 (volume.restrict (Ioo (0 : ℝ) 1)) := by
-  sorry
+  classical
+  refine MemLp.of_bound
+    ((Complex.measurable_re.comp (measurable_symbolAt P n j)).aestronglyMeasurable)
+    (∑ w ∈ P.words, ∑ r ∈ Finset.Icc (-(K : ℤ)) (K : ℤ),
+      ∑ s ∈ Finset.Icc (-(K : ℤ)) (K : ℤ), ‖P.coeff w r s‖)
+    (Filter.Eventually.of_forall fun α => ?_)
+  refine le_trans ?_ (norm_symbolAt_le P α n j)
+  rw [Real.norm_eq_abs]
+  exact Complex.abs_re_le_norm _
 
 /-! ## Proposition 6.4 -/
 
@@ -743,25 +792,74 @@ theorem identity_31_monomial_form (R M K : ℕ) (G : DenseElt R) :
           = P.evalWindow w := by
   sorry
 
+/-! ### Measurability on the window space
+
+The digit block `Fin (2R+1) → ℕ` of `X_R` is a finite product of countable
+discrete spaces, so it carries the discrete measurable structure and *every*
+function out of it is measurable.  That is what makes the digit-cylinder
+amplitudes `D_ℓ` of `DenseElt` and the word coefficients of a
+`WindowSymbol` measurable without any hypothesis on them.  The rest is the
+window coordinate readers of `WindowLaws.lean` (`measurable_wA`,
+`measurable_wX`, `measurable_wTh`), continuity of `torusChar`, and finite
+sums. -/
+
+/-- The full digit word of a window is a measurable function of the window,
+into the discrete space `Fin (2R) → ℕ`. -/
+theorem measurable_windowWordOf (R : ℕ) : Measurable (windowWordOf R) :=
+  measurable_pi_lambda _ fun _ => measurable_wA R _
+
+/-- A finite continued fraction of measurably varying digits is a
+measurable function.  The induction is on the depth `M`, with the digit
+family generalised because each step shifts it. -/
+theorem measurable_cfFinite {X : Type*} [MeasurableSpace X] :
+    ∀ (M : ℕ) (a : X → ℕ → ℕ), (∀ k, Measurable fun x => a x k) →
+      Measurable fun x => cfFinite (a x) M
+  | 0, _, _ => by
+      simpa only [cfFinite] using (measurable_const : Measurable fun _ : X => (0 : ℝ))
+  | M + 1, a, ha => by
+      have h0 : Measurable fun x : X => ((a x 0 : ℕ) : ℝ) :=
+        (measurable_from_top (f := fun m : ℕ => (m : ℝ))).comp (ha 0)
+      have h1 : Measurable fun x : X => cfFinite (fun k => a x (k + 1)) M :=
+        measurable_cfFinite M (fun x k => a x (k + 1)) fun k => ha (k + 1)
+      simpa only [cfFinite] using (h0.add h1).inv
+
 /-- **Input (measurability).**  A dense-algebra element is measurable: the
 digit factor is a function on a countable discrete block, the `g_ℓ` are
-continuous, and the character is continuous.  **Obstruction.**  Routine,
-but it needs the discrete-measurability instance for
-`Fin (2R+1) → ℕ` in the product measurable structure of `X_R`. -/
+continuous, and the character is continuous. -/
 theorem measurable_denseElt {R : ℕ} (G : DenseElt R) : Measurable G.eval := by
-  sorry
+  unfold DenseElt.eval
+  refine Finset.measurable_sum _ fun l _ => Measurable.mul (Measurable.mul ?_ ?_) ?_
+  · exact (Measurable.of_discrete (f := G.D l)).comp measurable_fst
+  · exact ((G.g_continuous l).measurable).comp (measurable_fst.comp measurable_snd)
+  · refine Prop42.continuous_torusChar.measurable.comp ?_
+    exact Finset.measurable_sum _ fun t _ =>
+      ((measurable_pi_apply t).comp (measurable_snd.comp measurable_snd)).const_mul _
 
 /-- **Input (measurability).**  The `M`-digit truncation map is
-measurable.  **Obstruction.**  Same as above: `cfFinite` is a composition
-of finitely many measurable operations on discrete digit coordinates. -/
+measurable: the digit and torus blocks are coordinate readers, and the
+real block is the finite continued fraction `cfFinite` of finitely many
+digit coordinates. -/
 theorem measurable_digitTruncWindow (R M : ℕ) : Measurable (digitTruncWindow R M) := by
-  sorry
+  unfold digitTruncWindow
+  refine Measurable.prodMk ?_ (Measurable.prodMk ?_ ?_)
+  · exact measurable_pi_lambda _ fun _ => measurable_wA _ _
+  · exact measurable_pi_lambda _ fun _ =>
+      measurable_cfFinite M _ fun _ => measurable_wA _ _
+  · exact measurable_pi_lambda _ fun _ => measurable_wTh _ _
 
 /-- **Input (measurability).**  A window symbol is measurable on its own
-window space.  **Obstruction.**  Same as above. -/
+window space: the coefficient reads the (discrete) window word and the
+monomial is a continuous character in the two central torus
+coordinates. -/
 theorem measurable_evalWindow {R K : ℕ} (P : WindowSymbol R K) :
     Measurable P.evalWindow := by
-  sorry
+  unfold WindowSymbol.evalWindow
+  refine Finset.measurable_sum _ fun r _ => Finset.measurable_sum _ fun s _ =>
+    Measurable.mul ?_ ?_
+  · exact (Measurable.of_discrete (f := fun v : Fin (2 * R) → ℕ => P.coeff v r s)).comp
+      (measurable_windowWordOf R)
+  · exact Prop42.continuous_torusChar.measurable.comp
+      (((measurable_wTh R (-1)).const_mul _).add ((measurable_wTh R 0).const_mul _))
 
 /-! ### The change of variables along `π_{R+M,R}` -/
 
