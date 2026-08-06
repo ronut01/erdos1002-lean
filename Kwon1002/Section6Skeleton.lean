@@ -1,4 +1,5 @@
 import Kwon1002.Section4
+import Kwon1002.Lemma61
 
 /-!
 # §6 of v5, the carry graph and the bounded remainder: skeleton
@@ -92,25 +93,26 @@ namespace Kwon1002
 
 noncomputable section
 
-/-! ## Lemma 6.1: endpoint-controlled continuant recurrence -/
+/-! ## Lemma 6.1: endpoint-controlled continuant recurrence
 
-/-- **Lemma 6.1** (v5 lines 1060-1068).  Let `a_i ≥ 1` and let an integer
+**Lemma 6.1** (v5 lines 1060-1068).  Let `a_i ≥ 1` and let an integer
 sequence, not identically zero on `0 ≤ i ≤ m+1`, satisfy
 `z_{i+2} = a_{i+1} z_{i+1} + z_i` for `0 ≤ i < m`.  If
 `max(|z_0|,|z_1|,|z_m|,|z_{m+1}|) ≤ K` then `m ≤ C log(2K)` for an
 absolute constant `C`.
 
-See reading 1 of the module docstring for the non-vanishing hypothesis. -/
-theorem lemma_6_1_endpoint_recurrence :
-    ∃ C : ℝ, 0 < C ∧
-      ∀ (m : ℕ) (a : ℕ → ℕ) (z : ℕ → ℤ) (K : ℝ),
-        (∀ i, 1 ≤ a i) →
-        (∃ i ≤ m + 1, z i ≠ 0) →
-        (∀ i < m, z (i + 2) = (a (i + 1) : ℤ) * z (i + 1) + z i) →
-        |(z 0 : ℝ)| ≤ K → |(z 1 : ℝ)| ≤ K →
-        |(z m : ℝ)| ≤ K → |(z (m + 1) : ℝ)| ≤ K →
-        (m : ℝ) ≤ C * Real.log (2 * K) := by
-  sorry
+See reading 1 of the module docstring for the non-vanishing hypothesis.
+
+**Proved in `Kwon1002.Lemma61`, and declared there only.**  This file used
+to carry a second, sorried declaration of the same fully-qualified name
+`Kwon1002.lemma_6_1_endpoint_recurrence`.  Since neither module imports the
+other, the clash was invisible until `Kwon1002.lean` pulled both in, where
+Lean silently kept whichever arrived later — the proved one, but only
+because of the order of two adjacent import lines.  Reordering them would
+have substituted this file's `sorry` and tainted every consumer, starting
+with `Lemma62.resonance_bounded`.  The duplicate is removed and this module
+imports the proof instead, so the name has exactly one declaration and the
+hazard cannot recur. -/
 
 /-! ## The Gauss-torus system and Lemma 6.2 -/
 
