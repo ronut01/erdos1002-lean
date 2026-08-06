@@ -1038,6 +1038,24 @@ theorem display_55_monomial_approximation (R : ℕ) :
         ring
     _ < ENNReal.ofReal ε := (ENNReal.ofReal_lt_ofReal_iff hε).mpr (by linarith)
 
+/-! ## Statement identity against `Section6Skeleton`
+
+`display_55_monomial_approximation` and `prop_6_4_bounded_remainder_weak_law`
+are reproduced in this file token for token from
+`Kwon1002/Section6Skeleton.lean` and are proved here.  They cannot be merged
+into the skeleton by delegation, because this file *imports* the skeleton;
+the two `example`s below are the drift guard instead.  Each elaborates the
+skeleton's declaration and this file's declaration at the same type, so a
+change to either statement breaks the build. -/
+
+/-- Statement identity, type check only. -/
+example : @_root_.Kwon1002.display_55_monomial_approximation
+    = @display_55_monomial_approximation := rfl
+
+/-- Statement identity, type check only. -/
+example : @_root_.Kwon1002.prop_6_4_bounded_remainder_weak_law
+    = @prop_6_4_bounded_remainder_weak_law := rfl
+
 end
 
 end Prop64

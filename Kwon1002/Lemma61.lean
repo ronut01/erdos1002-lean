@@ -51,6 +51,30 @@ absorbs the additive constant.  The constant delivered is `C = 7 / log 2`.
 This is the Lame bound of the informal proof, with the two Euclidean runs and
 the Fibonacci run replaced by the single quantity `S` and a factor two per
 two steps, which is all the exponential growth the conclusion needs.
+
+## A duplicate declaration to be aware of
+
+`Kwon1002/Section6Skeleton.lean` declares a `sorry`-ed
+`Kwon1002.lemma_6_1_endpoint_recurrence` with a statement that is token for
+token the one below, and this file declares the *same fully qualified name*.
+Neither file imports the other, so the clash surfaces only in
+`Kwon1002.lean`, which imports both; there Lean keeps one of the two
+silently, and with the present import order it keeps the proof below (the
+name reports axioms `propext, Classical.choice, Quot.sound` and no
+`sorryAx`).
+
+Two consequences.  First, the usual `example` drift guard cannot be written
+here: an `example` naming `_root_.Kwon1002.lemma_6_1_endpoint_recurrence`
+inside this file would just name this declaration.  Second, the resolution
+depends on import order rather than on anything checked, so reordering the
+imports of `Kwon1002.lean` would silently substitute the skeleton's `sorry`
+and taint every consumer of the name, `Lemma62.resonance_bounded` first
+among them.  The clean fix is to keep exactly one declaration of the name --
+either delete the skeleton's copy and have `Section6Skeleton.lean` import
+this file (no cycle: this file imports only `Kwon1002.Section4`, which the
+skeleton also imports), or move this proof into a `Lemma61` namespace and
+have the skeleton delegate to it.  That is a layering decision about which
+file owns the statement, so it is recorded here rather than taken.
 -/
 
 open MeasureTheory Set Filter

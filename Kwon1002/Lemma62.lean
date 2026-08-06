@@ -30,7 +30,15 @@ copied, so the statements are literally about the same objects.
   transposed product is unwound into the recurrence
   `ξ_{i+2} = ξ_i - a_{m-i} ξ_{i+1}`, the alternating renormalisation
   `z_i = (-1)^i ξ_i` puts it in the form Lemma 6.1 expects, and the two
-  endpoint pairs are the coordinate pairs of `ℓ` and of `k`.
+  endpoint pairs are the coordinate pairs of `ℓ` and of `k`.  The
+  hypothesis here is manuscript v8's, `k ≠ 0 ∨ ℓ ≠ 0`, which is weaker
+  than the skeleton's pair `k ≠ 0`, `ℓ ≠ 0`; `resonance_zero_iff` records
+  v8's reason, namely that under a resonance the invertibility of
+  `(A_{a_m} ⋯ A_{a_1})ᵀ` over `ℤ` forces `k = 0` exactly when `ℓ = 0`.
+* `fibreProd_det`, `isUnit_det_fibreProd_transpose`,
+  `fibreProd_transpose_mulVec_eq_zero_iff`: determinant multiplicativity
+  applied to `fibreMatrix_det`, and the resulting injectivity of `mulVec`
+  by the transposed product on `ℤ²`.
 * `resonance_bounded_along_orbit`, the form in which (50) is consumed by
   the proof of Lemma 6.2: the character produced by
   `torusChar_hatS_iterate` at time `m` never cancels a fixed nonzero
@@ -250,6 +258,59 @@ theorem fibreProdT_mulVec (a : ℕ → ℕ) (m : ℕ) (l : Fin 2 → ℤ) :
   have h := fibreProdT_mulVec_step a m l m le_rfl
   simpa [fibreProdT] using h
 
+/-! ## `GL₂(ℤ)`: the transposed product is injective on `ℤ²`
+
+Manuscript v8 justifies the resonance hypothesis by observing that in the
+relation (50) the vector `ℓ` vanishes exactly when `k` does, because the
+product of fibre matrices is invertible over `ℤ`.  That is recorded here:
+determinant multiplicativity turns `fibreMatrix_det` into
+`det (A_{a_m} ⋯ A_{a_1}) = (-1)^m`, a unit of `ℤ`, so the transposed product
+has a two-sided inverse over `ℤ` and `mulVec` by it is injective. -/
+
+/-- `det (A_{a_m} ⋯ A_{a_1}) = (-1)^m`, by determinant multiplicativity on
+top of `fibreMatrix_det`. -/
+theorem fibreProd_det (a : ℕ → ℕ) (m : ℕ) : (fibreProd a m).det = (-1) ^ m := by
+  induction m with
+  | zero => simp [fibreProd]
+  | succ m ih =>
+      rw [fibreProd, Matrix.det_mul, fibreMatrix_det, ih]
+      ring
+
+/-- The transposed product lies in `GL₂(ℤ)` (v5 lines 1052-1056). -/
+theorem isUnit_det_fibreProd_transpose (a : ℕ → ℕ) (m : ℕ) :
+    IsUnit ((fibreProd a m).transpose.det) := by
+  rw [Matrix.det_transpose, fibreProd_det]
+  exact IsUnit.pow m isUnit_one.neg
+
+/-- `(A_{a_m} ⋯ A_{a_1})ᵀ` kills only the zero vector of `ℤ²`. -/
+theorem fibreProd_transpose_mulVec_eq_zero_iff (a : ℕ → ℕ) (m : ℕ) (v : Fin 2 → ℤ) :
+    (fibreProd a m).transpose.mulVec v = 0 ↔ v = 0 := by
+  constructor
+  · intro h
+    have hinv := Matrix.nonsing_inv_mul _ (isUnit_det_fibreProd_transpose a m)
+    calc v = (1 : Matrix (Fin 2) (Fin 2) ℤ).mulVec v := (Matrix.one_mulVec v).symm
+      _ = ((fibreProd a m).transpose⁻¹ * (fibreProd a m).transpose).mulVec v := by rw [hinv]
+      _ = (fibreProd a m).transpose⁻¹.mulVec ((fibreProd a m).transpose.mulVec v) := by
+          rw [← Matrix.mulVec_mulVec]
+      _ = 0 := by rw [h, Matrix.mulVec_zero]
+  · rintro rfl
+    exact Matrix.mulVec_zero _
+
+/-- **v8's justification for the hypothesis of (50).**  Whenever the
+resonance `k + (A_{a_m} ⋯ A_{a_1})ᵀ ℓ = 0` holds, `k = 0` if and only if
+`ℓ = 0`.  So the two vectors are nonzero together, and asking that *one* of
+them be nonzero, `k ≠ 0 ∨ ℓ ≠ 0`, is the hypothesis under which (50) is a
+genuine obstruction. -/
+theorem resonance_zero_iff (a : ℕ → ℕ) (m : ℕ) (k l : Fin 2 → ℤ)
+    (h : k + (fibreProd a m).transpose.mulVec l = 0) : k = 0 ↔ l = 0 := by
+  constructor
+  · intro h0
+    rw [h0, zero_add] at h
+    exact (fibreProd_transpose_mulVec_eq_zero_iff a m l).mp h
+  · intro h0
+    rw [h0, Matrix.mulVec_zero, add_zero] at h
+    exact h
+
 /-! ## (50): the resonance is impossible for large `m` -/
 
 /-- **(50)**, the character-resonance obstruction.  For fixed nonzero
@@ -261,18 +322,27 @@ endpoint pairs are, up to signs, the coordinate pairs of `ℓ` and `k`
 (v5 lines 1121-1147).
 
 Consumes `Kwon1002.lemma_6_1_endpoint_recurrence`, which is sorried in
-`Section6Skeleton.lean` and is being proved separately.
+`Section6Skeleton.lean` and is proved in `Kwon1002/Lemma61.lean`.
 
-**Remark on the hypotheses.**  Only `hl` is used.  With `k = 0` the two
-right-hand endpoints `z_m, z_{m+1}` are `0`, which the endpoint bound
-`≤ K` accommodates, and the non-vanishing hypothesis of Lemma 6.1 is
-supplied by `(z_0, z_1) = (ℓ_0, -ℓ_1) ≠ (0,0)` alone.  So `hk` is
-redundant here; it is kept because the statement is the skeleton's,
-token for token.  (The statement is in fact true under
-`k ≠ 0 ∨ ℓ ≠ 0`: if `ℓ = 0` the left-hand side is `k`.) -/
-theorem resonance_bounded (k l : Fin 2 → ℤ) (hk : k ≠ 0) (hl : l ≠ 0) :
+**Hypothesis.**  This tracks manuscript v8, which asks only that `k` and
+`ℓ` not both vanish.  The earlier rendering (still the one in
+`Section6Skeleton.lean`) assumed both `k ≠ 0` and `ℓ ≠ 0`, and the proof
+below shows that `ℓ ≠ 0` alone suffices for the Lemma 6.1 route: with
+`k = 0` the two right-hand endpoints `z_m, z_{m+1}` are `0`, which the
+endpoint bound `≤ K` accommodates, and the non-vanishing hypothesis of
+Lemma 6.1 is supplied by `(z_0, z_1) = (ℓ_0, -ℓ_1) ≠ (0,0)` alone.  The
+remaining case `ℓ = 0` is immediate, the left-hand side being `k`.  That
+the two cases are exhaustive under `k ≠ 0 ∨ ℓ ≠ 0`, and that this is the
+right hypothesis rather than an artificially weak one, is v8's
+observation `resonance_zero_iff` above: under a resonance, invertibility
+of `(A_{a_m} ⋯ A_{a_1})ᵀ` over `ℤ` forces `k = 0 ↔ ℓ = 0`. -/
+theorem resonance_bounded (k l : Fin 2 → ℤ) (hkl : k ≠ 0 ∨ l ≠ 0) :
     ∃ M : ℕ, ∀ (m : ℕ), M ≤ m → ∀ a : ℕ → ℕ, (∀ i, 1 ≤ a i) →
       k + (fibreProd a m).transpose.mulVec l ≠ 0 := by
+  rcases eq_or_ne l 0 with rfl | hl
+  · refine ⟨0, fun m _ a _ => ?_⟩
+    rw [Matrix.mulVec_zero, add_zero]
+    exact hkl.resolve_right fun h => h rfl
   obtain ⟨C, _hC, hrec⟩ := lemma_6_1_endpoint_recurrence
   set K : ℝ := max (max |(k 0 : ℝ)| |(k 1 : ℝ)|) (max |(l 0 : ℝ)| |(l 1 : ℝ)|) with hK
   refine ⟨⌈C * Real.log (2 * K)⌉₊ + 1, ?_⟩
@@ -341,6 +411,16 @@ theorem resonance_bounded (k l : Fin 2 → ℤ) (hk : k ≠ 0) (hl : l ≠ 0) :
   have : m ≤ ⌈C * Real.log (2 * K)⌉₊ := by exact_mod_cast hceil
   omega
 
+/-- Statement identity, type check only: the skeleton's `resonance_bounded`,
+which still carries the pair of hypotheses `k ≠ 0` and `ℓ ≠ 0`, is the
+specialisation of the version above.  The skeleton cannot delegate to this
+file, since this file imports the skeleton; this `example` is what detects
+drift between the two statements. -/
+example : ∀ (k l : Fin 2 → ℤ), k ≠ 0 → l ≠ 0 →
+    ∃ M : ℕ, ∀ (m : ℕ), M ≤ m → ∀ a : ℕ → ℕ, (∀ i, 1 ≤ a i) →
+      k + (fibreProd a m).transpose.mulVec l ≠ 0 :=
+  fun k l hk _hl => resonance_bounded k l (Or.inl hk)
+
 /-- (50) in the form the proof of Lemma 6.2 consumes it: the character
 produced by `torusChar_hatS_iterate` at time `m` cannot cancel a fixed
 nonzero character `χ_ℓ` once `m` is large, uniformly over orbits whose
@@ -349,7 +429,7 @@ irrational future coordinate in `(0,1)`). -/
 theorem resonance_bounded_along_orbit (k l : Fin 2 → ℤ) (hk : k ≠ 0) (hl : l ≠ 0) :
     ∃ M : ℕ, ∀ m : ℕ, M ≤ m → ∀ z : NatExtTorus, (∀ i, 1 ≤ digit z.1.1 i) →
       Matrix.mulVec (fibreProd (fun i => digit z.1.1 (i - 1)) m).transpose k + l ≠ 0 := by
-  obtain ⟨M, hM⟩ := resonance_bounded l k hl hk
+  obtain ⟨M, hM⟩ := resonance_bounded l k (Or.inl hl)
   refine ⟨M, fun m hm z hz hcon => hM m hm (fun i => digit z.1.1 (i - 1)) (fun i => hz _) ?_⟩
   rw [add_comm]
   exact hcon
