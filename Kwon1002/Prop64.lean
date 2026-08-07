@@ -883,15 +883,22 @@ Consumes `Kwon1002.digit_tail_product` (Lemma 3.1(ii), proved).
    of item 1.**  Orbit consistency ties the digits of one window to each
    other; what the union bound needs is the *law* of the digit at offset
    `t`, i.e. that `(hatSzpow t z).1.1` has the Gauss distribution under
-   `μ̂₀` for every `t`, not just `t = 0`.  That is the stationarity of
-   `μ̂₀` under `hatS`, `Lemma62.hatS_measurePreserving`, which is open, and
-   which in turn rests on the two open Layer-1 inputs
-   `Lemma62.natExtMap_measurePreserving` and
-   `Lemma62.torusFibre_measurePreserving`.  At the single offset `t = 0`
-   the marginal *is* computable from Layer 0 (`Kwon1002.hatNu`, whose
-   inner `y`-integral is `1/(log 2 (1+x))`, the Gauss density), so the
-   `t = 0` term of the union bound is within reach; the other `2R'` terms
-   are not, and no amount of orbit consistency produces them. -/
+   `μ̂₀` for every `t`, not just `t = 0`.
+
+   **Half of this obstruction is now gone.**  Stationarity of `μ̂₀` under
+   `hatS` is `Lemma62.hatS_measurePreserving`, which is proved, on top of
+   `Lemma62.natExtMap_measurePreserving` (the branchwise change of
+   variables of `Kwon1002/NatExtInvariance.lean`) and
+   `Lemma62.torusFibre_measurePreserving`.  Stationarity makes the law of
+   the digit at offset `t` the *same* for every `t`, so the `2R'` terms of
+   the union bound are now all equal to the `t = 0` term.
+
+   What is left is the `t = 0` term itself: identifying the marginal of
+   `ν̂` in the future coordinate with the Gauss density `1/(log 2 (1+x))`,
+   and then feeding `Kwon1002.digit_tail_product` through it.  The inner
+   `y`-integral of `hatNu` is exactly that density — the computation is
+   the inner half of `Kwon1002.hatNu_univ` — but it has not been recorded
+   as a marginal statement, and the union bound has not been assembled. -/
 theorem event_truncation (R M : ℕ) (G : DenseElt R) (ε : ℝ) (hε : 0 < ε) :
     ∃ K : ℕ,
       eLpNorm (fun w : WindowSpace (R + M) =>

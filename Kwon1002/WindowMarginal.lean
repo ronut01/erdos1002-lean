@@ -43,8 +43,9 @@ to point here.
 It is *not* by itself the digit-block marginal.  Orbit consistency ties
 the digits of one window to each other; identifying the law of the digit
 at offset `t` with the Gauss digit law needs the stationarity of `μ̂₀`
-under `hatS` (`Lemma62.hatS_measurePreserving`), which is still open.  See
-the note on `Prop64.event_truncation`.
+under `hatS` (`Lemma62.hatS_measurePreserving`), which is now proved, plus
+the identification of the `t = 0` marginal of `ν̂` with the Gauss density,
+which is not.  See the note on `Prop64.event_truncation`.
 -/
 
 open MeasureTheory Set Filter
