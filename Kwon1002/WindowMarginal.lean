@@ -146,6 +146,105 @@ theorem gaussMap_natExtInv_fst {q : ℝ × ℝ} (hq : q.1 ∈ Ico (0:ℝ) 1) :
   rw [Int.fract_natCast_add]
   exact Int.fract_eq_self.mpr ⟨hq.1, hq.2⟩
 
+/-! ### The two natural-extension maps are mutually inverse on the good region
+
+`natExtMap` and `natExtInv` are **not** pointwise inverse on all of `ℝ²`:
+`gaussMap ((natExtInv p).1) = Int.fract (a₁(y) + x)`, which is `x` only
+when `x` already lies in `[0,1)`.  On `natExtGood`, which carries full
+`ν̂`- and `μ̂₀`-measure, they are.  This is what `hatSzpow` needs at negative
+exponents, and it is the pointwise content behind
+`Lemma62.natExtInv_measurePreserving`. -/
+
+theorem floor_natCast_add_of_mem_Ico {a : ℕ} {x : ℝ} (hx : x ∈ Ico (0 : ℝ) 1) :
+    ⌊(a : ℝ) + x⌋ = (a : ℤ) := by
+  rw [Int.floor_eq_iff]
+  constructor
+  · push_cast
+    linarith [hx.1]
+  · push_cast
+    linarith [hx.2]
+
+/-- The digit of `1/(a + x)` is `a`, for `x ∈ [0,1)`. -/
+theorem digit_inv_natCast_add {a : ℕ} {x : ℝ} (hx : x ∈ Ico (0 : ℝ) 1) :
+    digit (((a : ℝ) + x)⁻¹) 0 = a := by
+  simp only [digit, gaussIter_zero, inv_inv]
+  rw [floor_natCast_add_of_mem_Ico hx]
+  exact Int.toNat_natCast a
+
+/-- The Gauss map of `1/(a + x)` is `x`, for `x ∈ [0,1)`. -/
+theorem gaussMap_inv_natCast_add {a : ℕ} {x : ℝ} (hx : x ∈ Ico (0 : ℝ) 1) :
+    gaussMap (((a : ℝ) + x)⁻¹) = x := by
+  simp only [gaussMap, inv_inv]
+  rw [Int.fract_natCast_add]
+  exact Int.fract_eq_self.mpr ⟨hx.1, hx.2⟩
+
+/-- `σ⁻¹ ∘ σ = id` wherever the future coordinate is in `(0,1)` and the
+past coordinate in `[0,1)`. -/
+theorem natExtInv_natExtMap {p : ℝ × ℝ} (h1 : p.1 ∈ Ioo (0 : ℝ) 1)
+    (h2 : p.2 ∈ Ico (0 : ℝ) 1) : natExtInv (natExtMap p) = p := by
+  obtain ⟨x, y⟩ := p
+  simp only [natExtMap, natExtInv] at *
+  rw [digit_inv_natCast_add h2, gaussMap_inv_natCast_add h2,
+    ← inv_eq_digit_add_gaussMap h1, inv_inv]
+
+/-- `σ ∘ σ⁻¹ = id` wherever the future coordinate is in `[0,1)` and the
+past coordinate in `(0,1)`. -/
+theorem natExtMap_natExtInv {p : ℝ × ℝ} (h1 : p.1 ∈ Ico (0 : ℝ) 1)
+    (h2 : p.2 ∈ Ioo (0 : ℝ) 1) : natExtMap (natExtInv p) = p := by
+  obtain ⟨x, y⟩ := p
+  simp only [natExtMap, natExtInv] at *
+  rw [gaussMap_inv_natCast_add h1, digit_inv_natCast_add h1,
+    ← inv_eq_digit_add_gaussMap h2, inv_inv]
+
+theorem natExtInv_natExtMap_of_good {p : ℝ × ℝ} (hp : p ∈ natExtGood) :
+    natExtInv (natExtMap p) = p :=
+  natExtInv_natExtMap hp.1 (Ioo_subset_Ico_self hp.2.1)
+
+theorem natExtMap_natExtInv_of_good {p : ℝ × ℝ} (hp : p ∈ natExtGood) :
+    natExtMap (natExtInv p) = p :=
+  natExtMap_natExtInv (Ioo_subset_Ico_self hp.1) hp.2.1
+
+/-- **The good region carries full `ν̂`-measure.**  `ν̂` is a `withDensity`
+of Lebesgue restricted to the square, hence absolutely continuous with
+respect to it; the square supplies `(0,1)` in both coordinates and the
+rationals are Lebesgue-null.  The `μ̂₀` counterpart is
+`hatMu0_ae_natExtGood` below. -/
+theorem hatNu_ae_natExtGood : ∀ᵐ p ∂hatNu, p ∈ natExtGood := by
+  have hQ : volume (Set.range ((↑) : ℚ → ℝ)) = 0 :=
+    (Set.countable_range _).measure_zero volume
+  have h1 : ∀ᵐ p : ℝ × ℝ ∂volume, Irrational p.1 := by
+    have hsub : {p : ℝ × ℝ | ¬ Irrational p.1}
+        = (Set.range ((↑) : ℚ → ℝ) ×ˢ (Set.univ : Set ℝ)) := by
+      ext p; simp [Irrational]
+    rw [ae_iff, hsub]
+    simp [Measure.volume_eq_prod, Measure.prod_prod, hQ]
+  have h2 : ∀ᵐ p : ℝ × ℝ ∂volume, Irrational p.2 := by
+    have hsub : {p : ℝ × ℝ | ¬ Irrational p.2}
+        = ((Set.univ : Set ℝ) ×ˢ Set.range ((↑) : ℚ → ℝ)) := by
+      ext p; simp [Irrational]
+    rw [ae_iff, hsub]
+    simp [Measure.volume_eq_prod, Measure.prod_prod, hQ]
+  have hac : hatNu ≪ volume.restrict (Ioo (0:ℝ) 1 ×ˢ Ioo (0:ℝ) 1) := by
+    rw [hatNu]; exact withDensity_absolutelyContinuous _ _
+  have key : ∀ᵐ p ∂(volume.restrict (Ioo (0:ℝ) 1 ×ˢ Ioo (0:ℝ) 1)), p ∈ natExtGood := by
+    rw [ae_restrict_iff' (measurableSet_Ioo.prod measurableSet_Ioo)]
+    filter_upwards [h1, h2] with p hp1 hp2 hpB
+    exact ⟨hpB.1, hpB.2, hp1, hp2⟩
+  exact hac.ae_le key
+
+/-- **C5, the a.e. inverse identity.**  `σ ∘ σ⁻¹ = id` `ν̂`-almost
+everywhere.  It is *not* a pointwise identity in this representation, and
+saying so is the point: off `natExtGood` the composite returns
+`Int.fract (a₁(y) + x)` in the first coordinate instead of `x`. -/
+theorem natExtMap_natExtInv_ae : ∀ᵐ p ∂hatNu, natExtMap (natExtInv p) = p := by
+  filter_upwards [hatNu_ae_natExtGood] with p hp
+  exact natExtMap_natExtInv_of_good hp
+
+/-- **C5, the a.e. inverse identity, other direction.** -/
+theorem natExtInv_natExtMap_ae : ∀ᵐ p ∂hatNu, natExtInv (natExtMap p) = p := by
+  filter_upwards [hatNu_ae_natExtGood] with p hp
+  exact natExtInv_natExtMap_of_good hp
+
 /-- **The orbit recursion.**  Along the stationary orbit of a good point
 the real coordinate advances by the Gauss map, at every integer time,
 forward and backward. -/
