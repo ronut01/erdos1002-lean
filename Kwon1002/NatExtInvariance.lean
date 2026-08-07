@@ -481,6 +481,66 @@ theorem natExtMap_measurePreserving : MeasurePreserving natExtMap hatNu hatNu :=
   simp_rw [hind]
   exact branch_lintegral (by omega) (measurable_const.indicator hS)
 
+/-! ## C5: the backward map
+
+`natExtInv` is `natExtMap` conjugated by the coordinate swap, and both `ν̂`
+and the unit square are swap-symmetric, so no second branch analysis is
+needed. -/
+
+/-- The density is symmetric in its two arguments. -/
+theorem dens_swap (p : ℝ × ℝ) : dens (Prod.swap p) = dens p := by
+  simp only [dens, Prod.fst_swap, Prod.snd_swap]
+  rw [mul_comm p.2 p.1]
+
+theorem preimage_swap_unitSq :
+    (Prod.swap : ℝ × ℝ → ℝ × ℝ) ⁻¹' (Ioo (0 : ℝ) 1 ×ˢ Ioo (0 : ℝ) 1)
+      = Ioo (0 : ℝ) 1 ×ˢ Ioo (0 : ℝ) 1 := by
+  ext ⟨x, y⟩
+  simp only [Set.mem_preimage, Prod.swap_prod_mk, Set.mem_prod]
+  exact and_comm
+
+theorem setLIntegral_dens_swap {T : Set (ℝ × ℝ)} (hT : MeasurableSet T) :
+    ∫⁻ p in (Prod.swap : ℝ × ℝ → ℝ × ℝ) ⁻¹' T, dens p = ∫⁻ q in T, dens q := by
+  have hmp : MeasurePreserving (Prod.swap : ℝ × ℝ → ℝ × ℝ) volume volume := by
+    rw [Measure.volume_eq_prod]
+    exact Measure.measurePreserving_swap
+  have hpt : ∀ p : ℝ × ℝ,
+      (T.indicator dens) (Prod.swap p) = ((Prod.swap : ℝ × ℝ → ℝ × ℝ) ⁻¹' T).indicator dens p := by
+    intro p
+    by_cases h : Prod.swap p ∈ T
+    · have h' : p ∈ (Prod.swap : ℝ × ℝ → ℝ × ℝ) ⁻¹' T := h
+      rw [Set.indicator_of_mem h, Set.indicator_of_mem h', dens_swap]
+    · have h' : p ∉ (Prod.swap : ℝ × ℝ → ℝ × ℝ) ⁻¹' T := h
+      rw [Set.indicator_of_notMem h, Set.indicator_of_notMem h']
+  calc ∫⁻ p in (Prod.swap : ℝ × ℝ → ℝ × ℝ) ⁻¹' T, dens p
+      = ∫⁻ p, ((Prod.swap : ℝ × ℝ → ℝ × ℝ) ⁻¹' T).indicator dens p :=
+        (lintegral_indicator (measurable_swap hT) _).symm
+    _ = ∫⁻ p, (T.indicator dens) (Prod.swap p) := by simp_rw [hpt]
+    _ = ∫⁻ q, T.indicator dens q := hmp.lintegral_comp (measurable_dens.indicator hT)
+    _ = ∫⁻ q in T, dens q := lintegral_indicator hT _
+
+/-- The coordinate swap preserves `ν̂`. -/
+theorem measurePreserving_swap_hatNu :
+    MeasurePreserving (Prod.swap : ℝ × ℝ → ℝ × ℝ) hatNu hatNu := by
+  refine ⟨measurable_swap, Measure.ext (fun S hS => ?_)⟩
+  rw [Measure.map_apply measurable_swap hS, hatNu_apply (measurable_swap hS), hatNu_apply hS]
+  rw [show ((Prod.swap : ℝ × ℝ → ℝ × ℝ) ⁻¹' S) ∩ (Ioo (0 : ℝ) 1 ×ˢ Ioo (0 : ℝ) 1)
+      = (Prod.swap : ℝ × ℝ → ℝ × ℝ) ⁻¹' (S ∩ (Ioo (0 : ℝ) 1 ×ˢ Ioo (0 : ℝ) 1)) by
+    rw [Set.preimage_inter, preimage_swap_unitSq]]
+  exact setLIntegral_dens_swap (hS.inter (measurableSet_Ioo.prod measurableSet_Ioo))
+
+/-- `σ⁻¹` is `σ` conjugated by the coordinate swap. -/
+theorem natExtInv_eq_swap :
+    natExtInv = (Prod.swap : ℝ × ℝ → ℝ × ℝ) ∘ natExtMap ∘ (Prod.swap : ℝ × ℝ → ℝ × ℝ) := by
+  funext p
+  simp [natExtInv, natExtMap, Function.comp]
+
+/-- **C5.**  The backward natural-extension map preserves `ν̂` as well. -/
+theorem natExtInv_measurePreserving : MeasurePreserving natExtInv hatNu hatNu := by
+  rw [natExtInv_eq_swap]
+  exact measurePreserving_swap_hatNu.comp
+    (natExtMap_measurePreserving.comp measurePreserving_swap_hatNu)
+
 end NatExtInvariance
 
 end

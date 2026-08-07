@@ -48,43 +48,39 @@ copied, so the statements are literally about the same objects.
 
 ## What is not proved here, and why
 
-`hatS_measurePreserving` and `lemma_6_2_gauss_torus_mixing` are left
-sorried.  The obstruction is not §6 combinatorics; it is that the
-measure-theoretic substrate they need does not exist anywhere in this
-development or in `wang_substrate/`.  Concretely:
+`lemma_6_2_gauss_torus_mixing` is left sorried, together with the two
+inputs it still needs.  The measure-theoretic substrate is no longer the
+obstruction:
 
-* there is no statement, let alone proof, that the Gauss natural
-  extension map preserves `ν̂ = hatNu` (density `1/(log 2 (1+xy)²)` on
-  `(0,1)²`).  This is now the only missing half: `hatNu` itself, its total
-  mass, and the factorization `μ̂₀ = ν̂ ⊗ m_{T²}` are in
-  `Kwon1002/NatExtMeasure.lean`;
-* the torus-automorphism input is **no longer missing**.
-  `torusFibre_measurePreserving` below is proved: the fibre map
+* `natExtMap_measurePreserving` is **proved**, in
+  `Kwon1002/NatExtInvariance.lean`: the natural extension preserves
+  `ν̂ = hatNu` (density `1/(log 2 (1+xy)²)` on `(0,1)²`).  Restricted to a
+  Gauss branch `σ` is a product map, so the change of variables is two
+  one-dimensional antitone Jacobians and Fubini, and the density cocycle
+  `1 + uv = (1+xy)/(x(a+y))` makes them cancel exactly;
+* `natExtInv_measurePreserving` is **proved**, by conjugating the forward
+  statement with the coordinate swap, under which both `ν̂` and the unit
+  square are symmetric;
+* `torusFibre_measurePreserving` is **proved**: the fibre map
   `(r,s) ↦ (s, {r - a s})` is a swap followed by a skew product over the
   identity, and the fibre rotation `r ↦ {r - a s}` preserves Lebesgue
   measure on `(0,1)` by an elementary two-piece translation argument in
   the `Int.fract` representation.  No `AddCircle` bridge was needed;
-* the two must then be assembled as a skew product over a `withDensity`
-  measure.  `hatMu0_eq_prod` puts `μ̂₀` in exactly the product shape
-  `MeasureTheory.MeasurePreserving.skew_product` consumes, so this step is
-  now mechanical once the base half lands.
+* `hatS_measurePreserving` is **proved**, by assembling the two through
+  `MeasureTheory.MeasurePreserving.skew_product` on the product shape
+  `hatMu0_eq_prod : μ̂₀ = ν̂ ⊗ m`.
 
-Of the four inputs named below, `torusFibre_measurePreserving` is now
-proved; `natExtMap_measurePreserving`, `natExt_zero_mode_mixing` and
-`cylinderChar_dense_L2` remain open.
-
+What remains open is `natExt_zero_mode_mixing` and `cylinderChar_dense_L2`.
 `lemma_6_2_gauss_torus_mixing` needs, on top of `hatS_measurePreserving`,
 the `L²(μ̂₀)` density of finite digit-cylinder functions times torus
 characters and the mixing of the Gauss natural extension itself (the
 "zero modes" of v5 line 1148).  The BV chain in this tree
 (`BVMixing.lemma_3_2_BV`, `MixingBV.lem_3_2_conditional_multiblock_mixing'`)
 gives quantitative multi-block mixing for the *one-sided* Gauss system
-against BV observables; it does not give the two-sided natural extension
-as a measure-preserving system, which is what `hatS` is built on, and no
-lifting statement exists in the tree.  Those are named below as the four
-inputs `natExtMap_measurePreserving`, `torusFibre_measurePreserving`,
-`natExt_zero_mode_mixing` and `cylinderChar_dense_L2`; they are exactly
-the sorries this file cannot discharge.
+against BV observables; it does not give mixing of the two-sided natural
+extension, and no lifting statement exists in the tree.  Those two are
+exactly the sorries this file cannot discharge.
+
 -/
 
 open MeasureTheory Set Filter
@@ -518,28 +514,43 @@ theorem torusFibre_measurePreserving (a : ℕ) :
       exact NatExtMeasure.map_fract_sub_Ioo ((a : ℝ) * s)
   simpa [Function.comp] using hskew.comp hswap
 
-/-- The cocycle preserves `μ̂₀`.
+/-- **Proved.**  The backward natural-extension map also preserves `ν̂`.
+`natExtInv` is `natExtMap` conjugated by the coordinate swap
+(`NatExtInvariance.natExtInv_eq_swap`), and both `ν̂` and the unit square
+are symmetric in the two coordinates, so no second branch analysis is
+needed.  This is what the negative powers `hatSzpow` at negative exponents
+need in order to be measure preserving. -/
+theorem natExtInv_measurePreserving :
+    MeasurePreserving natExtInv hatNu hatNu :=
+  NatExtInvariance.natExtInv_measurePreserving
 
-**Obstruction, now a single one.**  `hatS` is not a product map, since the
-fibre matrix depends on the base point through `digit z.1.1 0`, so the
-assembly is a *skew* product rather than a `MeasurePreserving.prod`.  Both
-halves of that assembly are now in place except one:
+/-- **Proved.**  The cocycle (49) preserves `μ̂₀`.
 
-* the product shape is available, `hatMu0_eq_prod : μ̂₀ = ν̂ ⊗ m`
-  (`Kwon1002/NatExtMeasure.lean`), which is what
-  `MeasureTheory.MeasurePreserving.skew_product` requires of the source
-  and target measures;
-* the fibre half is available, `torusFibre_measurePreserving` above;
-* the base half, `natExtMap_measurePreserving`, is **still open**, and it
-  is the only remaining input.
-
-One wrinkle to expect when this is assembled: `skew_product` wants the
-fibre map in the shape `g (base point) (fibre point)`, whereas `hatS`
-writes the torus block as `(θ, {θ' - a θ})` with the two torus
-coordinates swapped relative to `torusFibre_measurePreserving`.  That is
-the same swap already absorbed inside the proof of the fibre lemma. -/
+With `natExtMap_measurePreserving` in hand this is the mechanical skew
+product the earlier revision of this docstring predicted:
+`hatMu0_eq_prod` puts `μ̂₀` in the shape `ν̂ ⊗ m` that
+`MeasureTheory.MeasurePreserving.skew_product` consumes, the base half is
+`natExtMap_measurePreserving`, and the fibre half is
+`torusFibre_measurePreserving` at the digit `a₁` read off the base point.
+The predicted wrinkle about the torus coordinates being swapped relative
+to `torusFibre_measurePreserving` did not materialise: `hatS` writes the
+torus block as `(θ, {θ' - a θ})` and the fibre lemma is stated in exactly
+that shape, so the two match on the nose. -/
 theorem hatS_measurePreserving : MeasurePreserving hatS hatMu0 hatMu0 := by
-  sorry
+  rw [hatMu0_eq_prod]
+  have hgm : Measurable (Function.uncurry
+      (fun (p : ℝ × ℝ) (q : ℝ × ℝ) => (q.2, Int.fract (q.1 - (digit p.1 0 : ℝ) * q.2)))) := by
+    refine Measurable.prodMk (measurable_snd.comp measurable_snd) ?_
+    exact ((measurable_fst.comp measurable_snd).sub
+      (((measurable_digitCast 0).comp (measurable_fst.comp measurable_fst)).mul
+        (measurable_snd.comp measurable_snd))).fract
+  have hg : ∀ᵐ p ∂hatNu, Measure.map
+      (fun q : ℝ × ℝ => (q.2, Int.fract (q.1 - (digit p.1 0 : ℝ) * q.2)))
+      ((volume : Measure (ℝ × ℝ)).restrict (Ioo (0 : ℝ) 1 ×ˢ Ioo (0 : ℝ) 1))
+      = (volume : Measure (ℝ × ℝ)).restrict (Ioo (0 : ℝ) 1 ×ˢ Ioo (0 : ℝ) 1) :=
+    Filter.Eventually.of_forall
+      (fun p => (torusFibre_measurePreserving (digit p.1 0)).map_eq)
+  exact natExtMap_measurePreserving.skew_product hgm hg
 
 /-- The zero-mode half of Lemma 6.2 (v5 line 1148): on characters with
 `k = ℓ = 0` the correlation is a correlation of the Gauss natural
