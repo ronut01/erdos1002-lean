@@ -1,5 +1,6 @@
 import Kwon1002.Section6Skeleton
 import Kwon1002.NatExtMeasure
+import Kwon1002.NatExtInvariance
 import Kwon1002.CharacterReduction
 
 /-!
@@ -455,18 +456,31 @@ theorem resonance_bounded_along_orbit (k l : Fin 2 → ℤ) (hk : k ≠ 0) (hl :
 
 /-! ## The measure-theoretic inputs that this tree does not have -/
 
-/-- The Gauss natural extension preserves `ν̂ = hatNu`, the measure with
-density `1/(log 2 (1+xy)²)` on `(0,1)²` (`Kwon1002/NatExtMeasure.lean`).
+/-- **Proved.**  The Gauss natural extension preserves `ν̂ = hatNu`, the
+measure with density `1/(log 2 (1+xy)²)` on `(0,1)²`
+(`Kwon1002/NatExtMeasure.lean`).
 
-**Obstruction.**  Nothing of the kind exists in `Kwon1002/` or in
-`wang_substrate/Erdos1002/`: the BV chain in this tree works with the
-transfer operator of the *one-sided* Gauss map and never constructs the
-two-sided extension as a measure-preserving system.  What Layer 0 does
-supply is that `ν̂` is a probability measure (`hatNu_univ`), so the
-statement below is now a statement about two probability measures. -/
+This is manuscript v8's "the displayed density `ν̂` is `σ`-invariant by
+branchwise change of variables" (line 1144), carried out in
+`Kwon1002/NatExtInvariance.lean`.  The point that makes it elementary is
+that *on a single branch* `σ` is a product map: for
+`x ∈ (1/(a+1), 1/a)` the digit is constantly `a` and
+`σ(x,y) = (1/x - a, 1/(a+y))`, whose first coordinate depends only on `x`
+and second only on `y`.  So the Jacobian is diagonal and the
+one-dimensional change of variables
+`MeasureTheory.lintegral_image_eq_lintegral_deriv_mul_of_antitoneOn`
+applies twice, with no `HasFDerivWithinAt` on `ℝ × ℝ` anywhere.  The
+density cocycle `1 + uv = (1+xy)/(x(a+y))` then makes the two Jacobians
+cancel against the density exactly.
+
+An earlier revision of this docstring recorded the whole statement as an
+open obstruction, on the ground that the BV chain in this tree only ever
+handles the one-sided Gauss map.  That was true of the BV chain and
+irrelevant to this statement: nothing about the two-sided extension is
+needed beyond the branch partition. -/
 theorem natExtMap_measurePreserving :
-    MeasurePreserving natExtMap hatNu hatNu := by
-  sorry
+    MeasurePreserving natExtMap hatNu hatNu :=
+  NatExtInvariance.natExtMap_measurePreserving
 
 /-- **Proved.**  For each digit `a`, the fibre map `(r,s) ↦ (s, {r - a s})`
 of (49) preserves Haar on `T²`, this being the `GL₂(ℤ)`-invariance of v5
