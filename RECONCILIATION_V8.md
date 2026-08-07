@@ -178,16 +178,51 @@ That obstruction is softer than recorded — the bridge lemmas exist, and the
 fibre map factors as a swap composed with a skew product. It is a
 days-scale task and should be pulled forward.
 
+**Status update.** That item is now **done**, and it needed no `AddCircle`
+bridge at all. `Lemma62.torusFibre_measurePreserving` is proved: the map
+is `Prod.swap` followed by `MeasurePreserving.skew_product` over the
+identity, and the fibre rotation `r ↦ {r - c}` preserves Lebesgue measure
+on `(0,1)` by cutting `[0,1)` at `1 - {c}` and translating the two pieces
+(`NatExtMeasure.map_fract_add_Ico`).
+
+Two further pieces of the natural extension have landed with it, both in
+`Kwon1002/NatExtMeasure.lean`. The base measure has a name, `hatNu`, and a
+total mass, `hatNu_univ = 1`; and `hatMu0_eq_prod` puts `μ̂₀` in the
+product shape `μ̂₀ = ν̂ ⊗ m_{T²}` that `skew_product` consumes, which also
+yields `IsProbabilityMeasure hatMu0` (previously only `IsFiniteMeasure`).
+The single remaining input to `hatS_measurePreserving` is therefore
+`natExtMap_measurePreserving`, the branchwise change of variables for the
+density on the base.
+
 ## Work available now, blocked on nothing
 
 Four measurability goals in `Prop64`; two bookkeeping goals in the
 skeleton, including `resetSet_measure_pos`, which needs only a density
-bound on an explicit box; compactness of `digitCapEvent`, which retires the
-`Lemma63` obstruction; the mixed-case strengthening of `resonance_bounded`;
-merging four skeleton goals already closed elsewhere in the tree; and
-replacing the one refuted skeleton statement. Separately, `digit_truncation`
-needs only continued-fraction contraction, for which mathlib's
-approximation results are reusable.
+bound on an explicit box; the mixed-case strengthening of
+`resonance_bounded`; merging four skeleton goals already closed elsewhere
+in the tree; and replacing the one refuted skeleton statement.
+
+Two entries of this list have been corrected by the work itself.
+
+*Compactness of `digitCapEvent` is false.* This list claimed it as
+available work that would retire the `Lemma63` obstruction.
+`Prop64.not_isCompact_digitCapEvent` proves the opposite: the digit cap
+constrains only the digit block, and the Lean type `WindowSpace R` carries
+the real and torus blocks as full copies of `ℝ`, so the set contains an
+affine copy of `ℝ^{2R+1}`. The compact object is `Prop64.digitCapCube`,
+v8's `X_{R,K}`, which caps the digits *and* confines the other two blocks
+to the closed unit cube; `Prop64.isCompact_digitCapCube` is proved and the
+`Lemma63` note now points at it.
+
+*`digit_truncation` needed more than contraction.* It is not pointwise
+true on `WindowSpace (R+M)`, where the digit and real blocks are
+unrelated. The structural input is the marginal description of the window
+law, now supplied as `Kwon1002.ae_orbitConsistent`
+(`Kwon1002/WindowMarginal.lean`): `μ_R`-almost every window is an
+irrational Gauss orbit with its own digits, so `1/x_t = a_t + x_{t+1}`.
+What remains for `digit_truncation` is the contraction estimate proper
+plus a uniform modulus for the continuous factors on the cube; both are
+now formulable, and neither is written.
 
 When merging a statement proved elsewhere into the skeleton, keep the
 `example : ... := _root_.Kwon1002....` type-check idiom already used in

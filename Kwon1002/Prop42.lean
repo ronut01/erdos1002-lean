@@ -23,7 +23,9 @@ sorried input.
   cylinder events are measurable), `norm_torusChar` (`|e(t)| = 1`),
   `isFiniteMeasure_hatMu0` (`μ̂₀` really is a finite measure: the
   natural-extension density `1/(log 2 (1+xy)²)` is bounded by `1/log 2`
-  on the unit box, whose volume is `1`), hence `integrable_monoEval`,
+  on the unit box, whose volume is `1`; the sharper
+  `isProbabilityMeasure_hatMu0`, with the mass computed exactly, is in
+  `Kwon1002/NatExtMeasure.lean`), hence `integrable_monoEval`,
   `integrable_monoAt_mul`, hence `stationaryIntegral_eq_sum` and
   `integral_at_mul_at`;
 * `two_block_bound_of_mono` : the bilinear step, if every monomial pair

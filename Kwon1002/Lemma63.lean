@@ -605,8 +605,10 @@ passage from the test class to a general bounded almost-everywhere continuous
    step, is proved in `Kwon1002/WindowLaws.lean`.)
 2. **Complete-quotient truncation**, v5 lines 1227-1233: replacing `x_{j+t}` by
    its first `M` future digits costs `O_R(F_M^{-2})` in each coordinate, so
-   `ω_G(C_R F_M^{-2})` in the test value.  This needs the continued-fraction
-   contraction estimate on `WindowSpace R`, which has no statement here.
+   `ω_G(C_R F_M^{-2})` in the test value.  The recursion this rests on,
+   `1/x_t = a_t + x_{t+1}` almost surely on `WindowSpace R`, is
+   `Kwon1002.OrbitConsistent.inv_wX` of `Kwon1002/WindowMarginal.lean`; the
+   contraction estimate built on it is still not stated.
 3. **Stone-Weierstrass and tightness**, v5 lines 1235-1242.  Mathlib has
    `ContinuousMap.starSubalgebra_topologicalClosure_eq_top_of_separatesPoints`,
    but `WindowSpace R` is not compact, so the argument has to run on each
