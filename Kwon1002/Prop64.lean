@@ -1,5 +1,6 @@
 import Kwon1002.Section6Skeleton
 import Kwon1002.WindowLaws
+import Kwon1002.WindowMarginal
 
 /-!
 # Proposition 6.4 of v5: the bounded-remainder weak law, reduced to named inputs
@@ -821,33 +822,41 @@ replacing `x_{j+t}` by `[0; a_{j+t+1}, …, a_{j+t+M}]` for `|t| ≤ R` moves
 each of the finitely many continuous factors `g_ℓ` by `o(1)` as `M → ∞`,
 uniformly, because `max_{|t| ≤ R} |x_{j+t} - x^{[M]}_{j+t}| = O_R(F_M^{-2})`.
 
-**Obstruction, precisely.**  Three inputs are missing, and the first of
-them is a structural one rather than an estimate.
+**Obstruction, precisely.**  The statement is *not* pointwise true.  At an
+arbitrary `w : WindowSpace (R + M)` the digit block `w.1` and the real
+block `w.2.1` are unrelated -- nothing in the type ties `x_t` to the
+digits `a_t, a_{t+1}, …` -- so `digitTruncWindow R M w` need not be
+anywhere near `windowProj _ w`, and `G.eval` of the two can differ by as
+much as `G` varies.  What makes the display true is the *law*.
 
-1. **The support of `μ_{R+M}`.**  The statement is *not* pointwise true.
-   At an arbitrary `w : WindowSpace (R + M)` the digit block `w.1` and the
-   real block `w.2.1` are unrelated -- nothing in the type ties `x_t` to
-   the digits `a_t, a_{t+1}, …` -- so `digitTruncWindow R M w` need not be
-   anywhere near `windowProj _ w`, and `G.eval` of the two can differ by
-   as much as `G` varies.  What makes the display true is that
-   `windowLaw (R + M)` is `hatMu0` pushed forward along
-   `stationaryWindow (R + M)`, and on the image of that map the blocks
-   *are* linked: `stationaryWindow` reads `x_i` off `hatSzpow (i - R') z`
-   and `a_i = digit x_i 0`, so consecutive real coordinates satisfy
-   `x_{i+1} = gaussMap x_i` and hence `x_i = 1/(a_i + x_{i+1})`, which is
-   exactly the recursion `cfFinite` unwinds.  That marginal description of
-   `windowLaw` is not in the tree; it is the same missing ingredient the
-   sibling input `event_truncation` names.
-2. **The contraction estimate.**  Given the link of item 1, one needs
+1. **The support of `μ_{R+M}`: SUPPLIED.**  `Kwon1002.ae_orbitConsistent`
+   (`Kwon1002/WindowMarginal.lean`) proves that `μ_{R+M}`-almost every
+   window is `OrbitConsistent`, i.e. its real coordinates are an
+   irrational Gauss orbit in `(0,1)`, its digits are the digits of that
+   orbit, and consequently
+   `OrbitConsistent.inv_wX : 1/x_t = a_t + x_{t+1}` for `-R' ≤ t < R'` --
+   exactly the recursion `cfFinite` unwinds.  The pointwise form on the
+   image of `stationaryWindow` is
+   `Kwon1002.stationaryWindow_orbitConsistent`, which is the form to use
+   after transporting the norm along `eLpNorm_map_measure`.
+2. **The contraction estimate: still missing.**  Given item 1, one needs
    `|x - [0; a_1, …, a_M]| ≤ 1/(q_M q_{M+1}) = O(F_M^{-2})`.  Mathlib's
    `Mathlib/Algebra/ContinuedFractions/Computation/Approximations.lean` and
    `ApproximationCorollaries.lean` carry this for `GenContFract.of`, but
    `cfFinite` here is a bare recursion on a digit family and is not yet
-   identified with a Mathlib convergent.
-3. **Uniform continuity of the `g_ℓ`.**  `DenseElt.g_continuous` gives
-   continuity on all of `Fin (2R+1) → ℝ`, which is not compact, so a
-   uniform modulus needs the real block confined to a cube -- again item 1,
-   and then `isCompact_digitCapCube` above supplies the compact set. -/
+   identified with a Mathlib convergent.  Item 1 now makes that
+   identification *possible* -- `inv_wX` is the hypothesis such an
+   identification needs -- but it has not been carried out.  (A route that
+   avoids Mathlib entirely: `cfFinite` and `x_t` are the same
+   `M`-fold composition of `u ↦ 1/(a+u)` evaluated at `0` and at
+   `x_{t+M}`, and each such map is `1`-Lipschitz with a factor `≥ 2`
+   gained on every second step, so the difference is `O(2^{-M/2})`.)
+3. **Uniform continuity of the `g_ℓ`: still missing.**
+   `DenseElt.g_continuous` gives continuity on all of `Fin (2R+1) → ℝ`,
+   which is not compact, so a uniform modulus needs the real block
+   confined to a cube.  Item 1 confines it to `(0,1)^{2R+1}` almost
+   surely, and `isCompact_digitCapCube` above supplies the compact set;
+   the modulus argument itself is not written. -/
 theorem digit_truncation (R : ℕ) (G : DenseElt R) (ε : ℝ) (hε : 0 < ε) :
     ∃ M : ℕ,
       eLpNorm (fun w : WindowSpace (R + M) =>
@@ -861,9 +870,28 @@ bound, and `G_M` is bounded, so
 `‖G_M - G_M 1_{E_{M,K}}‖²_{L²} ≤ ‖G_M‖_∞² μ_{R+M}(E_{M,K}^c)`.
 
 Consumes `Kwon1002.digit_tail_product` (Lemma 3.1(ii), proved).
-**Obstruction.**  Transporting the digit-tail bound from Gauss measure to
-the stationary window law `μ_{R+M}` requires the marginal identity for
-`windowLaw`, which is not in the tree. -/
+
+**Obstruction, precisely.**  Two steps, and they have different status.
+
+1. **Orbit consistency: SUPPLIED.**  `Kwon1002.ae_orbitConsistent`
+   (`Kwon1002/WindowMarginal.lean`) gives `a_t = ⌊1/x_t⌋` along an
+   irrational Gauss orbit for `μ_{R+M}`-almost every window, so the digit
+   block of a window really is a block of Gauss digits and not an
+   unconstrained element of `ℕ^{2R'+1}`.
+
+2. **The digit-block marginal: still missing, and it is not a corollary
+   of item 1.**  Orbit consistency ties the digits of one window to each
+   other; what the union bound needs is the *law* of the digit at offset
+   `t`, i.e. that `(hatSzpow t z).1.1` has the Gauss distribution under
+   `μ̂₀` for every `t`, not just `t = 0`.  That is the stationarity of
+   `μ̂₀` under `hatS`, `Lemma62.hatS_measurePreserving`, which is open, and
+   which in turn rests on the two open Layer-1 inputs
+   `Lemma62.natExtMap_measurePreserving` and
+   `Lemma62.torusFibre_measurePreserving`.  At the single offset `t = 0`
+   the marginal *is* computable from Layer 0 (`Kwon1002.hatNu`, whose
+   inner `y`-integral is `1/(log 2 (1+x))`, the Gauss density), so the
+   `t = 0` term of the union bound is within reach; the other `2R'` terms
+   are not, and no amount of orbit consistency produces them. -/
 theorem event_truncation (R M : ℕ) (G : DenseElt R) (ε : ℝ) (hε : 0 < ε) :
     ∃ K : ℕ,
       eLpNorm (fun w : WindowSpace (R + M) =>

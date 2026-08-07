@@ -1,0 +1,231 @@
+import Kwon1002.Section4
+
+/-!
+# Layer 0 of the natural extension: the base measure `ν̂` and `μ̂₀ = ν̂ ⊗ m_{T²}`
+
+`Kwon1002.hatMu0` (`Section4.lean`) is the stationary measure of the
+Gauss natural extension times Haar on `T²`.  Until now its base factor,
+the measure
+
+`ν̂ = 1/(log 2 (1+xy)²) dx dy` on `(0,1)²`,
+
+had no name: it was written out inline at each of the three places in
+`Kwon1002/Lemma62.lean` that needed it.  This file names it `hatNu`,
+computes its total mass, and records the factorization
+`μ̂₀ = ν̂ ⊗ (Lebesgue on (0,1)²)`.
+
+## What is proved
+
+* `hatNu_univ`, `ν̂((0,1)²) = 1`, hence `isProbabilityMeasure_hatNu`.
+  The computation is the one in §3 of the manuscript: the inner integral
+  `∫₀¹ dy/(1+xy)² = 1/(1+x)` (antiderivative `y/(1+xy)`, which avoids the
+  `1/x` that the partial-fraction antiderivative would introduce and so
+  needs no case split at `x = 0`), and then `∫₀¹ dx/(1+x) = log 2`, which
+  the `1/log 2` normalisation cancels exactly.
+* `hatMu0_eq_prod`, `μ̂₀ = ν̂ ⊗ m` with `m` Lebesgue on `(0,1)²`.  This is
+  the shape `MeasureTheory.MeasurePreserving.skew_product` needs in order
+  to assemble `hatS` out of `natExtMap` on the base and the fibre map on
+  `T²`, so it is a prerequisite for `hatS_measurePreserving`.
+* `isProbabilityMeasure_hatMu0`.  Only `isFiniteMeasure_hatMu0`
+  (`Kwon1002/Prop42.lean`) was available before; every ergodic and
+  recurrence statement above this layer needs the total mass to be `1`,
+  not merely finite.
+-/
+
+open MeasureTheory Set Filter
+open scoped BigOperators Topology ENNReal
+
+namespace Kwon1002
+
+noncomputable section
+
+/-- The unit square `(0,1)²`, the state space of the Gauss natural
+extension and (as `T²` in the `Int.fract` representation) of the torus
+fibre. -/
+def unitSq : Set (ℝ × ℝ) := Ioo (0 : ℝ) 1 ×ˢ Ioo (0 : ℝ) 1
+
+lemma measurableSet_unitSq : MeasurableSet unitSq :=
+  measurableSet_Ioo.prod measurableSet_Ioo
+
+lemma volume_unitSq : volume unitSq = 1 := by
+  simp [unitSq, Measure.volume_eq_prod, Measure.prod_prod, Real.volume_Ioo]
+
+/-- **`ν̂`**, the stationary measure of the Gauss natural extension:
+Lebesgue on `(0,1)²` with density `1/(log 2 (1+xy)²)` (§3, in the proof of
+Lemma 3.3).  This is the base factor of `hatMu0`. -/
+def hatNu : Measure (ℝ × ℝ) :=
+  (volume.restrict (Ioo (0 : ℝ) 1 ×ˢ Ioo (0 : ℝ) 1)).withDensity
+    (fun p => ENNReal.ofReal (1 / (Real.log 2 * (1 + p.1 * p.2) ^ 2)))
+
+/-- Statement identity, type check only: `hatNu` is exactly the measure
+that `Kwon1002/Lemma62.lean` used to write out inline.  If the definition
+above drifts, this breaks. -/
+example : hatNu = (volume.restrict (Ioo (0 : ℝ) 1 ×ˢ Ioo (0 : ℝ) 1)).withDensity
+    (fun p => ENNReal.ofReal (1 / (Real.log 2 * (1 + p.1 * p.2) ^ 2))) := rfl
+
+namespace NatExtMeasure
+
+/-- The density of `ν̂` is measurable. -/
+lemma measurable_hatNuDensity :
+    Measurable (fun p : ℝ × ℝ => ENNReal.ofReal (1 / (Real.log 2 * (1 + p.1 * p.2) ^ 2))) := by
+  refine ENNReal.measurable_ofReal.comp ?_
+  fun_prop
+
+lemma log_two_pos : (0 : ℝ) < Real.log 2 := Real.log_pos (by norm_num)
+
+/-- `∫₀¹ dy/(1+xy)² = 1/(1+x)` for `x ≥ 0`, via the antiderivative
+`y ↦ y/(1+xy)`. -/
+theorem integral_inv_one_add_mul_sq (x : ℝ) (hx : 0 ≤ x) :
+    ∫ y in (0:ℝ)..1, 1 / (1 + x * y) ^ 2 = 1 / (1 + x) := by
+  have hpos : ∀ y ∈ uIcc (0:ℝ) 1, (0:ℝ) < 1 + x * y := by
+    intro y hy
+    rw [uIcc_of_le (by norm_num)] at hy
+    nlinarith [hy.1, hy.2]
+  have hderiv : ∀ y ∈ uIcc (0:ℝ) 1,
+      HasDerivAt (fun t : ℝ => t / (1 + x * t)) (1 / (1 + x * y) ^ 2) y := by
+    intro y hy
+    have hne : (1 + x * y) ≠ 0 := (hpos y hy).ne'
+    have h1 : HasDerivAt (fun t : ℝ => t) 1 y := hasDerivAt_id y
+    have h2 : HasDerivAt (fun t : ℝ => 1 + x * t) x y := by
+      simpa using ((hasDerivAt_id y).const_mul x).const_add (1:ℝ)
+    have hq := h1.div h2 hne
+    convert hq using 1
+    ring
+  have hint : IntervalIntegrable (fun y : ℝ => 1 / (1 + x * y) ^ 2) volume 0 1 := by
+    apply ContinuousOn.intervalIntegrable
+    apply ContinuousOn.div continuousOn_const
+    · fun_prop
+    · intro y hy; exact pow_ne_zero _ (hpos y hy).ne'
+  rw [intervalIntegral.integral_eq_sub_of_hasDerivAt hderiv hint]
+  simp
+
+/-- `∫₀¹ dx/(1+x) = log 2`. -/
+theorem integral_inv_one_add : ∫ x in (0:ℝ)..1, 1 / (1 + x) = Real.log 2 := by
+  have hpos : ∀ y ∈ uIcc (0:ℝ) 1, (0:ℝ) < 1 + y := by
+    intro y hy
+    rw [uIcc_of_le (by norm_num)] at hy
+    linarith [hy.1]
+  have hderiv : ∀ y ∈ uIcc (0:ℝ) 1,
+      HasDerivAt (fun t : ℝ => Real.log (1 + t)) (1 / (1 + y)) y := by
+    intro y hy
+    have h2 : HasDerivAt (fun t : ℝ => 1 + t) 1 y := by
+      simpa using (hasDerivAt_id y).const_add (1:ℝ)
+    exact h2.log (hpos y hy).ne'
+  have hint : IntervalIntegrable (fun y : ℝ => 1 / (1 + y)) volume 0 1 := by
+    apply ContinuousOn.intervalIntegrable
+    apply ContinuousOn.div continuousOn_const
+    · fun_prop
+    · intro y hy; exact (hpos y hy).ne'
+  rw [intervalIntegral.integral_eq_sub_of_hasDerivAt hderiv hint]
+  norm_num
+
+/-- A nonnegative function continuous on `[0,1]` has the same `(0,1)`
+lower integral as its `ofReal`-ed interval integral. -/
+theorem lintegral_Ioo_ofReal_eq {f : ℝ → ℝ} (hf : ContinuousOn f (Icc (0:ℝ) 1))
+    (hnn : ∀ y ∈ Icc (0:ℝ) 1, 0 ≤ f y) :
+    ∫⁻ y in Ioo (0:ℝ) 1, ENNReal.ofReal (f y)
+      = ENNReal.ofReal (∫ y in (0:ℝ)..1, f y) := by
+  have hIcc : IntegrableOn f (Icc (0:ℝ) 1) volume := hf.integrableOn_Icc
+  have hIoo : IntegrableOn f (Ioo (0:ℝ) 1) volume := hIcc.mono_set Ioo_subset_Icc_self
+  have hnn' : (0 : ℝ → ℝ) ≤ᶠ[ae (volume.restrict (Ioo (0:ℝ) 1))] f := by
+    filter_upwards [ae_restrict_mem (measurableSet_Ioo : MeasurableSet (Ioo (0:ℝ) 1))] with y hy
+    exact hnn y (Ioo_subset_Icc_self hy)
+  rw [← ofReal_integral_eq_lintegral_ofReal hIoo hnn']
+  congr 1
+  rw [intervalIntegral.integral_of_le (by norm_num : (0:ℝ) ≤ 1),
+    MeasureTheory.integral_Ioc_eq_integral_Ioo]
+
+/-- Lebesgue on the square, as a product of Lebesgue on the factors. -/
+theorem restrict_unitSq_eq_prod :
+    (volume : Measure (ℝ × ℝ)).restrict (Ioo (0:ℝ) 1 ×ˢ Ioo (0:ℝ) 1)
+      = ((volume : Measure ℝ).restrict (Ioo (0:ℝ) 1)).prod
+          ((volume : Measure ℝ).restrict (Ioo (0:ℝ) 1)) := by
+  rw [Measure.prod_restrict, ← Measure.volume_eq_prod]
+
+/-- Lebesgue on the four-dimensional box, as a product of two copies of
+Lebesgue on the square. -/
+theorem restrict_box_eq_prod :
+    (volume : Measure ((ℝ × ℝ) × ℝ × ℝ)).restrict
+        ((Ioo (0:ℝ) 1 ×ˢ Ioo (0:ℝ) 1) ×ˢ (Ioo (0:ℝ) 1 ×ˢ Ioo (0:ℝ) 1))
+      = ((volume : Measure (ℝ × ℝ)).restrict (Ioo (0:ℝ) 1 ×ˢ Ioo (0:ℝ) 1)).prod
+          ((volume : Measure (ℝ × ℝ)).restrict (Ioo (0:ℝ) 1 ×ˢ Ioo (0:ℝ) 1)) := by
+  rw [Measure.prod_restrict, ← Measure.volume_eq_prod]
+
+end NatExtMeasure
+
+open NatExtMeasure in
+/-- **`ν̂` is a probability measure**: `∫∫ dx dy/(log 2 (1+xy)²) = 1` over
+`(0,1)²`.  The inner integral is `1/(log 2 (1+x))` and the outer one is
+`(log 2)⁻¹ log 2 = 1`. -/
+theorem hatNu_univ : hatNu Set.univ = 1 := by
+  have hl := log_two_pos
+  rw [hatNu, withDensity_apply _ MeasurableSet.univ, Measure.restrict_univ,
+    restrict_unitSq_eq_prod, lintegral_prod _ measurable_hatNuDensity.aemeasurable]
+  have hinner : ∀ x ∈ Ioo (0:ℝ) 1,
+      (∫⁻ y in Ioo (0:ℝ) 1, ENNReal.ofReal (1 / (Real.log 2 * (1 + x * y) ^ 2)))
+        = ENNReal.ofReal (1 / (Real.log 2 * (1 + x))) := by
+    intro x hx
+    have hxnn : (0:ℝ) ≤ x := hx.1.le
+    have hpos : ∀ y ∈ Icc (0:ℝ) 1, (0:ℝ) < 1 + x * y := by
+      intro y hy; nlinarith [hy.1, hy.2]
+    rw [lintegral_Ioo_ofReal_eq (f := fun y => 1 / (Real.log 2 * (1 + x * y) ^ 2))]
+    · congr 1
+      have hsplit : (fun y : ℝ => 1 / (Real.log 2 * (1 + x * y) ^ 2))
+          = fun y : ℝ => (Real.log 2)⁻¹ * (1 / (1 + x * y) ^ 2) := by
+        funext y; field_simp
+      rw [hsplit, intervalIntegral.integral_const_mul,
+        integral_inv_one_add_mul_sq x hxnn]
+      field_simp
+    · apply ContinuousOn.div continuousOn_const
+      · fun_prop
+      · intro y hy
+        exact mul_ne_zero hl.ne' (pow_ne_zero _ (hpos y hy).ne')
+    · intro y hy
+      positivity
+  rw [setLIntegral_congr_fun measurableSet_Ioo hinner,
+    lintegral_Ioo_ofReal_eq (f := fun x => 1 / (Real.log 2 * (1 + x)))]
+  · have hsplit : (fun x : ℝ => 1 / (Real.log 2 * (1 + x)))
+        = fun x : ℝ => (Real.log 2)⁻¹ * (1 / (1 + x)) := by
+      funext x; field_simp
+    rw [hsplit, intervalIntegral.integral_const_mul, integral_inv_one_add,
+      inv_mul_cancel₀ hl.ne']
+    simp
+  · apply ContinuousOn.div continuousOn_const
+    · fun_prop
+    · intro y hy
+      have hy1 : (0:ℝ) < 1 + y := by linarith [hy.1]
+      exact mul_ne_zero hl.ne' hy1.ne'
+  · intro y hy
+    have hy1 : (0:ℝ) < 1 + y := by linarith [hy.1]
+    positivity
+
+instance isProbabilityMeasure_hatNu : IsProbabilityMeasure hatNu := ⟨hatNu_univ⟩
+
+instance isProbabilityMeasure_restrict_unitSq :
+    IsProbabilityMeasure ((volume : Measure (ℝ × ℝ)).restrict
+      (Ioo (0:ℝ) 1 ×ˢ Ioo (0:ℝ) 1)) := by
+  constructor
+  rw [Measure.restrict_apply_univ]
+  simpa [unitSq] using volume_unitSq
+
+/-- **The factorization `μ̂₀ = ν̂ ⊗ m_{T²}`.**  The density of `μ̂₀` depends
+only on the base coordinate `z.1`, so `μ̂₀` is the `withDensity` of a
+product with a density pulled back from the left factor, which is exactly
+`Measure.prod_withDensity_left`.  This is the shape
+`MeasureTheory.MeasurePreserving.skew_product` consumes. -/
+theorem hatMu0_eq_prod :
+    hatMu0 = hatNu.prod ((volume : Measure (ℝ × ℝ)).restrict
+      (Ioo (0:ℝ) 1 ×ˢ Ioo (0:ℝ) 1)) := by
+  rw [hatMu0, NatExtMeasure.restrict_box_eq_prod, hatNu,
+    MeasureTheory.prod_withDensity_left NatExtMeasure.measurable_hatNuDensity]
+
+/-- **`μ̂₀` is a probability measure.**  `Kwon1002/Prop42.lean` records only
+`isFiniteMeasure_hatMu0`; every ergodic and recurrence statement above
+this layer needs the mass to be exactly `1`. -/
+instance isProbabilityMeasure_hatMu0 : IsProbabilityMeasure hatMu0 := by
+  rw [hatMu0_eq_prod]
+  infer_instance
+
+end
+
+end Kwon1002

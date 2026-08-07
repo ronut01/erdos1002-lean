@@ -17,6 +17,7 @@ import Kwon1002.MixingBV
 import Kwon1002.Bridge
 import Kwon1002.Marks
 import Kwon1002.Section4
+import Kwon1002.NatExtMeasure
 import Kwon1002.TupleCount
 import Kwon1002.CharacterReduction
 import Kwon1002.Prop41
@@ -58,6 +59,7 @@ import Kwon1002.V5Prop42
 import Kwon1002.Section6Skeleton
 import Kwon1002.Lemma61
 import Kwon1002.WindowLaws
+import Kwon1002.WindowMarginal
 import Kwon1002.Lemma62
 import Kwon1002.Lemma63
 import Kwon1002.Prop64

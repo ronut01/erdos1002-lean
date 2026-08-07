@@ -598,18 +598,33 @@ passage from the test class to a general bounded almost-everywhere continuous
 
 1. **Digit truncation**, v5 lines 1218-1226.  `digit_tail_product` (3.1(ii)) is
    proved and gives the `O_R(1/K)` tail bound for the actual law; the same
-   bound for the stationary law `windowLaw R` is not available, because
-   `windowLaw` is defined by pushing `hatMu0` forward along
-   `stationaryWindow R` and `measurable_stationaryWindow` is open.
+   bound for the stationary law `windowLaw R` needs the digit-block marginal of
+   `windowLaw`, i.e. that pushing `hatMu0` forward along `stationaryWindow R`
+   and then reading a digit coordinate returns the Gauss digit law.
+   (`measurable_stationaryWindow`, which this note used to list as the missing
+   step, is proved in `Kwon1002/WindowLaws.lean`.)
 2. **Complete-quotient truncation**, v5 lines 1227-1233: replacing `x_{j+t}` by
    its first `M` future digits costs `O_R(F_M^{-2})` in each coordinate, so
    `ω_G(C_R F_M^{-2})` in the test value.  This needs the continued-fraction
    contraction estimate on `WindowSpace R`, which has no statement here.
 3. **Stone-Weierstrass and tightness**, v5 lines 1235-1242.  Mathlib has
    `ContinuousMap.starSubalgebra_topologicalClosure_eq_top_of_separatesPoints`,
-   but `WindowSpace R` is not compact (the digit block is `ℕ`-valued), so the
-   argument has to run on each compact digit truncation and be glued by the
-   tightness statement; neither the truncation nor the tightness is stated.
+   but `WindowSpace R` is not compact, so the argument has to run on each
+   compact digit truncation and be glued by the tightness statement; neither
+   the truncation nor the tightness is stated.
+
+   **Which compact truncation.**  The compact object is
+   `Prop64.digitCapCube R K`, manuscript v8's `X_{R,K}`: the digit cap
+   `{a | ∀ i, a i ≤ K}` *times the closed unit cubes on the real and torus
+   blocks*.  `Prop64.isCompact_digitCapCube` and
+   `Prop64.measurableSet_digitCapCube` are proved.  Capping the digits alone is
+   **not** enough: `Prop64.digitCapEvent R K` constrains only the digit block,
+   and the Lean type `WindowSpace R` carries the real and torus blocks as full
+   copies of `ℝ` rather than as `[0,1]` and `T`, so `digitCapEvent` contains an
+   affine copy of `ℝ^{2R+1}` and is unbounded --- this is
+   `Prop64.not_isCompact_digitCapEvent`.  Earlier revisions of this note said
+   only "the digit block is `ℕ`-valued"; that diagnosis is incomplete, and
+   `digitCapEvent` is not the set to run Stone-Weierstrass on.
 4. **Portmanteau**, v5 lines 1242-1245.  Mathlib's
    `MeasureTheory.tendsto_measure_of_tendsto_...` portmanteau family applies to
    bounded almost-everywhere continuous functions, which is the right shape,

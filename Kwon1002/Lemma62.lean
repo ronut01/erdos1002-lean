@@ -1,4 +1,5 @@
 import Kwon1002.Section6Skeleton
+import Kwon1002.NatExtMeasure
 import Kwon1002.CharacterReduction
 
 /-!
@@ -149,6 +150,16 @@ theorem hatS_iterate_fst (m : ℕ) (z : NatExtTorus) :
   | zero => simp
   | succ m ih =>
       rw [Function.iterate_succ_apply, ih, hatS, Function.iterate_succ_apply]
+
+/-- `hatSinv` acts on the Gauss pair by `natExtInv`; the backward
+counterpart of `hatS_iterate_fst`, and what lets the stationary window be
+read at negative offsets. -/
+theorem hatSinv_iterate_fst (m : ℕ) (z : NatExtTorus) :
+    (hatSinv^[m] z).1 = natExtInv^[m] z.1 := by
+  induction m generalizing z with
+  | zero => simp
+  | succ m ih =>
+      rw [Function.iterate_succ_apply, ih, hatSinv, Function.iterate_succ_apply]
 
 /-- The digit consumed at time `m` along the `hatS` orbit is the `m`-th
 Gauss digit of the future coordinate. -/
@@ -436,21 +447,17 @@ theorem resonance_bounded_along_orbit (k l : Fin 2 → ℤ) (hk : k ≠ 0) (hl :
 
 /-! ## The measure-theoretic inputs that this tree does not have -/
 
-/-- The Gauss natural extension preserves `ν̂`, the measure with density
-`1/(log 2 (1+xy)²)` on `(0,1)²`.
+/-- The Gauss natural extension preserves `ν̂ = hatNu`, the measure with
+density `1/(log 2 (1+xy)²)` on `(0,1)²` (`Kwon1002/NatExtMeasure.lean`).
 
 **Obstruction.**  Nothing of the kind exists in `Kwon1002/` or in
-`wang_substrate/Erdos1002/`: `grep MeasurePreserving` over both trees
-returns only `Section6Skeleton.hatS_measurePreserving` itself.  The BV
-chain in this tree works with the transfer operator of the *one-sided*
-Gauss map and never constructs the two-sided extension as a
-measure-preserving system. -/
+`wang_substrate/Erdos1002/`: the BV chain in this tree works with the
+transfer operator of the *one-sided* Gauss map and never constructs the
+two-sided extension as a measure-preserving system.  What Layer 0 does
+supply is that `ν̂` is a probability measure (`hatNu_univ`), so the
+statement below is now a statement about two probability measures. -/
 theorem natExtMap_measurePreserving :
-    MeasurePreserving natExtMap
-      ((volume.restrict (Ioo (0 : ℝ) 1 ×ˢ Ioo (0 : ℝ) 1)).withDensity
-        (fun p => ENNReal.ofReal (1 / (Real.log 2 * (1 + p.1 * p.2) ^ 2))))
-      ((volume.restrict (Ioo (0 : ℝ) 1 ×ˢ Ioo (0 : ℝ) 1)).withDensity
-        (fun p => ENNReal.ofReal (1 / (Real.log 2 * (1 + p.1 * p.2) ^ 2)))) := by
+    MeasurePreserving natExtMap hatNu hatNu := by
   sorry
 
 /-- For each digit `a`, the fibre map `(r,s) ↦ (s, {r - a s})` of (49)
@@ -490,15 +497,8 @@ it to the two-sided natural extension requires
 sets with `gaussMap`-invariant sets, neither of which is in the tree. -/
 theorem natExt_zero_mode_mixing (A B : Set (ℝ × ℝ))
     (hA : MeasurableSet A) (hB : MeasurableSet B) :
-    Tendsto (fun m : ℕ =>
-        ((volume.restrict (Ioo (0 : ℝ) 1 ×ˢ Ioo (0 : ℝ) 1)).withDensity
-          (fun p => ENNReal.ofReal (1 / (Real.log 2 * (1 + p.1 * p.2) ^ 2)))).real
-            (A ∩ natExtMap^[m] ⁻¹' B))
-      atTop
-      (𝓝 (((volume.restrict (Ioo (0 : ℝ) 1 ×ˢ Ioo (0 : ℝ) 1)).withDensity
-              (fun p => ENNReal.ofReal (1 / (Real.log 2 * (1 + p.1 * p.2) ^ 2)))).real A *
-          ((volume.restrict (Ioo (0 : ℝ) 1 ×ˢ Ioo (0 : ℝ) 1)).withDensity
-              (fun p => ENNReal.ofReal (1 / (Real.log 2 * (1 + p.1 * p.2) ^ 2)))).real B)) := by
+    Tendsto (fun m : ℕ => hatNu.real (A ∩ natExtMap^[m] ⁻¹' B))
+      atTop (𝓝 (hatNu.real A * hatNu.real B)) := by
   sorry
 
 /-- Finite digit-cylinder functions times torus characters are dense in
