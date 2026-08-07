@@ -53,16 +53,24 @@ measure-theoretic substrate they need does not exist anywhere in this
 development or in `wang_substrate/`.  Concretely:
 
 * there is no statement, let alone proof, that the Gauss natural
-  extension map preserves `ν̂` (density `1/(log 2 (1+xy)²)` on `(0,1)²`);
-  `grep MeasurePreserving` over both trees returns only the skeleton line
-  itself;
-* there is no torus-automorphism input either: that
-  `(r,s) ↦ (s, {r - a s})` preserves Haar on `T²` for `a ∈ ℕ` is the
-  `GL₂(ℤ)`-invariance quoted at v5 lines 1052-1056, and Mathlib's
-  `AddCircle` Haar machinery is not connected to the `Int.fract`-on-`[0,1)`
-  representation used throughout this development;
+  extension map preserves `ν̂ = hatNu` (density `1/(log 2 (1+xy)²)` on
+  `(0,1)²`).  This is now the only missing half: `hatNu` itself, its total
+  mass, and the factorization `μ̂₀ = ν̂ ⊗ m_{T²}` are in
+  `Kwon1002/NatExtMeasure.lean`;
+* the torus-automorphism input is **no longer missing**.
+  `torusFibre_measurePreserving` below is proved: the fibre map
+  `(r,s) ↦ (s, {r - a s})` is a swap followed by a skew product over the
+  identity, and the fibre rotation `r ↦ {r - a s}` preserves Lebesgue
+  measure on `(0,1)` by an elementary two-piece translation argument in
+  the `Int.fract` representation.  No `AddCircle` bridge was needed;
 * the two must then be assembled as a skew product over a `withDensity`
-  measure, which is a Fubini argument in its own right.
+  measure.  `hatMu0_eq_prod` puts `μ̂₀` in exactly the product shape
+  `MeasureTheory.MeasurePreserving.skew_product` consumes, so this step is
+  now mechanical once the base half lands.
+
+Of the four inputs named below, `torusFibre_measurePreserving` is now
+proved; `natExtMap_measurePreserving`, `natExt_zero_mode_mixing` and
+`cylinderChar_dense_L2` remain open.
 
 `lemma_6_2_gauss_torus_mixing` needs, on top of `hatS_measurePreserving`,
 the `L²(μ̂₀)` density of finite digit-cylinder functions times torus
@@ -460,28 +468,62 @@ theorem natExtMap_measurePreserving :
     MeasurePreserving natExtMap hatNu hatNu := by
   sorry
 
-/-- For each digit `a`, the fibre map `(r,s) ↦ (s, {r - a s})` of (49)
-preserves Haar on `T²`, this being the `GL₂(ℤ)`-invariance of v5 lines
-1052-1056 (`fibreMatrix_det` above is the determinant half of it).
+/-- **Proved.**  For each digit `a`, the fibre map `(r,s) ↦ (s, {r - a s})`
+of (49) preserves Haar on `T²`, this being the `GL₂(ℤ)`-invariance of v5
+lines 1052-1056 (`fibreMatrix_det` above is the determinant half of it).
 
-**Obstruction.**  Haar on `T²` is carried in this development as Lebesgue
-restricted to `(0,1)²` with `Int.fract` doing the reduction, and Mathlib's
-invariance results live on `AddCircle`; the translation between the two
-representations is missing, and there is no `Int.fract`-level change of
-variables for an integer unimodular map in the tree. -/
+The map factors as a swap followed by a skew product over the identity,
+which is literally the shape of
+`MeasureTheory.MeasurePreserving.skew_product`: the base coordinate `s` is
+untouched and the fibre map `r ↦ {r - a s}` is a rotation of the circle.
+No `AddCircle` bridge is needed.  An earlier revision of this docstring
+recorded the missing bridge as the obstruction; the obstruction was softer
+than that, because the rotation is elementary in the `Int.fract`
+representation itself: it cuts `[0,1)` at `1 - {a s}` and translates the
+two pieces, and translations preserve Lebesgue measure
+(`NatExtMeasure.map_fract_add_Ico`).  The `Ioo`/`Ico` mismatch is a null
+set (`NatExtMeasure.restrict_Ioo_eq_Ico`).
+
+Note that the fibre coordinate of the image can be `0`, which is outside
+`(0,1)`; that costs nothing, since `MeasurePreserving` constrains the
+pushforward measure and the discrepancy is a null set. -/
 theorem torusFibre_measurePreserving (a : ℕ) :
     MeasurePreserving (fun q : ℝ × ℝ => (q.2, Int.fract (q.1 - (a : ℝ) * q.2)))
       (volume.restrict (Ioo (0 : ℝ) 1 ×ˢ Ioo (0 : ℝ) 1))
       (volume.restrict (Ioo (0 : ℝ) 1 ×ˢ Ioo (0 : ℝ) 1)) := by
-  sorry
+  rw [NatExtMeasure.restrict_unitSq_eq_prod]
+  set μ := (volume : Measure ℝ).restrict (Ioo (0:ℝ) 1) with hμ
+  have hswap : MeasurePreserving (Prod.swap : ℝ × ℝ → ℝ × ℝ) (μ.prod μ) (μ.prod μ) :=
+    MeasureTheory.Measure.measurePreserving_swap
+  have hskew : MeasurePreserving
+      (fun p : ℝ × ℝ => (id p.1, Int.fract (p.2 - (a : ℝ) * p.1))) (μ.prod μ) (μ.prod μ) := by
+    refine (MeasurePreserving.id μ).skew_product
+      (g := fun s r : ℝ => Int.fract (r - (a : ℝ) * s)) ?_ ?_
+    · exact (measurable_snd.sub (measurable_fst.const_mul _)).fract
+    · filter_upwards with s
+      exact NatExtMeasure.map_fract_sub_Ioo ((a : ℝ) * s)
+  simpa [Function.comp] using hskew.comp hswap
 
 /-- The cocycle preserves `μ̂₀`.
 
-**Obstruction.**  Two missing inputs, `natExtMap_measurePreserving` and
-`torusFibre_measurePreserving`, plus the skew-product assembly: `hatS` is
-not a product map, since the fibre matrix depends on the base point
-through `digit z.1.1 0`, so the assembly is a Fubini argument over the
-`withDensity` base measure and not a `MeasurePreserving.prod`. -/
+**Obstruction, now a single one.**  `hatS` is not a product map, since the
+fibre matrix depends on the base point through `digit z.1.1 0`, so the
+assembly is a *skew* product rather than a `MeasurePreserving.prod`.  Both
+halves of that assembly are now in place except one:
+
+* the product shape is available, `hatMu0_eq_prod : μ̂₀ = ν̂ ⊗ m`
+  (`Kwon1002/NatExtMeasure.lean`), which is what
+  `MeasureTheory.MeasurePreserving.skew_product` requires of the source
+  and target measures;
+* the fibre half is available, `torusFibre_measurePreserving` above;
+* the base half, `natExtMap_measurePreserving`, is **still open**, and it
+  is the only remaining input.
+
+One wrinkle to expect when this is assembled: `skew_product` wants the
+fibre map in the shape `g (base point) (fibre point)`, whereas `hatS`
+writes the torus block as `(θ, {θ' - a θ})` with the two torus
+coordinates swapped relative to `torusFibre_measurePreserving`.  That is
+the same swap already absorbed inside the proof of the fibre lemma. -/
 theorem hatS_measurePreserving : MeasurePreserving hatS hatMu0 hatMu0 := by
   sorry
 

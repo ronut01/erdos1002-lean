@@ -151,6 +151,101 @@ theorem restrict_box_eq_prod :
           ((volume : Measure (ℝ × ℝ)).restrict (Ioo (0:ℝ) 1 ×ˢ Ioo (0:ℝ) 1)) := by
   rw [Measure.prod_restrict, ← Measure.volume_eq_prod]
 
+/-! ### Haar on the torus in the `Int.fract` representation
+
+Throughout this development `T = ℝ/ℤ` is carried as `(0,1)` with
+`Int.fract` performing the reduction, rather than as Mathlib's
+`AddCircle 1`.  The one fact that representation needs is that a rotation
+is measure preserving, and it is elementary in this form: `r ↦ {r + c}`
+cuts `[0,1)` at `1 - {c}` and translates the two pieces by `{c}` and by
+`{c} - 1`, so it is a bijection assembled from two translations, each of
+which preserves Lebesgue measure. -/
+
+/-- **Rotation of the circle, in the `Int.fract` representation.**
+`r ↦ {r + c}` preserves Lebesgue measure on `[0,1)`. -/
+theorem map_fract_add_Ico (c : ℝ) :
+    Measure.map (fun r : ℝ => Int.fract (r + c)) (volume.restrict (Ico (0:ℝ) 1))
+      = volume.restrict (Ico (0:ℝ) 1) := by
+  set β := Int.fract c with hβdef
+  have hβ0 : (0:ℝ) ≤ β := Int.fract_nonneg c
+  have hβ1 : β < 1 := Int.fract_lt_one c
+  have hmeas : Measurable (fun r : ℝ => Int.fract (r + c)) := (measurable_id.add_const c).fract
+  have hfeq : ∀ r : ℝ, Int.fract (r + c) = Int.fract (r + β) := by
+    intro r
+    have h : r + c = (r + β) + ((⌊c⌋ : ℤ) : ℝ) := by
+      rw [hβdef, Int.fract]; ring
+    rw [h, Int.fract_add_intCast]
+  ext S hS
+  rw [Measure.map_apply hmeas hS, Measure.restrict_apply (hmeas hS), Measure.restrict_apply hS]
+  set P : Set ℝ := (fun r : ℝ => Int.fract (r + c)) ⁻¹' S with hP
+  have hsplit : Ico (0:ℝ) 1 = Ico (0:ℝ) (1 - β) ∪ Ico (1 - β) 1 :=
+    (Set.Ico_union_Ico_eq_Ico (by linarith) (by linarith)).symm
+  -- the lower piece is translated by `β` onto `[β, 1)`
+  have hA : P ∩ Ico (0:ℝ) (1 - β) = (fun r : ℝ => r + β) ⁻¹' (S ∩ Ico β 1) := by
+    ext r
+    simp only [hP, Set.mem_inter_iff, Set.mem_preimage, Set.mem_Ico]
+    constructor
+    · rintro ⟨hs, hr0, hr1⟩
+      have hval : Int.fract (r + c) = r + β := by
+        rw [hfeq]; exact Int.fract_eq_self.mpr ⟨by linarith, by linarith⟩
+      rw [hval] at hs
+      exact ⟨hs, by linarith, by linarith⟩
+    · rintro ⟨hs, hr0, hr1⟩
+      have hr0' : (0:ℝ) ≤ r := by linarith
+      have hr1' : r < 1 - β := by linarith
+      have hval : Int.fract (r + c) = r + β := by
+        rw [hfeq]; exact Int.fract_eq_self.mpr ⟨by linarith, by linarith⟩
+      exact ⟨by rw [hval]; exact hs, hr0', hr1'⟩
+  -- the upper piece is translated by `β - 1` onto `[0, β)`
+  have hB : P ∩ Ico (1 - β) 1 = (fun r : ℝ => r + (β - 1)) ⁻¹' (S ∩ Ico 0 β) := by
+    ext r
+    simp only [hP, Set.mem_inter_iff, Set.mem_preimage, Set.mem_Ico]
+    have hval : ∀ r : ℝ, 1 - β ≤ r → r < 1 → Int.fract (r + c) = r + (β - 1) := by
+      intro r h1 h2
+      rw [hfeq]
+      have he : r + β = (r + (β - 1)) + 1 := by ring
+      rw [he, Int.fract_add_one]
+      exact Int.fract_eq_self.mpr ⟨by linarith, by linarith⟩
+    constructor
+    · rintro ⟨hs, hr0, hr1⟩
+      rw [hval r hr0 hr1] at hs
+      exact ⟨hs, by linarith, by linarith⟩
+    · rintro ⟨hs, hr0, hr1⟩
+      have hr0' : 1 - β ≤ r := by linarith
+      have hr1' : r < 1 := by linarith
+      exact ⟨by rw [hval r hr0' hr1']; exact hs, hr0', hr1'⟩
+  have hdisj : Disjoint (P ∩ Ico (0:ℝ) (1 - β)) (P ∩ Ico (1 - β) 1) :=
+    Disjoint.mono inter_subset_right inter_subset_right Set.Ico_disjoint_Ico_same
+  have hmB : MeasurableSet (P ∩ Ico (1 - β) 1) := (hmeas hS).inter measurableSet_Ico
+  have hunion : P ∩ Ico (0:ℝ) 1
+      = (P ∩ Ico (0:ℝ) (1 - β)) ∪ (P ∩ Ico (1 - β) 1) := by
+    rw [hsplit, Set.inter_union_distrib_left]
+  rw [hunion, measure_union hdisj hmB, hA, hB,
+    measure_preimage_add_right, measure_preimage_add_right]
+  have hSdisj : Disjoint (S ∩ Ico β 1) (S ∩ Ico (0:ℝ) β) :=
+    Disjoint.mono inter_subset_right inter_subset_right Set.Ico_disjoint_Ico_same.symm
+  have hSunion : S ∩ Ico (0:ℝ) 1 = (S ∩ Ico β 1) ∪ (S ∩ Ico (0:ℝ) β) := by
+    rw [← Set.inter_union_distrib_left, Set.union_comm,
+      Set.Ico_union_Ico_eq_Ico hβ0 hβ1.le]
+  rw [hSunion, measure_union hSdisj (hS.inter measurableSet_Ico)]
+
+/-- `(0,1)` and `[0,1)` carry the same restricted Lebesgue measure; the
+endpoint is a null set. -/
+theorem restrict_Ioo_eq_Ico :
+    (volume : Measure ℝ).restrict (Ioo (0:ℝ) 1)
+      = (volume : Measure ℝ).restrict (Ico (0:ℝ) 1) :=
+  Measure.restrict_congr_set Ioo_ae_eq_Ico
+
+/-- The form the torus fibre map needs: `r ↦ {r - c}` preserves Lebesgue
+measure on `(0,1)`. -/
+theorem map_fract_sub_Ioo (c : ℝ) :
+    Measure.map (fun r : ℝ => Int.fract (r - c)) (volume.restrict (Ioo (0:ℝ) 1))
+      = volume.restrict (Ioo (0:ℝ) 1) := by
+  have hfun : (fun r : ℝ => Int.fract (r - c)) = fun r : ℝ => Int.fract (r + (-c)) := by
+    funext r; rw [sub_eq_add_neg]
+  rw [hfun, restrict_Ioo_eq_Ico]
+  exact map_fract_add_Ico (-c)
+
 end NatExtMeasure
 
 open NatExtMeasure in
