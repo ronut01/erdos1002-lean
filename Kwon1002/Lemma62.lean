@@ -2,6 +2,7 @@ import Kwon1002.Section6Skeleton
 import Kwon1002.NatExtMeasure
 import Kwon1002.NatExtInvariance
 import Kwon1002.NatExtMixing
+import Kwon1002.CylinderCharDense
 import Kwon1002.CharacterReduction
 
 /-!
@@ -80,10 +81,17 @@ closed-set/thickening approximation of indicators by Lipschitz
 observables).  See the module docstring of `Kwon1002/NatExtMixing.lean`
 for the architecture.
 
-What remains open is `cylinderChar_dense_L2` (the `L²(μ̂₀)` density of
-finite digit-cylinder functions times torus characters, v5 line 1149) and
-the assembly `lemma_6_2_gauss_torus_mixing` that consumes it.  Those are
-the sorries this file cannot yet discharge.
+`cylinderChar_dense_L2` (the `L²(μ̂₀)` density of finite digit-cylinder
+functions times torus characters, v5 line 1149) is now **proved**, by
+delegation to `Kwon1002.CylinderCharDense.cylinderChar_dense_L2_core`;
+see that module's docstring for the architecture (product-measure Dynkin
+argument, Fourier density on `AddCircle 1` through the null seam, cylinder
+shrinking plus outer regularity on the Gauss factor, and the digit-cap
+refinement to a common radius).
+
+What remains open is the assembly `lemma_6_2_gauss_torus_mixing` that
+consumes `natExt_zero_mode_mixing` and `cylinderChar_dense_L2`.  That is
+the one sorry this file cannot yet discharge.
 
 -/
 
@@ -582,16 +590,23 @@ theorem natExt_zero_mode_mixing (A B : Set (ℝ × ℝ))
 `L²(μ̂₀)` (v5 line 1149, "density of cylinder functions times characters
 in `L²` completes the proof").
 
-**Obstruction.**  Stated here only as the approximation property that the
-proof uses; a proof needs the generated sigma-algebra of the cylinder
-partition together with Stone-Weierstrass on `T²`, and neither the
-cylinder sigma-algebra of the two-sided extension nor an `L²` density
-lemma for it exists in this tree. -/
+**Proved**, by delegation to
+`Kwon1002.CylinderCharDense.cylinderChar_dense_L2_core`; the direct term
+application doubles as the drift guard tying the two statements together.
+An earlier revision of this docstring recorded the missing cylinder
+sigma-algebra and the missing `L²` density lemma as the obstruction; both
+are now built in `Kwon1002/CylinderCharDense.lean`: `μ̂₀ = ν̂ ⊗ m` reduces
+density to the two factors through a Dynkin argument over rectangles, the
+torus factor is Fourier density on `AddCircle 1` transported through the
+null seam of the `[0,1)` representation, the Gauss factor is the shrinking
+of closed prefix cylinders (`(1/4)^(d/2)` diameter) plus outer regularity,
+and a digit-cap refinement (`digit_tail_product`) rewrites the resulting
+mixed-depth combination as one `WindowSymbol` of a common radius. -/
 theorem cylinderChar_dense_L2 (f : NatExtTorus → ℂ) (hf : MemLp f 2 hatMu0)
     (ε : ℝ) (hε : 0 < ε) :
     ∃ (R K : ℕ) (U : WindowSymbol R K),
-      eLpNorm (fun z => f z - U.eval z) 2 hatMu0 < ENNReal.ofReal ε := by
-  sorry
+      eLpNorm (fun z => f z - U.eval z) 2 hatMu0 < ENNReal.ofReal ε :=
+  CylinderCharDense.cylinderChar_dense_L2_core f hf ε hε
 
 /-- **Lemma 6.2** (Gauss-torus mixing), v5 lines 1112-1114.  The system
 `(Ω̂ × T², μ̂₀, S)` is mixing.
