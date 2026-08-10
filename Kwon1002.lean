@@ -60,6 +60,7 @@ import Kwon1002.Section6Skeleton
 import Kwon1002.Lemma61
 import Kwon1002.WindowLaws
 import Kwon1002.NatExtInvariance
+import Kwon1002.NatExtMixing
 import Kwon1002.WindowMarginal
 import Kwon1002.DigitLaw
 import Kwon1002.Lemma62

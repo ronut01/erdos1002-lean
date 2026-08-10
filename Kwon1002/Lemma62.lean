@@ -1,6 +1,7 @@
 import Kwon1002.Section6Skeleton
 import Kwon1002.NatExtMeasure
 import Kwon1002.NatExtInvariance
+import Kwon1002.NatExtMixing
 import Kwon1002.CharacterReduction
 
 /-!
@@ -70,16 +71,19 @@ obstruction:
   `MeasureTheory.MeasurePreserving.skew_product` on the product shape
   `hatMu0_eq_prod : μ̂₀ = ν̂ ⊗ m`.
 
-What remains open is `natExt_zero_mode_mixing` and `cylinderChar_dense_L2`.
-`lemma_6_2_gauss_torus_mixing` needs, on top of `hatS_measurePreserving`,
-the `L²(μ̂₀)` density of finite digit-cylinder functions times torus
-characters and the mixing of the Gauss natural extension itself (the
-"zero modes" of v5 line 1148).  The BV chain in this tree
-(`BVMixing.lemma_3_2_BV`, `MixingBV.lem_3_2_conditional_multiblock_mixing'`)
-gives quantitative multi-block mixing for the *one-sided* Gauss system
-against BV observables; it does not give mixing of the two-sided natural
-extension, and no lifting statement exists in the tree.  Those two are
-exactly the sorries this file cannot discharge.
+`natExt_zero_mode_mixing` is now **proved**: it delegates to
+`Kwon1002.NatExtMixing.natExt_zero_mode_mixing`, where the lifting of the
+one-sided transfer-operator contraction to the two-sided natural
+extension is built by hand (conditional-expectation collapse onto the
+Gauss marginal, the `2 (1/2)^m` contraction of the past coordinate, and a
+closed-set/thickening approximation of indicators by Lipschitz
+observables).  See the module docstring of `Kwon1002/NatExtMixing.lean`
+for the architecture.
+
+What remains open is `cylinderChar_dense_L2` (the `L²(μ̂₀)` density of
+finite digit-cylinder functions times torus characters, v5 line 1149) and
+the assembly `lemma_6_2_gauss_torus_mixing` that consumes it.  Those are
+the sorries this file cannot yet discharge.
 
 -/
 
@@ -554,19 +558,25 @@ theorem hatS_measurePreserving : MeasurePreserving hatS hatMu0 hatMu0 := by
 
 /-- The zero-mode half of Lemma 6.2 (v5 line 1148): on characters with
 `k = ℓ = 0` the correlation is a correlation of the Gauss natural
-extension alone, and mixing there is the classical statement.
+extension alone — the two-sided system `((0,1)², ν̂, σ)` is mixing.
 
-**Obstruction.**  The BV mixing available here
-(`BVMixing.lemma_3_2_BV`, `MixingBV.lem_3_2_conditional_multiblock_mixing'`)
-is for the one-sided Gauss map against BV observables on `(0,1)`; lifting
-it to the two-sided natural extension requires
-`natExtMap_measurePreserving` and the identification of `natExtMap`-invariant
-sets with `gaussMap`-invariant sets, neither of which is in the tree. -/
+**Proved**, by delegation to
+`Kwon1002.NatExtMixing.natExt_zero_mode_mixing`.  An earlier revision of
+this docstring recorded the absence of a lifting from the one-sided BV
+chain to the two-sided extension as the obstruction; the lifting is now
+built by hand in `Kwon1002/NatExtMixing.lean`: the future coordinate of
+`σ^m` is `T^m x` exactly, the past coordinate is a `2 (1/2)^m`-contraction
+in its initial condition, so freezing the past and collapsing the
+conditional expectation onto the Gauss marginal turns the two-sided
+correlation into a one-sided one against the frozen-past observable, and
+Wang's transfer contraction closes it at rate `(527/540)^(m/2)` for
+coordinate-Lipschitz observables; indicators follow by inner regularity
+and thickened-indicator approximation. -/
 theorem natExt_zero_mode_mixing (A B : Set (ℝ × ℝ))
     (hA : MeasurableSet A) (hB : MeasurableSet B) :
     Tendsto (fun m : ℕ => hatNu.real (A ∩ natExtMap^[m] ⁻¹' B))
-      atTop (𝓝 (hatNu.real A * hatNu.real B)) := by
-  sorry
+      atTop (𝓝 (hatNu.real A * hatNu.real B)) :=
+  NatExtMixing.natExt_zero_mode_mixing A B hA hB
 
 /-- Finite digit-cylinder functions times torus characters are dense in
 `L²(μ̂₀)` (v5 line 1149, "density of cylinder functions times characters
