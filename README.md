@@ -28,17 +28,17 @@ The Lean toolchain, axiom policy, treatment of work-in-progress placeholders, CI
 
 Apache License 2.0. See [LICENSE](LICENSE).
 
-## Current state (2026-08-06)
+## Current state (2026-08-10)
 
 The Lean development builds against Lean v4.27.0 and mathlib pinned in
 `lake-manifest.json`.
 
-**1,285 theorems, 1,084 of them axiom-clean**, under the discipline this
+**1,583 theorems, 1,389 of them axiom-clean**, under the discipline this
 project enforces in CI: axioms exactly `propext`, `Classical.choice`,
 `Quot.sound`, with no `sorry` in any completed result, no `native_decide`,
 and no custom axioms anywhere, including the vendored infrastructure. The
 current measurement reports **zero** theorems on a non-standard axiom. The
-remaining 201 are the open goals and the results downstream of them: 101
+remaining 194 are the open goals and the results downstream of them: 94
 carry a placeholder directly, and the other 100 depend on one.
 
 Section 2 is formalized. Section 3 is formalized apart from Lemma 3.1(i),
@@ -53,10 +53,19 @@ used for its variation lemmas. Lemma 3.3 comes through the word-reversal
 argument.
 Section 5's analytic core is formalized, including the characteristic
 function of the limit law; the scale 1/(2π) is confirmed by three
-independent routes inside Lean. Section 6 is under way, with Lemma 6.1, the
-window laws, the resonance obstruction (50), the measurability layer of the
-window space, and the positivity of the reset set proved. Sections 4 and 7
-are open.
+independent routes inside Lean.
+
+The natural extension of section 6 is now fully constructed and its
+dynamics proved: the base measure is a probability measure with both
+coordinate marginals the Gauss measure; the extension map, its inverse,
+and the Gauss-torus skew product all preserve it; **the skew product is
+mixing (Lemma 6.2), proved for arbitrary measurable sets**, with the
+cylinder-character class shown dense in L²; the system is ergodic; the
+no-reset probability tends to zero; and the invariant carry graph of
+display (56) exists with the absolute bound `D = 9`. Lemma 6.1, the window
+laws, the resonance obstruction (50), and the event-truncation step of
+Proposition 6.4 are proved. Lemma 6.3 remains open pending the
+large-deviation input (16)/(20), and sections 4 and 7 are open.
 
 `wang_substrate/` contains Shouqiao Wang's MIT-licensed infrastructure,
 vendored verbatim at commit `d28713ac8245` with a provenance header added to
