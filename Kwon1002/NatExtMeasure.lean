@@ -30,6 +30,12 @@ computes its total mass, and records the factorization
   (`Kwon1002/Prop42.lean`) was available before; every ergodic and
   recurrence statement above this layer needs the total mass to be `1`,
   not merely finite.
+* `hatNu_fst_marginal`, the future-coordinate marginal: `(Prod.fst)_* ν̂`
+  is the Gauss measure `gaussMarginal` with density `1/(log 2 (1+x))` on
+  `(0,1)`.  The fibre computation it rests on, `∫₀¹ dy/(1+xy)² = 1/(1+x)`,
+  is the inner half of `hatNu_univ`, refactored out as
+  `lintegral_hatNuDensity_slice`.  The past-coordinate mirror is
+  `hatNu_snd_marginal` in `Kwon1002/NatExtInvariance.lean`.
 -/
 
 open MeasureTheory Set Filter
@@ -62,6 +68,16 @@ that `Kwon1002/Lemma62.lean` used to write out inline.  If the definition
 above drifts, this breaks. -/
 example : hatNu = (volume.restrict (Ioo (0 : ℝ) 1 ×ˢ Ioo (0 : ℝ) 1)).withDensity
     (fun p => ENNReal.ofReal (1 / (Real.log 2 * (1 + p.1 * p.2) ^ 2))) := rfl
+
+/-- **The Gauss measure `γ`** on `(0,1)`: Lebesgue with density
+`1/(log 2 (1+x))`.  It is the common marginal of `ν̂` in each of its two
+coordinates (`NatExtMeasure.hatNu_fst_marginal` below and
+`NatExtMeasure.hatNu_snd_marginal` in `Kwon1002/NatExtInvariance.lean`),
+hence the stationary law of the future coordinate of the natural
+extension. -/
+def gaussMarginal : Measure ℝ :=
+  (volume.restrict (Ioo (0 : ℝ) 1)).withDensity
+    (fun x => ENNReal.ofReal (1 / (Real.log 2 * (1 + x))))
 
 namespace NatExtMeasure
 
@@ -135,6 +151,33 @@ theorem lintegral_Ioo_ofReal_eq {f : ℝ → ℝ} (hf : ContinuousOn f (Icc (0:�
   rw [intervalIntegral.integral_of_le (by norm_num : (0:ℝ) ≤ 1),
     MeasureTheory.integral_Ioc_eq_integral_Ioo]
 
+/-- **The fibre slice of the `ν̂` density**: for `x ≥ 0`,
+`∫₀¹ dy/(log 2 (1+xy)²) = 1/(log 2 (1+x))`, via the antiderivative
+`y ↦ y/(1+xy)` of `integral_inv_one_add_mul_sq`.  This used to be the inner
+half of the proof of `hatNu_univ`, written inline there; it is refactored
+out because it is also the density identity behind the first-coordinate
+marginal `hatNu_fst_marginal`. -/
+theorem lintegral_hatNuDensity_slice {x : ℝ} (hx : 0 ≤ x) :
+    (∫⁻ y in Ioo (0:ℝ) 1, ENNReal.ofReal (1 / (Real.log 2 * (1 + x * y) ^ 2)))
+      = ENNReal.ofReal (1 / (Real.log 2 * (1 + x))) := by
+  have hl := log_two_pos
+  have hpos : ∀ y ∈ Icc (0:ℝ) 1, (0:ℝ) < 1 + x * y := by
+    intro y hy; nlinarith [hy.1, hy.2]
+  rw [lintegral_Ioo_ofReal_eq (f := fun y => 1 / (Real.log 2 * (1 + x * y) ^ 2))]
+  · congr 1
+    have hsplit : (fun y : ℝ => 1 / (Real.log 2 * (1 + x * y) ^ 2))
+        = fun y : ℝ => (Real.log 2)⁻¹ * (1 / (1 + x * y) ^ 2) := by
+      funext y; field_simp
+    rw [hsplit, intervalIntegral.integral_const_mul,
+      integral_inv_one_add_mul_sq x hx]
+    field_simp
+  · apply ContinuousOn.div continuousOn_const
+    · fun_prop
+    · intro y hy
+      exact mul_ne_zero hl.ne' (pow_ne_zero _ (hpos y hy).ne')
+  · intro y hy
+    positivity
+
 /-- Lebesgue on the square, as a product of Lebesgue on the factors. -/
 theorem restrict_unitSq_eq_prod :
     (volume : Measure (ℝ × ℝ)).restrict (Ioo (0:ℝ) 1 ×ˢ Ioo (0:ℝ) 1)
@@ -150,6 +193,23 @@ theorem restrict_box_eq_prod :
       = ((volume : Measure (ℝ × ℝ)).restrict (Ioo (0:ℝ) 1 ×ˢ Ioo (0:ℝ) 1)).prod
           ((volume : Measure (ℝ × ℝ)).restrict (Ioo (0:ℝ) 1 ×ˢ Ioo (0:ℝ) 1)) := by
   rw [Measure.prod_restrict, ← Measure.volume_eq_prod]
+
+/-- **The future-coordinate marginal of `ν̂` is the Gauss measure**:
+`(Prod.fst)_* ν̂ = γ`.  Fubini over the square reduces the claim on a test
+set `A` to the fibre computation `lintegral_hatNuDensity_slice`.  The
+mirror statement for the past coordinate is `hatNu_snd_marginal` in
+`Kwon1002/NatExtInvariance.lean`, where the swap symmetry of the density
+is available. -/
+theorem hatNu_fst_marginal : hatNu.map Prod.fst = gaussMarginal := by
+  refine Measure.ext fun A hA => ?_
+  rw [Measure.map_apply measurable_fst hA, hatNu, gaussMarginal,
+    withDensity_apply _ (measurable_fst hA), withDensity_apply _ hA,
+    restrict_unitSq_eq_prod, ← Set.prod_univ, ← Measure.prod_restrict,
+    Measure.restrict_univ, lintegral_prod _ measurable_hatNuDensity.aemeasurable,
+    Measure.restrict_restrict hA]
+  refine lintegral_congr_ae ?_
+  filter_upwards [ae_restrict_mem (hA.inter measurableSet_Ioo)] with x hx
+  exact lintegral_hatNuDensity_slice hx.2.1.le
 
 /-! ### Haar on the torus in the `Int.fract` representation
 
@@ -256,28 +316,8 @@ theorem hatNu_univ : hatNu Set.univ = 1 := by
   have hl := log_two_pos
   rw [hatNu, withDensity_apply _ MeasurableSet.univ, Measure.restrict_univ,
     restrict_unitSq_eq_prod, lintegral_prod _ measurable_hatNuDensity.aemeasurable]
-  have hinner : ∀ x ∈ Ioo (0:ℝ) 1,
-      (∫⁻ y in Ioo (0:ℝ) 1, ENNReal.ofReal (1 / (Real.log 2 * (1 + x * y) ^ 2)))
-        = ENNReal.ofReal (1 / (Real.log 2 * (1 + x))) := by
-    intro x hx
-    have hxnn : (0:ℝ) ≤ x := hx.1.le
-    have hpos : ∀ y ∈ Icc (0:ℝ) 1, (0:ℝ) < 1 + x * y := by
-      intro y hy; nlinarith [hy.1, hy.2]
-    rw [lintegral_Ioo_ofReal_eq (f := fun y => 1 / (Real.log 2 * (1 + x * y) ^ 2))]
-    · congr 1
-      have hsplit : (fun y : ℝ => 1 / (Real.log 2 * (1 + x * y) ^ 2))
-          = fun y : ℝ => (Real.log 2)⁻¹ * (1 / (1 + x * y) ^ 2) := by
-        funext y; field_simp
-      rw [hsplit, intervalIntegral.integral_const_mul,
-        integral_inv_one_add_mul_sq x hxnn]
-      field_simp
-    · apply ContinuousOn.div continuousOn_const
-      · fun_prop
-      · intro y hy
-        exact mul_ne_zero hl.ne' (pow_ne_zero _ (hpos y hy).ne')
-    · intro y hy
-      positivity
-  rw [setLIntegral_congr_fun measurableSet_Ioo hinner,
+  rw [setLIntegral_congr_fun measurableSet_Ioo
+      (fun x hx => lintegral_hatNuDensity_slice hx.1.le),
     lintegral_Ioo_ofReal_eq (f := fun x => 1 / (Real.log 2 * (1 + x)))]
   · have hsplit : (fun x : ℝ => 1 / (Real.log 2 * (1 + x)))
         = fun x : ℝ => (Real.log 2)⁻¹ * (1 / (1 + x)) := by

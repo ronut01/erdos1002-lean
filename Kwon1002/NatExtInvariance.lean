@@ -543,6 +543,22 @@ theorem natExtInv_measurePreserving : MeasurePreserving natExtInv hatNu hatNu :=
 
 end NatExtInvariance
 
+namespace NatExtMeasure
+
+/-- **The past-coordinate marginal of `ν̂` is also the Gauss measure**:
+`(Prod.snd)_* ν̂ = γ`, the mirror of `hatNu_fst_marginal`
+(`Kwon1002/NatExtMeasure.lean`).  No second Fubini computation is needed:
+`Prod.snd = Prod.fst ∘ Prod.swap`, and the swap preserves `ν̂` because the
+density is symmetric (`NatExtInvariance.dens_swap`, packaged as
+`NatExtInvariance.measurePreserving_swap_hatNu`), exactly the symmetry
+that `natExtInv_measurePreserving` runs on. -/
+theorem hatNu_snd_marginal : hatNu.map Prod.snd = gaussMarginal := by
+  have hcomp : (Prod.snd : ℝ × ℝ → ℝ) = Prod.fst ∘ (Prod.swap : ℝ × ℝ → ℝ × ℝ) := rfl
+  rw [hcomp, ← Measure.map_map measurable_fst measurable_swap,
+    NatExtInvariance.measurePreserving_swap_hatNu.map_eq, hatNu_fst_marginal]
+
+end NatExtMeasure
+
 end
 
 end Kwon1002
