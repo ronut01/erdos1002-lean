@@ -1,5 +1,9 @@
 import Kwon1002.Bridge
 import Kwon1002.Prop42
+import Kwon1002.Prop41Canon
+import Kwon1002.CharacterReduction
+import Kwon1002.CylinderPhase
+import Kwon1002.Display22
 
 /-!
 # Scratch (`errorshape`): the three §4-body inputs of `Kwon1002/ErrorShape.lean`
@@ -56,6 +60,30 @@ times `j` with the full `M = ⌊200H⌋`.  Invariance of `ν`
 rate produced is `ρ^{200H}` with `ρ = max(ρ_mix, 527/540)` exactly as (27)
 asserts, with `C = 2^r(log 2 + 2^r C_mix)/ρ`.
 
+## The nonzero-mode bookkeeping (§9, all proved)
+
+The obstruction note of `nonzero_mode_three_step` recorded that the missing
+piece was "the cylinder bookkeeping that puts `modeTerm` into the shape
+`∑_w ‖∑_v c_{w,v} ∫ e(nQ_wα)‖`" display (22) consumes.  Section 9 builds
+that bookkeeping outright: the frequency extraction
+(`modeTerm_eq_oscillatory`, via (8)), the frozen per-cylinder frequency
+(`exists_frozen_freqQ`, "on `I_w` the integer `Q` is fixed"), the
+retained/discarded split and step 1 conditional on the discarded mass
+(`nonzero_mode_cut_of_retained`, constant `C = 1`), and step 3 in retained
+form (`nonzero_mode_kill_of_retained`, from display (22)).  What separates
+these from an unconditional `nonzero_mode_three_step` is exactly:
+
+* **display (20)** (Lévy large deviations for `log q_j`, recorded as the
+  predicate `P42Cases.Display20`), which selects the retained words and
+  bounds the discarded mass by `O(e^{-cL^{1/2}})` and supplies both
+  inequalities of (29); no instance of it is proved in `Kwon1002/` or the
+  Wang substrate (see `PhaseBounds`, `P42Cases` §4); and
+* **step 2**, the stationary-mean replacement on depth-`k₊` cylinders,
+  which needs Lemma 3.2's conditional mixing transported from the Gauss
+  conditional measure (`MixingBV.lem_3_2_conditional_multiblock_mixing'`)
+  to the *Lebesgue* measure conditioned on a cylinder, plus the v8
+  restoration of the discarded cylinders (again (20)).
+
 ## Sorried results consumed
 
 Exactly one, stated in this file: `nonzero_mode_three_step`.
@@ -63,6 +91,7 @@ Exactly one, stated in this file: `nonzero_mode_three_step`.
 and `nonzero_mode_small` are **not** consumed, they are re-proved here.
 
 Everything imported from `Bridge`, `MixingBV`, `Prop4Final`, `Display22`,
+`Prop41Canon` sections 1-3, `CharacterReduction`, `CylinderPhase`,
 `AntiConcentration` and the Wang substrate is sorry-free.
 -/
 
@@ -619,7 +648,531 @@ theorem zero_mode_factorization (r : ℕ) (D : ℝ) (hD : 0 < D) :
         rw [hKrpow]
         field_simp
 
-/-! ## 9. Step 3 of the §4 body: a nonzero mode
+/-! ## 9. Nonzero-mode bookkeeping: frequency extraction and the retained cut
+
+The obstruction note of `nonzero_mode_three_step` below records that both §3
+oscillatory inputs (displays (22) and (23)) are proved, and that "what is
+missing is the cylinder bookkeeping that puts `modeTerm` into the shape
+`∑_w ‖∑_v c_{w,v} ∫ e(nQ_wα)‖` those lemmas consume."  This section builds
+that bookkeeping:
+
+* `exists_top_mode_index`: every nonzero mode tuple has a top nonzero
+  index `s`, the manuscript's "let `s` be maximal with `v_s ≠ 0`".
+* `modeChar_eq_freqQ` / `modeTerm_eq_oscillatory`: **the frequency
+  extraction.**  By (8) (`theta_eq_mod`), on irrational `α` the pure phase
+  of the mode `v` is `e(nQα)` with `Q = Σ_{ℓ≤s} v_ℓ (-1)^{j_ℓ} q_{j_ℓ}` the
+  integer `Prop41Canon.freqQ` of display (28); `modeTerm` becomes the
+  oscillatory integral `∫ (∏_ℓ c_ℓ(a_{j_ℓ+1}, v_ℓ)) e(nQ(α)α) dα`.
+* `freqQ_congr`: the frequency is **frozen at depth `j_s + 1`**: it depends
+  on `α` only through the digits below `max_{ℓ≤s} j_ℓ`, so it is constant
+  on every depth-`(j_s+1)` prefix cylinder — this is what makes each `Q_w`
+  of display (22) "fixed on `I_w`".
+* `integral_Ioo_eq_retained_add_remainder`: the **retained/discarded
+  split**: for any finite family `W` of positive depth-`d` words, the unit
+  integral is the sum of the integrals over the retained cylinders plus the
+  integral over the discarded set.
+* `nonzero_mode_cut_of_retained`: **step 1 of the three-step chain,
+  conditional form**: if the discarded mass is at most `η`, then `modeTerm`
+  differs from its retained-cylinder truncation by at most `(L^D)^r · η`.
+  With `W` the set of depth-`k₊` words retained by display (20) — whose
+  discarded mass is `O(e^{-cL^{1/2}})` — this is exactly the first bound of
+  `nonzero_mode_three_step`, with constant `C = 1`.  Display (20) is the
+  single input this conditional form waits on; it is absent from the whole
+  tree (see `PhaseBounds` §"no progress" and `P42Cases` §4). -/
+
+/-- The mode tuple `v : Fin r → ℤ` extended to `ℕ` by zero; the shape
+`Prop41Canon.freqQ` consumes. -/
+def modeExt (r : ℕ) (v : Fin r → ℤ) : ℕ → ℤ :=
+  fun ℓ => if h : ℓ < r then v ⟨ℓ, h⟩ else 0
+
+theorem modeExt_lt (r : ℕ) (v : Fin r → ℤ) (ℓ : ℕ) (h : ℓ < r) :
+    modeExt r v ℓ = v ⟨ℓ, h⟩ := dif_pos h
+
+theorem modeExt_fin (r : ℕ) (v : Fin r → ℤ) (ℓ : Fin r) :
+    modeExt r v (ℓ : ℕ) = v ℓ := by
+  rw [modeExt_lt r v ℓ ℓ.isLt]
+
+/-- **"Let `s` be maximal with `v_s ≠ 0`."**  Every nonzero mode tuple has a
+top nonzero index. -/
+theorem exists_top_mode_index {r : ℕ} {v : Fin r → ℤ} (hv : v ≠ 0) :
+    ∃ s : Fin r, v s ≠ 0 ∧ ∀ ℓ : Fin r, s < ℓ → v ℓ = 0 := by
+  classical
+  have hne : (Finset.univ.filter (fun ℓ : Fin r => v ℓ ≠ 0)).Nonempty := by
+    by_contra h
+    rw [Finset.not_nonempty_iff_eq_empty, Finset.filter_eq_empty_iff] at h
+    refine hv (funext fun ℓ => ?_)
+    by_contra hℓ
+    exact absurd hℓ (h (Finset.mem_univ ℓ))
+  refine ⟨(Finset.univ.filter (fun ℓ : Fin r => v ℓ ≠ 0)).max' hne, ?_, ?_⟩
+  · exact (Finset.mem_filter.mp (Finset.max'_mem _ hne)).2
+  · intro ℓ hℓ
+    by_contra hne0
+    exact absurd (Finset.le_max' _ ℓ (Finset.mem_filter.2 ⟨Finset.mem_univ _, hne0⟩))
+      (not_le.mpr hℓ)
+
+/-! ### Measurability of the frozen frequency -/
+
+theorem measurable_denom : ∀ k : ℕ, Measurable fun α : ℝ => denom α k
+  | 0 => measurable_const
+  | 1 => Prop42.measurable_digitNat 0
+  | (k + 2) => by
+      have h : (fun α : ℝ => denom α (k + 2))
+          = fun α : ℝ => digit α (k + 1) * denom α (k + 1) + denom α k := rfl
+      rw [h]
+      exact ((Prop42.measurable_digitNat (k + 1)).mul
+        (measurable_denom (k + 1))).add (measurable_denom k)
+
+theorem measurable_freqQ (j : ℕ → ℕ) (v : ℕ → ℤ) (s : ℕ) :
+    Measurable fun α : ℝ => Prop41Canon.freqQ α j v s := by
+  refine Finset.measurable_sum _ (fun ℓ _ => ?_)
+  exact measurable_const.mul
+    ((measurable_from_top (f := fun q : ℕ => (q : ℤ))).comp (measurable_denom (j ℓ)))
+
+theorem continuous_torusChar : Continuous torusChar := by
+  unfold torusChar
+  exact Complex.continuous_exp.comp (continuous_const.mul Complex.continuous_ofReal)
+
+theorem measurable_modeOsc (n : ℕ) (j : ℕ → ℕ) (v : ℕ → ℤ) (s : ℕ) :
+    Measurable fun α : ℝ =>
+      torusChar ((n : ℝ) * ((Prop41Canon.freqQ α j v s : ℤ) : ℝ) * α) := by
+  have h1 : Measurable fun α : ℝ => ((Prop41Canon.freqQ α j v s : ℤ) : ℝ) :=
+    (measurable_from_top (f := fun m : ℤ => (m : ℝ))).comp (measurable_freqQ j v s)
+  exact continuous_torusChar.measurable.comp
+    ((measurable_const.mul h1).mul measurable_id)
+
+theorem measurable_modeAmp (r : ℕ) (j : ℕ → ℕ) (c : ℕ → ℕ → ℤ → ℂ) (v : Fin r → ℤ) :
+    Measurable fun α : ℝ => ∏ ℓ : Fin r, c (ℓ : ℕ) (digit α (j ℓ)) (v ℓ) :=
+  Finset.measurable_prod _ (fun ℓ _ =>
+    (measurable_from_top (f := fun a : ℕ => c (ℓ : ℕ) a (v ℓ))).comp
+      (Prop42.measurable_digitNat (j ℓ)))
+
+/-- The scalar amplitude of a mode is bounded by `(L^D)^r`: each coefficient
+is bounded by the `ℓ¹` mass `L^D` of (24). -/
+theorem norm_modeAmp_le (n r : ℕ) (D : ℝ) (j : ℕ → ℕ) (F : ℕ → ℕ → ℝ → ℂ)
+    (c : ℕ → ℕ → ℤ → ℂ) (hc : RepresentsPD r D (Lnorm n) F c) (v : Fin r → ℤ)
+    (α : ℝ) :
+    ‖∏ ℓ : Fin r, c (ℓ : ℕ) (digit α (j ℓ)) (v ℓ)‖ ≤ ((Lnorm n) ^ D) ^ r := by
+  rw [norm_prod]
+  have h : ∀ ℓ : Fin r, ‖c (ℓ : ℕ) (digit α (j ℓ)) (v ℓ)‖ ≤ (Lnorm n) ^ D :=
+    fun ℓ => Prop4Final.coeff_norm_le r D (Lnorm n) F c hc ℓ ℓ.isLt _ _
+  calc ∏ ℓ : Fin r, ‖c (ℓ : ℕ) (digit α (j ℓ)) (v ℓ)‖
+      ≤ ∏ _ℓ : Fin r, (Lnorm n) ^ D :=
+        Finset.prod_le_prod (fun ℓ _ => norm_nonneg _) (fun ℓ _ => h ℓ)
+    _ = ((Lnorm n) ^ D) ^ r := by
+        rw [Finset.prod_const, Finset.card_univ, Fintype.card_fin]
+
+/-! ### The frequency extraction -/
+
+/-- **The phase of a nonzero mode is `e(nQα)`.**  By (8) (`theta_eq_mod`),
+on irrational `α ∈ (0,1)` the pure phase `e(Σ_ℓ v_ℓ θ_{j_ℓ})` of the mode
+`v` with top nonzero index `s` equals `e(nQα)` with
+`Q = Σ_{ℓ≤s} v_ℓ (-1)^{j_ℓ} q_{j_ℓ}` the integer of display (28). -/
+theorem modeChar_eq_freqQ {α : ℝ} (hα : α ∈ Ioo (0 : ℝ) 1) (hirr : Irrational α)
+    (n r : ℕ) (j : ℕ → ℕ) (v : Fin r → ℤ) (s : ℕ) (hs : s < r)
+    (htop : ∀ ℓ : Fin r, s < (ℓ : ℕ) → v ℓ = 0) :
+    torusChar (∑ ℓ : Fin r, (v ℓ : ℝ) * theta α n (j ℓ))
+      = torusChar ((n : ℝ) * ((Prop41Canon.freqQ α j (modeExt r v) s : ℤ) : ℝ) * α) := by
+  classical
+  choose m hm using fun ℓ : Fin r => theta_eq_mod hα hirr n (j (ℓ : ℕ))
+  -- the frequency, extended from `range (s+1)` to `range r`
+  have hQr : Prop41Canon.freqQ α j (modeExt r v) s
+      = ∑ ℓ ∈ Finset.range r, modeExt r v ℓ * (-1) ^ (j ℓ) * (denom α (j ℓ) : ℤ) := by
+    rw [Prop41Canon.freqQ]
+    refine Finset.sum_subset
+      (fun x hx => Finset.mem_range.mpr
+        (lt_of_le_of_lt (Nat.lt_succ_iff.mp (Finset.mem_range.mp hx)) hs))
+      (fun ℓ hℓr hℓs => ?_)
+    have h1 : ℓ < r := Finset.mem_range.mp hℓr
+    have h2 : s < ℓ := by
+      rw [Finset.mem_range, Nat.lt_succ_iff, not_le] at hℓs
+      exact hℓs
+    rw [modeExt_lt r v ℓ h1, htop ⟨ℓ, h1⟩ h2, zero_mul, zero_mul]
+  -- its real cast, as a `Fin r` sum
+  have hQcast : ((Prop41Canon.freqQ α j (modeExt r v) s : ℤ) : ℝ)
+      = ∑ ℓ : Fin r, (v ℓ : ℝ) * (-1 : ℝ) ^ (j (ℓ : ℕ)) * (denom α (j (ℓ : ℕ)) : ℝ) := by
+    rw [hQr, ← Fin.sum_univ_eq_sum_range
+      (fun ℓ => modeExt r v ℓ * (-1) ^ (j ℓ) * (denom α (j ℓ) : ℤ)) r]
+    push_cast
+    refine Finset.sum_congr rfl (fun ℓ _ => ?_)
+    rw [modeExt_fin r v ℓ]
+  -- the phase sum, decomposed through (8)
+  have hsum : (∑ ℓ : Fin r, (v ℓ : ℝ) * theta α n (j ℓ))
+      = (n : ℝ) * ((Prop41Canon.freqQ α j (modeExt r v) s : ℤ) : ℝ) * α
+        + ((∑ ℓ : Fin r, v ℓ * m ℓ : ℤ) : ℝ) := by
+    have h1 : (∑ ℓ : Fin r, (v ℓ : ℝ) * theta α n (j ℓ))
+        = ∑ ℓ : Fin r,
+            ((v ℓ : ℝ) * ((-1 : ℝ) ^ (j (ℓ : ℕ)) * (denom α (j (ℓ : ℕ)) : ℝ) * (n : ℝ) * α)
+              + (v ℓ : ℝ) * ((m ℓ : ℤ) : ℝ)) := by
+      refine Finset.sum_congr rfl (fun ℓ _ => ?_)
+      rw [hm ℓ]
+      ring
+    rw [h1, Finset.sum_add_distrib, hQcast, Finset.mul_sum, Finset.sum_mul]
+    push_cast
+    refine congrArg₂ (· + ·) (Finset.sum_congr rfl (fun ℓ _ => by ring)) rfl
+  rw [hsum, torusChar_add_int]
+
+/-- **`modeTerm` as an oscillatory integral.**  The first half of the
+missing bookkeeping: the digit-Fourier term of a nonzero mode is
+`∫ (∏_ℓ c_ℓ(a_{j_ℓ+1}, v_ℓ)) e(nQ(α)α) dα` with `Q` the frozen integer
+frequency of (28). -/
+theorem modeTerm_eq_oscillatory (n r : ℕ) (j : ℕ → ℕ) (c : ℕ → ℕ → ℤ → ℂ)
+    (v : Fin r → ℤ) (s : ℕ) (hs : s < r)
+    (htop : ∀ ℓ : Fin r, s < (ℓ : ℕ) → v ℓ = 0) :
+    modeTerm n r j c v
+      = ∫ α in Ioo (0 : ℝ) 1,
+          (∏ ℓ : Fin r, c (ℓ : ℕ) (digit α (j ℓ)) (v ℓ)) *
+            torusChar ((n : ℝ) * ((Prop41Canon.freqQ α j (modeExt r v) s : ℤ) : ℝ) * α) := by
+  rw [ErrorShape.modeTerm]
+  refine integral_congr_ae ?_
+  filter_upwards [ae_restrict_mem measurableSet_Ioo, ae_irrational_restrict]
+    with α hα hirr
+  rw [modeChar_eq_freqQ hα hirr n r j v s hs htop]
+
+/-! ### The frequency is frozen at depth `j_s + 1` -/
+
+/-- The frequency `Q` depends on `α` only through the digits below
+`max_{ℓ ≤ s} j_ℓ`: two points whose first `d` digits agree, where
+`j ℓ ≤ d` for every `ℓ ≤ s`, have the same frequency.  In particular `Q`
+is constant on every depth-`(j_s+1)` prefix cylinder of a monotone tuple,
+which is display (22)'s "on `I_w` the integer `Q_w` is fixed". -/
+theorem freqQ_congr {α α' : ℝ} (j : ℕ → ℕ) (v : ℕ → ℤ) (s d : ℕ)
+    (hjd : ∀ ℓ, ℓ ≤ s → j ℓ ≤ d) (hdig : ∀ i, i < d → digit α i = digit α' i) :
+    Prop41Canon.freqQ α j v s = Prop41Canon.freqQ α' j v s := by
+  unfold Prop41Canon.freqQ
+  refine Finset.sum_congr rfl (fun ℓ hℓ => ?_)
+  have hℓs : ℓ ≤ s := Nat.lt_succ_iff.mp (Finset.mem_range.mp hℓ)
+  have hden := (cf_congr α α' (j ℓ)
+    (fun i hi => hdig i (lt_of_lt_of_le hi (hjd ℓ hℓs)))).1
+  rw [hden]
+
+/-! ### The retained/discarded split -/
+
+/-- A nonempty positive half-open prefix cylinder lies in `(0, 1]`. -/
+theorem halfOpenCylinder_subset_Ioc {w : List ℕ} (hw : w ≠ [])
+    (hpos : ∀ a ∈ w, 0 < a) :
+    Erdos1002.gaussHalfOpenPrefixCylinder w ⊆ Ioc (0 : ℝ) 1 := by
+  cases w with
+  | nil => exact absurd rfl hw
+  | cons q qs =>
+      intro x hx
+      have hq : 0 < q := hpos q (by simp)
+      have h1 : x ∈ Erdos1002.firstDigitCylinder q := hx.1
+      rw [Erdos1002.firstDigitCylinder] at h1
+      have hq1 : (0 : ℝ) < 1 / ((q + 1 : ℕ) : ℝ) := by positivity
+      have hqR : (1 : ℝ) ≤ (q : ℝ) := by exact_mod_cast hq
+      refine ⟨lt_trans hq1 h1.1, le_trans h1.2 ?_⟩
+      rw [div_le_one (by linarith)]
+      exact hqR
+
+/-- **The retained/discarded split.**  For a bounded measurable `f` and any
+finite family `W` of positive depth-`d` words, the unit integral is the sum
+over the retained cylinders plus the integral over the discarded set.  This
+is the manuscript's tacit "partition into complete depth-`d` cylinders and
+retain those where (20) holds". -/
+theorem integral_Ioo_eq_retained_add_remainder (f : ℝ → ℂ) (B : ℝ)
+    (hfm : Measurable f) (hfb : ∀ α, ‖f α‖ ≤ B)
+    (W : Finset (List ℕ)) (d : ℕ) (hd : 0 < d)
+    (hW : ∀ w ∈ W, w.length = d ∧ ∀ a ∈ w, 0 < a) :
+    ∫ α in Ioo (0 : ℝ) 1, f α
+      = (∑ w ∈ W, ∫ α in Erdos1002.gaussHalfOpenPrefixCylinder w, f α)
+        + ∫ α in Ioo (0 : ℝ) 1 \
+            (⋃ w ∈ W, Erdos1002.gaussHalfOpenPrefixCylinder w), f α := by
+  classical
+  set U : Set ℝ := ⋃ w ∈ W, Erdos1002.gaussHalfOpenPrefixCylinder w with hU
+  have hwne : ∀ w ∈ W, w ≠ [] := by
+    intro w hw hnil
+    have := (hW w hw).1
+    rw [hnil] at this
+    simp at this
+    omega
+  have hsub : ∀ w ∈ W, Erdos1002.gaussHalfOpenPrefixCylinder w ⊆ Ioc (0 : ℝ) 1 :=
+    fun w hw => halfOpenCylinder_subset_Ioc (hwne w hw) (hW w hw).2
+  have hmw : ∀ w ∈ W, MeasurableSet (Erdos1002.gaussHalfOpenPrefixCylinder w) :=
+    fun w _ => Erdos1002.measurableSet_gaussHalfOpenPrefixCylinder w
+  have hmU : MeasurableSet U := Finset.measurableSet_biUnion _ hmw
+  -- integrability of `f` on any measurable subset of `(0, 1]`
+  have hint : ∀ s : Set ℝ, MeasurableSet s → s ⊆ Ioc (0 : ℝ) 1 → IntegrableOn f s := by
+    intro s hms hss
+    have hfin : IsFiniteMeasure (volume.restrict s) := by
+      constructor
+      rw [Measure.restrict_apply_univ]
+      calc volume s ≤ volume (Ioc (0 : ℝ) 1) := measure_mono hss
+        _ < ⊤ := by rw [Real.volume_Ioc]; norm_num
+    exact Integrable.of_bound hfm.aestronglyMeasurable B (Eventually.of_forall hfb)
+  have hintIoo : IntegrableOn f (Ioo (0 : ℝ) 1) :=
+    hint _ measurableSet_Ioo (fun x hx => ⟨hx.1, hx.2.le⟩)
+  -- split `Ioo` into `Ioo ∩ U` and `Ioo \ U`
+  have hsplit := integral_inter_add_diff (μ := volume) (s := Ioo (0 : ℝ) 1)
+    (t := U) (f := f) hmU hintIoo
+  -- `Ioo ∩ U =ᵐ U`, the difference being at most `{1}`
+  have hUsub : U ⊆ Ioc (0 : ℝ) 1 := by
+    rw [hU]
+    exact Set.iUnion₂_subset hsub
+  have hae : (Ioo (0 : ℝ) 1 ∩ U : Set ℝ) =ᵐ[volume] U := by
+    refine MeasureTheory.ae_eq_set.mpr ⟨?_, ?_⟩
+    · rw [Set.diff_eq_empty.mpr Set.inter_subset_right]
+      exact measure_empty
+    · refine measure_mono_null (fun x hx => ?_) (measure_singleton (1 : ℝ))
+      rcases hx with ⟨hxU, hxn⟩
+      have hxIoc := hUsub hxU
+      have : x ∉ Ioo (0 : ℝ) 1 := fun hxo => hxn ⟨hxo, hxU⟩
+      rw [Set.mem_singleton_iff]
+      rcases lt_or_eq_of_le hxIoc.2 with hlt | heq
+      · exact absurd ⟨hxIoc.1, hlt⟩ this
+      · exact heq
+  have hIU : ∫ α in Ioo (0 : ℝ) 1 ∩ U, f α = ∫ α in U, f α :=
+    setIntegral_congr_set hae
+  -- the integral over `U` is the sum over the disjoint retained cylinders
+  have hdisj : (W : Set (List ℕ)).PairwiseDisjoint
+      (fun w => Erdos1002.gaussHalfOpenPrefixCylinder w) := by
+    intro x hx y hy hxy
+    exact Erdos1002.disjoint_gaussHalfOpenPrefixCylinder_of_sameLength
+      (by rw [(hW x hx).1, (hW y hy).1]) ((hW x hx).2) ((hW y hy).2) hxy
+  have hUsum : ∫ α in U, f α
+      = ∑ w ∈ W, ∫ α in Erdos1002.gaussHalfOpenPrefixCylinder w, f α := by
+    rw [hU]
+    exact integral_biUnion_finset W hmw hdisj (fun w hw => hint _ (hmw w hw) (hsub w hw))
+  rw [← hsplit, hIU, hUsum]
+
+/-! ### Step 1 of the three-step chain, conditional form -/
+
+/-- **The retained-cylinder cut (step 1 of `nonzero_mode_three_step`,
+conditional on the discarded mass).**  If the discarded set of the depth-`d`
+partition has Lebesgue mass at most `η`, then `modeTerm` differs from its
+retained-cylinder truncation
+
+`T₁ = Σ_{w ∈ W} ∫_{I_w} (∏_ℓ c_ℓ(a_{j_ℓ+1}, v_ℓ)) e(nQ(α)α) dα`
+
+by at most `(L^D)^r · η`.  Display (20) — the Lévy large-deviation bound
+for `log q_j`, absent from the tree — is exactly what supplies a `W` (the
+depth-`k₊` words retained at `j_s`, `k₋`, `k₊`) with `η = O(e^{-cL^{1/2}})`;
+with that input this is the first bound of `nonzero_mode_three_step` with
+constant `C = 1`. -/
+theorem nonzero_mode_cut_of_retained (n r : ℕ) (D : ℝ) (j : ℕ → ℕ)
+    (F : ℕ → ℕ → ℝ → ℂ) (c : ℕ → ℕ → ℤ → ℂ) (hc : RepresentsPD r D (Lnorm n) F c)
+    (v : Fin r → ℤ) (s : ℕ) (hs : s < r)
+    (htop : ∀ ℓ : Fin r, s < (ℓ : ℕ) → v ℓ = 0)
+    (W : Finset (List ℕ)) (d : ℕ) (hd : 0 < d)
+    (hW : ∀ w ∈ W, w.length = d ∧ ∀ a ∈ w, 0 < a) (η : ℝ)
+    (hmass : (volume (Ioo (0 : ℝ) 1 \
+        (⋃ w ∈ W, Erdos1002.gaussHalfOpenPrefixCylinder w))).toReal ≤ η) :
+    ‖modeTerm n r j c v
+        - ∑ w ∈ W, ∫ α in Erdos1002.gaussHalfOpenPrefixCylinder w,
+            (∏ ℓ : Fin r, c (ℓ : ℕ) (digit α (j ℓ)) (v ℓ)) *
+              torusChar ((n : ℝ) * ((Prop41Canon.freqQ α j (modeExt r v) s : ℤ) : ℝ) * α)‖
+      ≤ ((Lnorm n) ^ D) ^ r * η := by
+  classical
+  have hB0 : (0 : ℝ) ≤ ((Lnorm n) ^ D) ^ r :=
+    le_trans (norm_nonneg _) (norm_modeAmp_le n r D j F c hc v (1 / 2))
+  have hgb : ∀ α : ℝ,
+      ‖(∏ ℓ : Fin r, c (ℓ : ℕ) (digit α (j ℓ)) (v ℓ)) *
+          torusChar ((n : ℝ) * ((Prop41Canon.freqQ α j (modeExt r v) s : ℤ) : ℝ) * α)‖
+        ≤ ((Lnorm n) ^ D) ^ r := by
+    intro α
+    simp only [norm_mul, Prop42.norm_torusChar, mul_one]
+    exact norm_modeAmp_le n r D j F c hc v α
+  have hgm : Measurable (fun α : ℝ =>
+      (∏ ℓ : Fin r, c (ℓ : ℕ) (digit α (j ℓ)) (v ℓ)) *
+        torusChar ((n : ℝ) * ((Prop41Canon.freqQ α j (modeExt r v) s : ℤ) : ℝ) * α)) :=
+    (measurable_modeAmp r j c v).mul (measurable_modeOsc n j (modeExt r v) s)
+  rw [modeTerm_eq_oscillatory n r j c v s hs htop,
+    integral_Ioo_eq_retained_add_remainder _ (((Lnorm n) ^ D) ^ r) hgm hgb W d hd hW,
+    add_sub_cancel_left]
+  refine le_trans (norm_setIntegral_le_of_norm_le_const ?_ (fun x _ => hgb x)) ?_
+  · calc volume (Ioo (0 : ℝ) 1 \
+          (⋃ w ∈ W, Erdos1002.gaussHalfOpenPrefixCylinder w))
+        ≤ volume (Ioo (0 : ℝ) 1) := measure_mono Set.diff_subset
+      _ < ⊤ := by rw [Real.volume_Ioo]; norm_num
+  · exact mul_le_mul_of_nonneg_left hmass hB0
+
+/-! ### The frequency is an attribute of the retained cylinder
+
+Display (22) requires "on `I_w`, `Q_w ∈ ℤ` is fixed".  The three lemmas
+below deliver exactly that for the retained integrals of
+`nonzero_mode_cut_of_retained`: every positive word `w` deep enough to
+determine the digits read by `Q` carries a single frozen integer `Q_w`,
+shared by all irrational points of its cylinder, and on the cylinder the
+integrand's phase is the pure oscillation `e(nQ_w α)` of (22). -/
+
+/-- An irrational point of a positive nonempty half-open prefix cylinder
+lies in the open unit interval. -/
+theorem mem_Ioo_of_mem_halfOpen {w : List ℕ} {α : ℝ} (hw : w ≠ [])
+    (hpos : ∀ a ∈ w, 0 < a)
+    (hα : α ∈ Erdos1002.gaussHalfOpenPrefixCylinder w) (hirr : Irrational α) :
+    α ∈ Ioo (0 : ℝ) 1 := by
+  have h := halfOpenCylinder_subset_Ioc hw hpos hα
+  refine ⟨h.1, lt_of_le_of_ne h.2 ?_⟩
+  intro h1
+  exact hirr ⟨1, by rw [h1]; norm_num⟩
+
+/-- An irrational point of a positive half-open prefix cylinder reads the
+word off digit by digit. -/
+theorem digit_eq_of_mem_halfOpen {w : List ℕ} {α : ℝ}
+    (hαIoo : α ∈ Ioo (0 : ℝ) 1) (hirr : Irrational α)
+    (hα : α ∈ Erdos1002.gaussHalfOpenPrefixCylinder w) :
+    ∀ i (h : i < w.length), digit α i = w[i]'h := by
+  have horb : ∀ k : ℕ, Erdos1002.gaussOrbit k α ∈ Ioo (0 : ℝ) 1 := by
+    intro k
+    rw [← MixingBV.gaussIter_eq_gaussOrbit]
+    exact gaussIter_mem_Ioo hαIoo hirr k
+  intro i h
+  rw [MixingBV.digit_eq_gaussDigitAt]
+  exact (MixingBV.mem_halfOpen_iff w α horb).1 hα i h
+
+/-- **"On `I_w` the integer `Q` is fixed."**  All irrational points of the
+cylinder of a positive word `w` with `j ℓ ≤ |w|` for `ℓ ≤ s` share one
+frozen frequency. -/
+theorem exists_frozen_freqQ (r : ℕ) (v : Fin r → ℤ) (j : ℕ → ℕ) (s : ℕ)
+    (w : List ℕ) (hw : w ≠ []) (hpos : ∀ a ∈ w, 0 < a)
+    (hjd : ∀ ℓ, ℓ ≤ s → j ℓ ≤ w.length) :
+    ∃ Q : ℤ, ∀ α ∈ Erdos1002.gaussHalfOpenPrefixCylinder w, Irrational α →
+      Prop41Canon.freqQ α j (modeExt r v) s = Q := by
+  classical
+  by_cases hex : ∃ α₀, α₀ ∈ Erdos1002.gaussHalfOpenPrefixCylinder w ∧ Irrational α₀
+  · obtain ⟨α₀, hα₀, hirr₀⟩ := hex
+    refine ⟨Prop41Canon.freqQ α₀ j (modeExt r v) s, ?_⟩
+    intro α hα hirr
+    refine freqQ_congr j (modeExt r v) s w.length hjd (fun i hi => ?_)
+    rw [digit_eq_of_mem_halfOpen (mem_Ioo_of_mem_halfOpen hw hpos hα hirr) hirr hα i hi,
+      digit_eq_of_mem_halfOpen (mem_Ioo_of_mem_halfOpen hw hpos hα₀ hirr₀) hirr₀ hα₀ i hi]
+  · exact ⟨0, fun α hα hirr => absurd ⟨α, hα, hirr⟩ hex⟩
+
+/-- `e(t)` at `t = Kx` is the oscillatory phase of the Wang substrate; this
+is the notational bridge between the §4 torus character and the phase of
+display (22). -/
+theorem torusChar_eq_oscillatoryPhase (K x : ℝ) :
+    torusChar (K * x) = Erdos1002.oscillatoryPhase K x := by
+  unfold torusChar Erdos1002.oscillatoryPhase
+  congr 1
+  push_cast
+  ring
+
+/-- **The retained integrals are display (22)-shaped.**  On the cylinder of
+each retained word the phase freezes to the pure oscillation `e(nQ_w α)`,
+so each summand of the `T₁` of `nonzero_mode_cut_of_retained` is literally
+of the form `∫_{I_w} e(2πi n Q_w α) A(α) dα` that
+`Kwon1002.descendant_cylinder_estimate` (display (22)) consumes.  This
+completes the reduction of `modeTerm` to the shape
+`Σ_w ∫_{I_w} e(nQ_wα)·(amplitude)`; what remains between this and the
+three-step chain is (i) display (20) selecting the retained words with
+small discarded mass, and (ii) the conditional stationary-mean replacement
+of step 2. -/
+theorem retained_integral_oscillatory_form (n r : ℕ) (j : ℕ → ℕ)
+    (c : ℕ → ℕ → ℤ → ℂ) (v : Fin r → ℤ) (s : ℕ)
+    (w : List ℕ) (hw : w ≠ []) (hpos : ∀ a ∈ w, 0 < a)
+    (hjd : ∀ ℓ, ℓ ≤ s → j ℓ ≤ w.length) :
+    ∃ Q : ℤ,
+      (∀ α ∈ Erdos1002.gaussHalfOpenPrefixCylinder w, Irrational α →
+        Prop41Canon.freqQ α j (modeExt r v) s = Q) ∧
+      (∫ α in Erdos1002.gaussHalfOpenPrefixCylinder w,
+          (∏ ℓ : Fin r, c (ℓ : ℕ) (digit α (j ℓ)) (v ℓ)) *
+            torusChar ((n : ℝ) * ((Prop41Canon.freqQ α j (modeExt r v) s : ℤ) : ℝ) * α))
+        = ∫ α in Erdos1002.gaussHalfOpenPrefixCylinder w,
+            Erdos1002.oscillatoryPhase ((n : ℝ) * (Q : ℝ)) α *
+              (∏ ℓ : Fin r, c (ℓ : ℕ) (digit α (j ℓ)) (v ℓ)) := by
+  obtain ⟨Q, hQ⟩ := exists_frozen_freqQ r v j s w hw hpos hjd
+  refine ⟨Q, hQ, ?_⟩
+  have hairr : ∀ᵐ α ∂(volume : Measure ℝ), Irrational α := by
+    rw [ae_iff]
+    have hc : (Set.range ((↑) : ℚ → ℝ)).Countable := Set.countable_range _
+    have hset : {x : ℝ | ¬ Irrational x} = Set.range ((↑) : ℚ → ℝ) := by
+      ext x
+      simp [Irrational]
+    rw [hset]
+    exact hc.measure_zero volume
+  refine integral_congr_ae ?_
+  filter_upwards [ae_restrict_mem
+    (Erdos1002.measurableSet_gaussHalfOpenPrefixCylinder w),
+    ae_restrict_of_ae hairr] with α hα hirr
+  rw [hQ α hα hirr, mul_comm]
+  congr 1
+  rw [← torusChar_eq_oscillatoryPhase]
+
+/-! ### Step 3 of the three-step chain, retained form -/
+
+/-- A positive half-open prefix cylinder and its closed version agree up to
+a Lebesgue-null set: the two conventions of `nonzero_mode_cut_of_retained`
+(half-open, disjoint) and display (22) (closed) are interchangeable inside
+every integral. -/
+theorem halfOpen_ae_eq_closed {w : List ℕ} (hpos : ∀ a ∈ w, 0 < a) :
+    Erdos1002.gaussHalfOpenPrefixCylinder w
+      =ᵐ[volume] Erdos1002.closedGaussPrefixCylinder w := by
+  have hsub := Erdos1002.gaussHalfOpenPrefixCylinder_subset_closed hpos
+  refine MeasureTheory.ae_eq_set.mpr ⟨?_, ?_⟩
+  · rw [Set.diff_eq_empty.mpr hsub]
+    exact measure_empty
+  · have hfin : volume (Erdos1002.gaussHalfOpenPrefixCylinder w) ≠ ⊤ := by
+      refine ne_top_of_le_ne_top (by simp : volume (Icc (0 : ℝ) 1) ≠ ⊤) ?_
+      exact measure_mono (hsub.trans
+        (Erdos1002.closedGaussPrefixCylinder_subset_unit hpos))
+    rw [measure_diff hsub
+        (Erdos1002.measurableSet_gaussHalfOpenPrefixCylinder w).nullMeasurableSet hfin,
+      volume_closedCylinder_eq_halfOpen hpos, tsub_self]
+
+/-- **Step 3 of the three-step chain, retained form (the oscillatory
+kill).**  Once display (20) has selected the retained words `W` and step 2
+has replaced the post-resonance digit factors by the constant stationary
+product, what is left is `Σ_w amp_w ∫_{I_w} e(nQ_wα) A(α) dα` with
+`‖amp w‖ ≤ B`; under the hypotheses of display (22) — `Q_w ≠ 0` fixed on
+`I_w` (supplied for the mode amplitudes by `exists_frozen_freqQ` together
+with display (28) `Prop41Canon.display_28`), the support of `A` below `I_w`
+a union of depth-`k` descendants with `q_k ≤ R_w`, and `R_w² ≤ ε n |Q_w|`
+(the first inequality of (29)) — the whole sum is `O(Bε)`.  At
+`ε = e^{-cH}`, `B = L^{O_{r,D}(1)}`, this is the third bound of
+`nonzero_mode_three_step`. -/
+theorem nonzero_mode_kill_of_retained :
+    ∃ C : ℝ, 0 < C ∧ ∀ (ε : ℝ), 0 < ε → ∀ (n d k : ℕ), 0 < n → d < k →
+      ∀ (W : Finset (List ℕ)) (Q : List ℕ → ℤ) (R : List ℕ → ℝ)
+        (S : List ℕ → Finset (List ℕ)) (A : ℝ → ℂ) (amp : List ℕ → ℂ) (B : ℝ),
+        0 ≤ B → (∀ w ∈ W, ‖amp w‖ ≤ B) →
+        (∀ w ∈ W, w.length = d ∧ ∀ a ∈ w, 0 < a) →
+        (∀ w ∈ W, Q w ≠ 0) →
+        (∀ w ∈ W, (R w) ^ 2 ≤ ε * (n : ℝ) * |(Q w : ℝ)|) →
+        (∀ α, ‖A α‖ ≤ 1) →
+        (∀ u : List ℕ, u.length = k → (∀ a ∈ u, 0 < a) →
+          ∀ α ∈ Erdos1002.closedGaussPrefixCylinder u,
+            ∀ β ∈ Erdos1002.closedGaussPrefixCylinder u, A α = A β) →
+        Measurable A →
+        (∀ w ∈ W, ∀ v ∈ S w, v.length = k - d ∧ (∀ a ∈ v, 0 < a)) →
+        (∀ w ∈ W, ∀ α ∈ Erdos1002.closedGaussPrefixCylinder w, A α ≠ 0 →
+          ∃ v ∈ S w, α ∈ Erdos1002.closedGaussPrefixCylinder (w ++ v)) →
+        (∀ w ∈ W, ∀ v ∈ S w,
+          (Erdos1002.cfTerminalDenominator (w ++ v) : ℝ) ≤ R w) →
+        ‖∑ w ∈ W, amp w *
+            ∫ α in Erdos1002.gaussHalfOpenPrefixCylinder w,
+              Erdos1002.oscillatoryPhase ((n : ℝ) * (Q w : ℝ)) α * A α‖
+          ≤ C * B * ε := by
+  obtain ⟨C, hC, hest⟩ := descendant_cylinder_estimate
+  refine ⟨C, hC, ?_⟩
+  intro ε hε n d k hn hdk W Q R S A amp B hB hamp hW hQ hR hAbd hAconst hAmeas
+    hSlen hAsupp hSden
+  have h22 := hest ε hε n d k hn hdk W Q R S A hW hQ hR hAbd hAconst hAmeas
+    hSlen hAsupp hSden
+  have hint : ∀ w ∈ W,
+      (∫ α in Erdos1002.gaussHalfOpenPrefixCylinder w,
+          Erdos1002.oscillatoryPhase ((n : ℝ) * (Q w : ℝ)) α * A α)
+        = ∫ α in Erdos1002.closedGaussPrefixCylinder w,
+            Erdos1002.oscillatoryPhase ((n : ℝ) * (Q w : ℝ)) α * A α :=
+    fun w hw => setIntegral_congr_set (halfOpen_ae_eq_closed (hW w hw).2)
+  calc ‖∑ w ∈ W, amp w *
+          ∫ α in Erdos1002.gaussHalfOpenPrefixCylinder w,
+            Erdos1002.oscillatoryPhase ((n : ℝ) * (Q w : ℝ)) α * A α‖
+      ≤ ∑ w ∈ W, ‖amp w *
+          ∫ α in Erdos1002.gaussHalfOpenPrefixCylinder w,
+            Erdos1002.oscillatoryPhase ((n : ℝ) * (Q w : ℝ)) α * A α‖ :=
+        norm_sum_le _ _
+    _ ≤ ∑ w ∈ W, B * ‖∫ α in Erdos1002.closedGaussPrefixCylinder w,
+          Erdos1002.oscillatoryPhase ((n : ℝ) * (Q w : ℝ)) α * A α‖ := by
+        refine Finset.sum_le_sum (fun w hw => ?_)
+        rw [norm_mul, hint w hw]
+        exact mul_le_mul_of_nonneg_right (hamp w hw) (norm_nonneg _)
+    _ = B * ∑ w ∈ W, ‖∫ α in Erdos1002.closedGaussPrefixCylinder w,
+          Erdos1002.oscillatoryPhase ((n : ℝ) * (Q w : ℝ)) α * A α‖ := by
+        rw [Finset.mul_sum]
+    _ ≤ B * (C * ε) := mul_le_mul_of_nonneg_left h22 hB
+    _ = C * B * ε := by ring
+
+/-! ## 10. Step 3 of the §4 body: a nonzero mode
 
 The manuscript's `v_s ≠ 0` branch (lines ≈ 337-383) is a *chain of three
 replacements*, and its three error terms are exactly the three summands of
@@ -665,9 +1218,17 @@ constants into the single bracket of (30).
   `R_w = q_{k_-}`, whose hypothesis `R_w² ≤ ε n |Q_w|` is the first
   inequality of (29); `Kwon1002.shrinking_anti_concentration` (Lemma 3.3,
   proved) is what makes the frequency non-degenerate on the retained set.
-  Both are available; what is missing is the cylinder bookkeeping that puts
-  `modeTerm` into the shape `∑_w ‖∑_v c_{w,v} ∫ e(nQ_wα)‖` those lemmas
-  consume.
+  The cylinder bookkeeping that puts `modeTerm` into the shape
+  `∑_w ‖∑_v c_{w,v} ∫ e(nQ_wα)‖` those lemmas consume is now **built in
+  §9 above**: `modeTerm_eq_oscillatory` (frequency extraction via (8)),
+  `exists_frozen_freqQ` + `retained_integral_oscillatory_form` (the frozen
+  `Q_w` on each retained cylinder), `nonzero_mode_cut_of_retained` (step 1
+  with the discarded mass as an explicit hypothesis, constant `C = 1`) and
+  `nonzero_mode_kill_of_retained` (step 3 under (22)'s hypotheses).  The
+  residual between those conditional forms and this statement is exactly
+  display (20) — the selection of the retained words, the `e^{-cL^{1/2}}`
+  mass of the discard, and both inequalities of (29) — plus step 2's
+  Lebesgue-conditional mean replacement.
 
 **Error budget.**  Step 2 carries the `e^{-c√L}` summand as well as the two
 `H`-summands.  The manuscript restores the discarded depth-`k_+` cylinders
