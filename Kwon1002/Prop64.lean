@@ -2,6 +2,7 @@ import Kwon1002.Section6Skeleton
 import Kwon1002.WindowLaws
 import Kwon1002.WindowMarginal
 import Kwon1002.DigitLaw
+import Kwon1002.CarryGraph
 
 /-!
 # Proposition 6.4 of v5: the bounded-remainder weak law, reduced to named inputs
@@ -269,10 +270,13 @@ are within `ε` in `L²`, uniformly over the bulk, for all large `n`.
 Consumes `Section6Skeleton.carry_coupling` (57),
 `Section6Skeleton.exists_absolute_carry_bound`,
 `Section6Skeleton.noResetProb_tendsto_zero`, and the boundedness of the
-integrand.  **Obstruction.**  Those three are themselves sorried in the
-skeleton, and the passage from the probability bound (57) to the `L²`
-bound needs the uniform bound `|B_j| ≤ C` of the principal split, which
-has not been formalised. -/
+integrand.  **Obstruction.**  `carry_coupling` is Lemma 6.3-gated and
+still sorried in the skeleton.  The other inputs are now in the tree:
+`exists_absolute_carry_bound` is proved there, `noResetProb_tendsto_zero`
+is proved as `CarryGraph.noResetProb_tendsto_zero`, and the uniform
+bounds `|B_j| ≤ C₀` and `|B_j^{(R)}| ≤ 45/8` are `principal_term` and
+`abs_BremainderTrunc_le` below, so once (57) closes this statement is
+Chebyshev bookkeeping. -/
 theorem carry_truncation_L2_small :
     ∀ ε > 0, ∃ R : ℕ, ∀ᶠ n : ℕ in atTop, ∀ j ∈ bulkJ n,
       eLpNorm (fun α => Bremainder α n j - BremainderTrunc α n R j) 2
@@ -317,19 +321,215 @@ theorem poly_centered_avg_L2_tendsto_zero (R M K : ℕ) (P : WindowSymbol (R + M
         (volume.restrict (Ioo (0 : ℝ) 1))) atTop (𝓝 0) := by
   sorry
 
-/-- **Input (`L²` membership).**  `B_j` is a bounded measurable function of
-`α`.  **Obstruction.**  Measurability in `α` of `gaussIter`, `digit`,
-`theta` and `carry` is not in the tree, and the boundedness of `Φ` on the
-orbit is exactly the "bounded remainder" statement of the principal
-split. -/
+/-- The §2 carry `u_j = {N_j x_j}` is a measurable function of `α`. -/
+theorem measurable_carry (n j : ℕ) : Measurable fun α : ℝ => carry α n j := by
+  have hcast : Measurable fun α : ℝ => ((heightSeq α n j : ℕ) : ℝ) :=
+    (measurable_from_top (f := fun m : ℕ => (m : ℝ))).comp (measurable_heightSeq n j)
+  simpa [carry] using (hcast.mul (measurable_gaussIter j)).fract
+
+/-- `B_j` is a measurable function of `α`: `Φ` is a rational expression in
+the (measurable) carry and Gauss iterate, and the principal term is the
+measurable mark `a_{j+1} W(θ_j)`. -/
+theorem measurable_Bremainder (n j : ℕ) : Measurable fun α : ℝ => Bremainder α n j := by
+  have hc := measurable_carry n j
+  have hx := measurable_gaussIter j
+  have hPhi : Measurable fun α : ℝ => Phi (gaussIter α j) (carry α n j) := by
+    unfold Phi
+    exact ((hc.mul (measurable_const.sub hc)).div (measurable_const.mul hx)).sub
+      (hc.div measurable_const)
+  have hmark : Measurable fun α : ℝ => (digit α j : ℝ) * W (theta α n j) :=
+    (measurable_digitCast j).mul (measurable_W.comp (measurable_theta n j))
+  simpa [Bremainder] using hPhi.sub hmark
+
+/-- **Input (`L²` membership).**  `B_j` is a bounded measurable function
+of `α`: measurability is `measurable_Bremainder`, and the pointwise bound
+`|B_j| ≤ C₀` on irrationals of `(0,1)` is exactly Proposition 2.2
+(`principal_term`). -/
 theorem memLp_Bremainder (n j : ℕ) :
     MemLp (fun α => Bremainder α n j) 2 (volume.restrict (Ioo (0 : ℝ) 1)) := by
-  sorry
+  refine MemLp.of_bound (measurable_Bremainder n j).aestronglyMeasurable Czero ?_
+  filter_upwards [ae_restrict_mem measurableSet_Ioo, ae_irrational_restrict] with α hα hirr
+  rw [Real.norm_eq_abs]
+  simpa [Bremainder] using principal_term α hα hirr n j
 
-/-- **Input (`L²` membership).**  Same for the carry-truncated remainder. -/
+/-- `θ_{j-1}` lies in `[0,1)`: it is `0` at `j = 0` and a fractional part
+otherwise. -/
+theorem thetaPred_mem_Ico (α : ℝ) (n j : ℕ) : thetaPred α n j ∈ Ico (0 : ℝ) 1 := by
+  cases j with
+  | zero =>
+      show (0 : ℝ) ∈ Ico (0 : ℝ) 1
+      constructor <;> norm_num
+  | succ m => exact ⟨Int.fract_nonneg _, Int.fract_lt_one _⟩
+
+/-- `θ_j` lies in `[0,1)`. -/
+theorem theta_mem_Ico (α : ℝ) (n j : ℕ) : theta α n j ∈ Ico (0 : ℝ) 1 :=
+  ⟨Int.fract_nonneg _, Int.fract_lt_one _⟩
+
+/-- **The absolute bound on the truncated carries** (v5 lines 1253-1258):
+started from `0`, the trajectory of the carry map along the actual orbit
+stays in `[0, 9]`.  The two-step induction is the one of
+`CarryGraph.iterCarry_bounds`: one step gives `c' < x(c+1)+1`, two steps
+contract by `x·Tx ≤ 1/2` (`CarryGraph.mul_gaussMap_le_half`), which beats
+the additive drift. -/
+theorem carryFrom_bounds {α : ℝ} (hα : α ∈ Ioo (0 : ℝ) 1) (hirr : Irrational α)
+    (n i : ℕ) : ∀ k, 0 ≤ carryFrom α n i k ∧ carryFrom α n i k ≤ 9 := by
+  have hx : ∀ m : ℕ, gaussIter α m ∈ Ioo (0 : ℝ) 1 := gaussIter_mem_Ioo hα hirr
+  have hr : ∀ m : ℕ, thetaPred α n m ∈ Ico (0 : ℝ) 1 := thetaPred_mem_Ico α n
+  have hs : ∀ m : ℕ, theta α n m ∈ Ico (0 : ℝ) 1 := theta_mem_Ico α n
+  have hlow : ∀ k, 0 ≤ carryFrom α n i k → 0 ≤ carryFrom α n i (k + 1) := fun k hk =>
+    CarryGraph.carryMap_nonneg (hx (i + k)).1.le (hr (i + k)).1 (hs (i + k)).2 hk
+  have hup : ∀ k, (carryFrom α n i (k + 1) : ℝ)
+      < gaussIter α (i + k) * ((carryFrom α n i k : ℝ) + 1) + 1 := fun k =>
+    CarryGraph.carryMap_lt (hx (i + k)).1 (hr (i + k)).2 (hs (i + k)).1 _
+  have hprod : ∀ k : ℕ, gaussIter α (i + (k + 1)) * gaussIter α (i + k) ≤ 1 / 2 := by
+    intro k
+    have hstep : gaussIter α (i + (k + 1)) = gaussMap (gaussIter α (i + k)) := by
+      rw [show i + (k + 1) = (i + k) + 1 from rfl, gaussIter_succ]
+    rw [hstep, mul_comm]
+    exact CarryGraph.mul_gaussMap_le_half (hx (i + k))
+  have hQ : ∀ k, (0 ≤ carryFrom α n i k ∧ carryFrom α n i k ≤ 9)
+      ∧ (0 ≤ carryFrom α n i (k + 1) ∧ carryFrom α n i (k + 1) ≤ 9) := by
+    intro k
+    induction k with
+    | zero =>
+        have hP0 : 0 ≤ carryFrom α n i 0 ∧ carryFrom α n i 0 ≤ 9 := by
+          show (0 : ℤ) ≤ 0 ∧ (0 : ℤ) ≤ 9
+          norm_num
+        refine ⟨hP0, hlow 0 hP0.1, ?_⟩
+        have h1 := hup 0
+        have hx1 := hx (i + 0)
+        have h00 : carryFrom α n i 0 = 0 := rfl
+        rw [h00] at h1
+        have hlt : (carryFrom α n i (0 + 1) : ℝ) < 2 := by
+          push_cast at h1
+          nlinarith [hx1.2, hx1.1]
+        have hle : carryFrom α n i (0 + 1) < 2 := by exact_mod_cast hlt
+        omega
+    | succ k ih =>
+        obtain ⟨hPk, hPk1⟩ := ih
+        refine ⟨hPk1, hlow (k + 1) hPk1.1, ?_⟩
+        have h2 := hup (k + 1)
+        have hpr := hprod k
+        have hx1 := hx (i + k)
+        have hx2 := hx (i + (k + 1))
+        have hc0 : (0 : ℝ) ≤ (carryFrom α n i k : ℝ) := by exact_mod_cast hPk.1
+        have hc9 : (carryFrom α n i k : ℝ) ≤ 9 := by exact_mod_cast hPk.2
+        have hc10 : (0 : ℝ) ≤ (carryFrom α n i (k + 1) : ℝ) := by exact_mod_cast hPk1.1
+        have hmul1 : gaussIter α (i + (k + 1)) * (carryFrom α n i (k + 1) : ℝ)
+            ≤ gaussIter α (i + (k + 1))
+              * (gaussIter α (i + k) * ((carryFrom α n i k : ℝ) + 1) + 1) :=
+          mul_le_mul_of_nonneg_left (hup k).le hx2.1.le
+        have hmul2 : (gaussIter α (i + (k + 1)) * gaussIter α (i + k))
+              * ((carryFrom α n i k : ℝ) + 1)
+            ≤ (1 / 2) * ((carryFrom α n i k : ℝ) + 1) :=
+          mul_le_mul_of_nonneg_right hpr (by linarith)
+        have hfin : (carryFrom α n i (k + 1 + 1) : ℝ) < 8 := by
+          nlinarith [h2, hmul1, hmul2, hx2.2, hx2.1.le, hc9]
+        have hle7 : carryFrom α n i (k + 1 + 1) < 8 := by exact_mod_cast hfin
+        omega
+  exact fun k => (hQ k).1
+
+/-- `W` only sees the fractional part. -/
+theorem W_fract (t : ℝ) : W (Int.fract t) = W t := by
+  unfold W
+  rw [Int.fract_fract]
+
+/-- **The uniform bound on the carry-truncated remainder**:
+`|B_j^{(R)}| ≤ 45/8` for irrational `α ∈ (0,1)`.  This is the principal
+split of Proposition 2.2 run with the *truncated* carry: with
+`ũ = {θ_j - x_j(d̃ + θ_{j-1})}` and `0 ≤ d̃ ≤ 9` (`carryFrom_bounds`),
+the `W`-Lipschitz estimate gives `|W ũ - W θ_j| ≤ x_j (d̃ + θ_{j-1})/2`,
+and `principal_bound` applies with `E = d̃ + θ_{j-1} ≤ 10`. -/
+theorem abs_BremainderTrunc_le {α : ℝ} (hα : α ∈ Ioo (0 : ℝ) 1) (hirr : Irrational α)
+    (n R j : ℕ) : |BremainderTrunc α n R j| ≤ 45 / 8 := by
+  have hx := gaussIter_mem_Ioo hα hirr j
+  have hx' := gaussIter_mem_Ioo hα hirr (j + 1)
+  have hd0 : 0 ≤ carryTrunc α n R j := (carryFrom_bounds hα hirr n (j - R) R).1
+  have hd9 : carryTrunc α n R j ≤ 9 := (carryFrom_bounds hα hirr n (j - R) R).2
+  have hr := thetaPred_mem_Ico α n j
+  have hd0' : (0 : ℝ) ≤ (carryTrunc α n R j : ℝ) := by exact_mod_cast hd0
+  have hd9' : (carryTrunc α n R j : ℝ) ≤ 9 := by exact_mod_cast hd9
+  have hE0 : 0 ≤ (carryTrunc α n R j : ℝ) + thetaPred α n j := by linarith [hr.1]
+  have hE10 : (carryTrunc α n R j : ℝ) + thetaPred α n j ≤ 10 := by linarith [hr.2]
+  have huf : carryU (gaussIter α j) (thetaPred α n j) (theta α n j) (carryTrunc α n R j)
+      = Int.fract (theta α n j
+          - gaussIter α j * ((carryTrunc α n R j : ℝ) + thetaPred α n j)) := rfl
+  have hu0 : 0 ≤ carryU (gaussIter α j) (thetaPred α n j) (theta α n j)
+      (carryTrunc α n R j) := by
+    rw [huf]
+    exact Int.fract_nonneg _
+  have hu1 : carryU (gaussIter α j) (thetaPred α n j) (theta α n j)
+      (carryTrunc α n R j) < 1 := by
+    rw [huf]
+    exact Int.fract_lt_one _
+  have hd' : |W (carryU (gaussIter α j) (thetaPred α n j) (theta α n j)
+        (carryTrunc α n R j)) - W (theta α n j)|
+      ≤ gaussIter α j * ((carryTrunc α n R j : ℝ) + thetaPred α n j) / 2 := by
+    rw [huf, W_fract,
+      show theta α n j - gaussIter α j * ((carryTrunc α n R j : ℝ) + thetaPred α n j)
+          = theta α n j
+            + -(gaussIter α j * ((carryTrunc α n R j : ℝ) + thetaPred α n j)) from by ring]
+    have h := W_sub_le (theta α n j)
+      (-(gaussIter α j * ((carryTrunc α n R j : ℝ) + thetaPred α n j)))
+    rwa [abs_neg, abs_of_nonneg (mul_nonneg hx.1.le hE0)] at h
+  have hmain := principal_bound (gaussIter α j) (gaussIter α (j + 1))
+    (carryU (gaussIter α j) (thetaPred α n j) (theta α n j) (carryTrunc α n R j))
+    (theta α n j) (digit α j : ℝ) ((carryTrunc α n R j : ℝ) + thetaPred α n j) 10
+    hx.1 hx'.1 hx'.2 hu0 hu1 (Nat.cast_nonneg _)
+    (inv_gaussIter_eq hα hirr j) hE0 hE10 (W_eq_of_mem hu0 hu1) hd'
+  calc |BremainderTrunc α n R j|
+      ≤ 10 / 2 + 5 / 8 := hmain
+    _ = 45 / 8 := by norm_num
+
+/-- The truncated carry `d_j^{(R)}` is a measurable function of `α`. -/
+theorem measurable_carryFrom (n i : ℕ) : ∀ k, Measurable fun α : ℝ => carryFrom α n i k := by
+  intro k
+  induction k with
+  | zero =>
+      simp only [carryFrom]
+      exact measurable_const
+  | succ k ih =>
+      have hcast : Measurable fun α : ℝ => ((carryFrom α n i k : ℤ) : ℝ) :=
+        (measurable_from_top (f := fun m : ℤ => (m : ℝ))).comp ih
+      have hexpr : Measurable fun α : ℝ =>
+          gaussIter α (i + k) * (((carryFrom α n i k : ℤ) : ℝ) + thetaPred α n (i + k))
+            - theta α n (i + k) :=
+        ((measurable_gaussIter (i + k)).mul
+          (hcast.add (Prop42.measurable_thetaPred n (i + k)))).sub
+          (measurable_theta n (i + k))
+      simpa [carryFrom, carryMap] using hexpr.ceil
+
+/-- `B_j^{(R)}` is a measurable function of `α`. -/
+theorem measurable_BremainderTrunc (R n j : ℕ) :
+    Measurable fun α : ℝ => BremainderTrunc α n R j := by
+  have hct : Measurable fun α : ℝ => ((carryTrunc α n R j : ℤ) : ℝ) :=
+    (measurable_from_top (f := fun m : ℤ => (m : ℝ))).comp (measurable_carryFrom n (j - R) R)
+  have hu : Measurable fun α : ℝ =>
+      carryU (gaussIter α j) (thetaPred α n j) (theta α n j) (carryTrunc α n R j) := by
+    have hexpr : Measurable fun α : ℝ =>
+        Int.fract (theta α n j
+          - gaussIter α j * (((carryTrunc α n R j : ℤ) : ℝ) + thetaPred α n j)) :=
+      ((measurable_theta n j).sub ((measurable_gaussIter j).mul
+        (hct.add (Prop42.measurable_thetaPred n j)))).fract
+    simpa [carryU] using hexpr
+  have hPhi : Measurable fun α : ℝ => Phi (gaussIter α j)
+      (carryU (gaussIter α j) (thetaPred α n j) (theta α n j) (carryTrunc α n R j)) := by
+    unfold Phi
+    exact ((hu.mul (measurable_const.sub hu)).div
+        (measurable_const.mul (measurable_gaussIter j))).sub (hu.div measurable_const)
+  have hmark : Measurable fun α : ℝ => (digit α j : ℝ) * W (theta α n j) :=
+    (measurable_digitCast j).mul (measurable_W.comp (measurable_theta n j))
+  simpa [BremainderTrunc] using hPhi.sub hmark
+
+/-- **Input (`L²` membership).**  The carry-truncated remainder is a
+bounded measurable function of `α`: `measurable_BremainderTrunc` and the
+uniform bound `abs_BremainderTrunc_le`. -/
 theorem memLp_BremainderTrunc (R n j : ℕ) :
     MemLp (fun α => BremainderTrunc α n R j) 2 (volume.restrict (Ioo (0 : ℝ) 1)) := by
-  sorry
+  refine MemLp.of_bound (measurable_BremainderTrunc R n j).aestronglyMeasurable (45 / 8) ?_
+  filter_upwards [ae_restrict_mem measurableSet_Ioo, ae_irrational_restrict] with α hα hirr
+  rw [Real.norm_eq_abs]
+  exact abs_BremainderTrunc_le hα hirr n R j
 
 /-- A window symbol placed at time `j` is a measurable function of `α`:
 the word `w_j(α)` lands in the discrete space `Fin (2R) → ℕ`, so the
@@ -694,6 +894,105 @@ theorem cfFinite_le_one : ∀ (M : ℕ) (a : ℕ → ℕ),
       simp only [cfFinite]
       exact inv_le_one_of_one_le₀ (by linarith)
 
+/-- `cfFinite` reads only the first `M` digits. -/
+theorem cfFinite_congr : ∀ (M : ℕ) (a b : ℕ → ℕ), (∀ k, k < M → a k = b k) →
+    cfFinite a M = cfFinite b M
+  | 0, _, _, _ => rfl
+  | M + 1, a, b, h => by
+      simp only [cfFinite]
+      rw [h 0 (Nat.succ_pos M),
+        cfFinite_congr M (fun k => a (k + 1)) (fun k => b (k + 1))
+          (fun k hk => h (k + 1) (by omega))]
+
+/-- Shifting the digit family by one step is reading the digits of the
+Gauss image. -/
+theorem digit_succ_eq (x : ℝ) (k : ℕ) : digit x (k + 1) = digit (gaussMap x) k := by
+  unfold digit
+  rw [gaussIter_shift]
+
+/-- **The continued-fraction contraction, product form**: the `M`-digit
+truncation of an irrational `x ∈ (0,1)` approximates `x` to within the
+product of its first `M` Gauss iterates.  Each level is the `1`-Lipschitz
+map `u ↦ 1/(a+u)` whose contraction factor at the two arguments is
+`x_t · (a_t + v)⁻¹ ≤ x_t`; unwinding `M` levels telescopes the factors
+into `x_0 x_1 ⋯ x_{M-1}`. -/
+theorem abs_sub_cfFinite_le_consecProd (M : ℕ) :
+    ∀ {x : ℝ}, x ∈ Ioo (0 : ℝ) 1 → Irrational x →
+      |x - cfFinite (fun k => digit x k) M| ≤ consecProdD x 0 M := by
+  induction M with
+  | zero =>
+      intro x hx _
+      show |x - 0| ≤ consecProdD x 0 0
+      rw [sub_zero, abs_of_pos hx.1, consecProdD_zeroD]
+      exact hx.2.le
+  | succ M ih =>
+      intro x hx hirr
+      have hxg : gaussMap x ∈ Ioo (0 : ℝ) 1 := gaussMap_mem_Ioo hirr
+      have hirrg : Irrational (gaussMap x) := gaussMap_irrational hirr
+      have ihg := ih hxg hirrg
+      have ha1 : (1 : ℝ) ≤ (digit x 0 : ℝ) := by
+        exact_mod_cast one_le_digit hx hirr 0
+      have hv0 : 0 ≤ cfFinite (fun k => digit (gaussMap x) k) M := cfFinite_nonneg M _
+      have hxu : x = ((digit x 0 : ℝ) + gaussMap x)⁻¹ := by
+        rw [← inv_eq_digit_add_gaussMap hx, inv_inv]
+      have hshift : cfFinite (fun k => digit x (k + 1)) M
+          = cfFinite (fun k => digit (gaussMap x) k) M :=
+        cfFinite_congr M _ _ (fun k _ => digit_succ_eq x k)
+      have hcf : cfFinite (fun k => digit x k) (M + 1)
+          = ((digit x 0 : ℝ) + cfFinite (fun k => digit (gaussMap x) k) M)⁻¹ := by
+        simp only [cfFinite]
+        rw [hshift]
+      have hden1 : (0 : ℝ) < (digit x 0 : ℝ) + gaussMap x := by linarith [hxg.1]
+      have hden2 : (0 : ℝ) < (digit x 0 : ℝ) + cfFinite (fun k => digit (gaussMap x) k) M := by
+        linarith
+      have habs : ((digit x 0 : ℝ) + gaussMap x)⁻¹
+            - ((digit x 0 : ℝ) + cfFinite (fun k => digit (gaussMap x) k) M)⁻¹
+          = (cfFinite (fun k => digit (gaussMap x) k) M - gaussMap x)
+            * (((digit x 0 : ℝ) + gaussMap x)⁻¹
+              * ((digit x 0 : ℝ) + cfFinite (fun k => digit (gaussMap x) k) M)⁻¹) := by
+        field_simp
+        ring
+      rw [← hxu] at habs
+      have hprod : consecProdD x 0 (M + 1) = consecProdD (gaussMap x) 0 M * x := by
+        unfold consecProdD
+        rw [Finset.prod_range_succ']
+        congr 1
+      have h1 : |cfFinite (fun k => digit (gaussMap x) k) M - gaussMap x|
+          ≤ consecProdD (gaussMap x) 0 M := by
+        rw [abs_sub_comm]
+        exact ihg
+      have h2 : |x * ((digit x 0 : ℝ) + cfFinite (fun k => digit (gaussMap x) k) M)⁻¹|
+          ≤ x := by
+        rw [abs_of_nonneg (mul_nonneg hx.1.le (inv_pos.mpr hden2).le)]
+        calc x * ((digit x 0 : ℝ) + cfFinite (fun k => digit (gaussMap x) k) M)⁻¹
+            ≤ x * 1 :=
+              mul_le_mul_of_nonneg_left (inv_le_one_of_one_le₀ (by linarith)) hx.1.le
+          _ = x := mul_one x
+      calc |x - cfFinite (fun k => digit x k) (M + 1)|
+          = |cfFinite (fun k => digit (gaussMap x) k) M - gaussMap x|
+            * |x * ((digit x 0 : ℝ) + cfFinite (fun k => digit (gaussMap x) k) M)⁻¹| := by
+            rw [hcf, habs, abs_mul]
+        _ ≤ consecProdD (gaussMap x) 0 M * x :=
+            mul_le_mul h1 h2 (abs_nonneg _) (consecProdD_nonnegD (gaussMap x) hxg hirrg 0 M)
+        _ = consecProdD x 0 (M + 1) := hprod.symm
+
+/-- **The continued-fraction contraction**: `|x - [0; a_1, …, a_M]| ≤ 1/F_{M+1}`. -/
+theorem abs_sub_cfFinite_digit_le (M : ℕ) {x : ℝ} (hx : x ∈ Ioo (0 : ℝ) 1)
+    (hirr : Irrational x) :
+    |x - cfFinite (fun k => digit x k) M| ≤ ((Nat.fib (M + 1) : ℝ))⁻¹ :=
+  le_trans (abs_sub_cfFinite_le_consecProd M hx hirr)
+    (consecProdD_le_inv_fibD x hx hirr 0 M)
+
+/-- The reciprocal Fibonacci numbers go below any positive threshold. -/
+theorem exists_fib_inv_lt {δ : ℝ} (hδ : 0 < δ) :
+    ∃ M : ℕ, ((Nat.fib (M + 1) : ℝ))⁻¹ < δ := by
+  obtain ⟨N, hN⟩ := exists_pow_lt_of_lt_one (show (0 : ℝ) < 2 * δ / 3 by linarith)
+    (show (2 : ℝ) / 3 < 1 by norm_num)
+  refine ⟨N, lt_of_le_of_lt (inv_fib_le_geomD N) ?_⟩
+  have h := mul_lt_mul_of_pos_left hN (show (0 : ℝ) < 3 / 2 by norm_num)
+  calc (3 / 2 : ℝ) * ((2 : ℝ) / 3) ^ N < (3 / 2) * (2 * δ / 3) := h
+    _ = δ := by ring
+
 /-- The `M`-digit truncation `X_{R+M} → X_R`: keep the digit and torus
 coordinates of the radius-`R` sub-window, and replace the real coordinate
 at offset `t` by `[0; a_{j+t+1}, …, a_{j+t+M}]`, which is read off the
@@ -831,62 +1130,238 @@ of finite sums `Σ_ℓ D_ℓ g_ℓ e(Σ c_{ℓ,t} θ_t)` is dense in `L²(μ_R)`
 approximated to any accuracy.
 
 Consumes `Section6Skeleton.Bwindow_bounded_and_ae_continuous`.
-**Obstruction.**  The density statement itself is the one v5 records
-"after Lemma 6.3"; it has not been formalised, and it needs a
-Stone-Weierstrass argument on `X_R` together with the regularity of
-`μ_R`. -/
+**Obstruction, updated.**  (a) The named input is **false as stated**:
+its boundedness half `∀ w, |Bwindow R w| ≤ C` is refuted by
+`Kwon1002.bwindow_unbounded` (central digit `m → ∞` against
+`W(θ) = 1/8`).  Only the a.e. halves are true — `Bwindow` is measurable,
+`μ_R`-a.e. bounded (via `ae_orbitConsistent` and the bound
+`abs_BremainderTrunc_le`, which needs the torus block a.e. in `[0,1)`,
+not yet stated) and `μ_R`-a.e. continuous — and only those are needed
+here.  (b) The genuinely missing core is the density statement itself,
+the one v5 records "after Lemma 6.3": finite sums
+`Σ_ℓ D_ℓ g_ℓ e(Σ c_{ℓ,t} θ_t)` are dense in `L²(μ_R)`.  That needs
+Stone-Weierstrass on the compact exhaustion `digitCapCube` together with
+the regularity of `μ_R` (`IsProbabilityMeasure (windowLaw R)` is now an
+instance); the Fourier tooling of `CylinderCharDense.lean` §4 is the
+natural raw material.  Neither half has been formalised. -/
 theorem density_bridge (R : ℕ) (ε : ℝ) (hε : 0 < ε) :
     ∃ G : DenseElt R,
       eLpNorm (fun w : WindowSpace R => ((Bwindow R w : ℂ)) - G.eval w) 2 (windowLaw R)
         < ENNReal.ofReal ε := by
   sorry
 
-/-- **Input (step 2, finite-future replacement).**  v5 lines 1332-1343:
-replacing `x_{j+t}` by `[0; a_{j+t+1}, …, a_{j+t+M}]` for `|t| ≤ R` moves
-each of the finitely many continuous factors `g_ℓ` by `o(1)` as `M → ∞`,
-uniformly, because `max_{|t| ≤ R} |x_{j+t} - x^{[M]}_{j+t}| = O_R(F_M^{-2})`.
+/-- The digit block of the truncation agrees with the digit block of the
+projection: both read the digits at offsets `-R ≤ t ≤ R`. -/
+theorem digitTruncWindow_fst_eq (R M : ℕ) (w : WindowSpace (R + M)) :
+    (digitTruncWindow R M w).1 = (windowProj (Nat.le_add_right R M) w).1 := by
+  funext i
+  have hi := i.isLt
+  have hc : 0 ≤ (i : ℤ) - (R : ℤ) + ((R + M : ℕ) : ℤ)
+      ∧ (i : ℤ) - (R : ℤ) + ((R + M : ℕ) : ℤ) < 2 * ((R + M : ℕ) : ℤ) + 1 :=
+    ⟨by omega, by omega⟩
+  simp only [digitTruncWindow, windowProj, wA, dif_pos hc]
+  have hidx : ((i : ℤ) - (R : ℤ) + ((R + M : ℕ) : ℤ)).toNat = (i : ℕ) + (R + M - R) := by
+    omega
+  simp only [hidx]
 
-**Obstruction, precisely.**  The statement is *not* pointwise true.  At an
-arbitrary `w : WindowSpace (R + M)` the digit block `w.1` and the real
-block `w.2.1` are unrelated -- nothing in the type ties `x_t` to the
-digits `a_t, a_{t+1}, …` -- so `digitTruncWindow R M w` need not be
-anywhere near `windowProj _ w`, and `G.eval` of the two can differ by as
-much as `G` varies.  What makes the display true is the *law*.
+/-- The torus block of the truncation agrees with the torus block of the
+projection. -/
+theorem digitTruncWindow_trd_eq (R M : ℕ) (w : WindowSpace (R + M)) :
+    (digitTruncWindow R M w).2.2 = (windowProj (Nat.le_add_right R M) w).2.2 := by
+  funext i
+  have hi := i.isLt
+  have hc : 0 ≤ (i : ℤ) - (R : ℤ) - 1 + ((R + M : ℕ) : ℤ) + 1
+      ∧ (i : ℤ) - (R : ℤ) - 1 + ((R + M : ℕ) : ℤ) + 1 < 2 * ((R + M : ℕ) : ℤ) + 2 :=
+    ⟨by omega, by omega⟩
+  simp only [digitTruncWindow, windowProj, wTh, dif_pos hc]
+  have hidx : ((i : ℤ) - (R : ℤ) - 1 + ((R + M : ℕ) : ℤ) + 1).toNat
+      = (i : ℕ) + (R + M - R) := by
+    omega
+  simp only [hidx]
 
-1. **The support of `μ_{R+M}`: SUPPLIED.**  `Kwon1002.ae_orbitConsistent`
-   (`Kwon1002/WindowMarginal.lean`) proves that `μ_{R+M}`-almost every
-   window is `OrbitConsistent`, i.e. its real coordinates are an
-   irrational Gauss orbit in `(0,1)`, its digits are the digits of that
-   orbit, and consequently
-   `OrbitConsistent.inv_wX : 1/x_t = a_t + x_{t+1}` for `-R' ≤ t < R'` --
-   exactly the recursion `cfFinite` unwinds.  The pointwise form on the
-   image of `stationaryWindow` is
-   `Kwon1002.stationaryWindow_orbitConsistent`, which is the form to use
-   after transporting the norm along `eLpNorm_map_measure`.
-2. **The contraction estimate: still missing.**  Given item 1, one needs
-   `|x - [0; a_1, …, a_M]| ≤ 1/(q_M q_{M+1}) = O(F_M^{-2})`.  Mathlib's
-   `Mathlib/Algebra/ContinuedFractions/Computation/Approximations.lean` and
-   `ApproximationCorollaries.lean` carry this for `GenContFract.of`, but
-   `cfFinite` here is a bare recursion on a digit family and is not yet
-   identified with a Mathlib convergent.  Item 1 now makes that
-   identification *possible* -- `inv_wX` is the hypothesis such an
-   identification needs -- but it has not been carried out.  (A route that
-   avoids Mathlib entirely: `cfFinite` and `x_t` are the same
-   `M`-fold composition of `u ↦ 1/(a+u)` evaluated at `0` and at
-   `x_{t+M}`, and each such map is `1`-Lipschitz with a factor `≥ 2`
-   gained on every second step, so the difference is `O(2^{-M/2})`.)
-3. **Uniform continuity of the `g_ℓ`: still missing.**
-   `DenseElt.g_continuous` gives continuity on all of `Fin (2R+1) → ℝ`,
-   which is not compact, so a uniform modulus needs the real block
-   confined to a cube.  Item 1 confines it to `(0,1)^{2R+1}` almost
-   surely, and `isCompact_digitCapCube` above supplies the compact set;
-   the modulus argument itself is not written. -/
+/-- The real block of the projection, read through `wX`. -/
+theorem windowProj_snd_fst_eq_wX (R M : ℕ) (w : WindowSpace (R + M))
+    (i : Fin (2 * R + 1)) :
+    (windowProj (Nat.le_add_right R M) w).2.1 i = wX w ((i : ℤ) - (R : ℤ)) := by
+  have hi := i.isLt
+  have hc : 0 ≤ (i : ℤ) - (R : ℤ) + ((R + M : ℕ) : ℤ)
+      ∧ (i : ℤ) - (R : ℤ) + ((R + M : ℕ) : ℤ) < 2 * ((R + M : ℕ) : ℤ) + 1 :=
+    ⟨by omega, by omega⟩
+  simp only [windowProj, wX, dif_pos hc]
+  have hidx : ((i : ℤ) - (R : ℤ) + ((R + M : ℕ) : ℤ)).toNat = (i : ℕ) + (R + M - R) := by
+    omega
+  simp only [hidx]
+
+/-- On an orbit-consistent window the real coordinates are a Gauss orbit:
+`x_{t+k} = T^k x_t` wherever the offsets stay in range. -/
+theorem orbitConsistent_gaussIter_wX {R' : ℕ} {w : WindowSpace R'}
+    (h : OrbitConsistent R' w) {t : ℤ} (h1 : -(R' : ℤ) ≤ t) (k : ℕ)
+    (hk : t + (k : ℤ) ≤ (R' : ℤ)) : gaussIter (wX w t) k = wX w (t + (k : ℤ)) := by
+  induction k with
+  | zero => simp
+  | succ k ih =>
+      have hk' : t + (k : ℤ) ≤ (R' : ℤ) := by push_cast at hk; omega
+      rw [gaussIter_succ, ih hk']
+      have hstep := h.2 (t + (k : ℤ)) (by omega) (by push_cast at hk; omega)
+      rw [← hstep]
+      congr 1
+      push_cast
+      ring
+
+/-- On an orbit-consistent window the digit at offset `t + k` is the
+`k`-th continued-fraction digit of the real coordinate at offset `t`. -/
+theorem orbitConsistent_wA_eq_digit {R' : ℕ} {w : WindowSpace R'}
+    (h : OrbitConsistent R' w) {t : ℤ} (h1 : -(R' : ℤ) ≤ t) (k : ℕ)
+    (hk : t + (k : ℤ) + 1 ≤ (R' : ℤ)) :
+    wA w (t + (k : ℤ)) = digit (wX w t) k := by
+  have hiter := orbitConsistent_gaussIter_wX h h1 k (by omega)
+  have hA := (h.1 (t + (k : ℤ)) (by omega) (by omega)).2.2
+  rw [hA, ← hiter]
+  rfl
+
+/-- **Input (step 2, finite-future replacement), v5 lines 1332-1343 —
+closed.**  Replacing `x_{j+t}` by `[0; a_{j+t+1}, …, a_{j+t+M}]` for
+`|t| ≤ R` moves each of the finitely many continuous factors `g_ℓ` by
+`o(1)` as `M → ∞`, uniformly.
+
+The statement is *not* pointwise true — at an arbitrary
+`w : WindowSpace (R + M)` the digit block and the real block are
+unrelated — and the proof runs on the law:
+
+1. `ae_orbitConsistent (R + M)` puts almost every window on an
+   irrational Gauss orbit, so the digit family that `digitTruncWindow`
+   reads at offset `t` is the digit family of `x_t`
+   (`OrbitConsistent.wA_eq_digit`), and both real blocks lie in the unit
+   cube.
+2. The contraction `abs_sub_cfFinite_digit_le` (proved above, avoiding
+   Mathlib's continued-fraction machinery: the `M`-fold composition of
+   `u ↦ 1/(a+u)` telescopes into the product `x_0 ⋯ x_{M-1} ≤ 1/F_{M+1}`
+   by display (6)) makes the two real blocks `1/F_{M+1}`-close in the
+   sup metric.
+3. Each `g_ℓ` is uniformly continuous on the compact unit cube
+   (Heine–Cantor); a single `δ` serves the finitely many `ℓ`, and `M` is
+   chosen with `1/F_{M+1} < δ`.  The difference of evaluations is then
+   almost everywhere below `ε/2`, and `μ_{R+M}` is a probability
+   measure. -/
 theorem digit_truncation (R : ℕ) (G : DenseElt R) (ε : ℝ) (hε : 0 < ε) :
     ∃ M : ℕ,
       eLpNorm (fun w : WindowSpace (R + M) =>
           G.eval (windowProj (Nat.le_add_right R M) w) - G.eval (digitTruncWindow R M w))
         2 (windowLaw (R + M)) < ENNReal.ofReal ε := by
-  sorry
+  classical
+  have hA0 : (0 : ℝ) ≤ ∑ l : Fin G.len, ∑ v ∈ G.Dwords l, ‖G.D l v‖ :=
+    Finset.sum_nonneg fun l _ => Finset.sum_nonneg fun v _ => norm_nonneg _
+  set A : ℝ := ∑ l : Fin G.len, ∑ v ∈ G.Dwords l, ‖G.D l v‖ with hAdef
+  have hA1 : (0 : ℝ) < A + 1 := by linarith
+  set ε' : ℝ := ε / (2 * (A + 1)) with hε'def
+  have hε'0 : 0 < ε' := div_pos hε (by linarith)
+  set K : Set (Fin (2 * R + 1) → ℝ) := Set.univ.pi fun _ => Icc (0 : ℝ) 1 with hK
+  obtain ⟨δ, hδ0, hδ⟩ : ∃ δ : ℝ, 0 < δ ∧ ∀ l : Fin G.len, ∀ x ∈ K, ∀ y ∈ K,
+      dist x y < δ → dist (G.g l x) (G.g l y) < ε' := by
+    have hunif : ∀ l : Fin G.len, ∃ δ : ℝ, 0 < δ ∧ ∀ x ∈ K, ∀ y ∈ K,
+        dist x y < δ → dist (G.g l x) (G.g l y) < ε' := by
+      intro l
+      have hcomp : IsCompact K := isCompact_univ_pi fun _ => isCompact_Icc
+      have huc : UniformContinuousOn (G.g l) K :=
+        hcomp.uniformContinuousOn_of_continuous (G.g_continuous l).continuousOn
+      rcases Metric.uniformContinuousOn_iff.mp huc ε' hε'0 with ⟨δ, hδ0, hδ⟩
+      exact ⟨δ, hδ0, fun x hx y hy hxy => hδ x hx y hy hxy⟩
+    choose δf hδf0 hδf using hunif
+    rcases isEmpty_or_nonempty (Fin G.len) with hE | hNE
+    · exact ⟨1, one_pos, fun l => (hE.false l).elim⟩
+    · refine ⟨Finset.univ.inf' Finset.univ_nonempty δf, ?_, ?_⟩
+      · rw [Finset.lt_inf'_iff]
+        exact fun l _ => hδf0 l
+      · intro l x hx y hy hxy
+        exact hδf l x hx y hy
+          (lt_of_lt_of_le hxy (Finset.inf'_le _ (Finset.mem_univ l)))
+  obtain ⟨M, hM⟩ := exists_fib_inv_lt hδ0
+  refine ⟨M, ?_⟩
+  have hae : ∀ᵐ w ∂(windowLaw (R + M)),
+      ‖G.eval (windowProj (Nat.le_add_right R M) w) - G.eval (digitTruncWindow R M w)‖
+        ≤ ε / 2 := by
+    filter_upwards [ae_orbitConsistent (R + M)] with w hw
+    have hfst := digitTruncWindow_fst_eq R M w
+    have htrd := digitTruncWindow_trd_eq R M w
+    have hdiff : G.eval (windowProj (Nat.le_add_right R M) w)
+        - G.eval (digitTruncWindow R M w)
+        = ∑ l : Fin G.len,
+            G.D l ((windowProj (Nat.le_add_right R M) w).1)
+              * (G.g l ((windowProj (Nat.le_add_right R M) w).2.1)
+                  - G.g l ((digitTruncWindow R M w).2.1))
+              * torusChar (∑ t : Fin (2 * R + 2),
+                  (G.c l t : ℝ) * (windowProj (Nat.le_add_right R M) w).2.2 t) := by
+      unfold DenseElt.eval
+      rw [← Finset.sum_sub_distrib]
+      refine Finset.sum_congr rfl fun l _ => ?_
+      rw [hfst, htrd]
+      ring
+    have hproj_mem : (windowProj (Nat.le_add_right R M) w).2.1 ∈ K := by
+      intro i _
+      rw [windowProj_snd_fst_eq_wX]
+      have hi := i.isLt
+      have hIoo := (hw.1 ((i : ℤ) - (R : ℤ)) (by push_cast; omega) (by push_cast; omega)).1
+      exact ⟨hIoo.1.le, hIoo.2.le⟩
+    have htrunc_mem : (digitTruncWindow R M w).2.1 ∈ K := by
+      intro i _
+      refine ⟨cfFinite_nonneg M _, cfFinite_le_one M _ fun k hk => ?_⟩
+      have hi := i.isLt
+      have h1 : -(((R + M) : ℕ) : ℤ) ≤ (i : ℤ) - (R : ℤ) + (k : ℤ) := by push_cast; omega
+      have h2 : (i : ℤ) - (R : ℤ) + (k : ℤ) ≤ (((R + M) : ℕ) : ℤ) := by push_cast; omega
+      obtain ⟨hIoo, hirr, hdig⟩ := hw.1 _ h1 h2
+      rw [hdig]
+      exact one_le_digit hIoo hirr 0
+    have hdist : dist ((windowProj (Nat.le_add_right R M) w).2.1)
+        ((digitTruncWindow R M w).2.1) < δ := by
+      rw [dist_pi_lt_iff hδ0]
+      intro i
+      have hi := i.isLt
+      have h1 : -(((R + M) : ℕ) : ℤ) ≤ (i : ℤ) - (R : ℤ) := by push_cast; omega
+      have h2' : (i : ℤ) - (R : ℤ) ≤ (((R + M) : ℕ) : ℤ) := by push_cast; omega
+      obtain ⟨hIoo, hirr, -⟩ := hw.1 ((i : ℤ) - (R : ℤ)) h1 h2'
+      have hcf : cfFinite (fun k => wA w ((i : ℤ) - (R : ℤ) + (k : ℤ))) M
+          = cfFinite (fun k => digit (wX w ((i : ℤ) - (R : ℤ))) k) M :=
+        cfFinite_congr M _ _ (fun k hk =>
+          orbitConsistent_wA_eq_digit hw h1 k (by push_cast; omega))
+      rw [Real.dist_eq, windowProj_snd_fst_eq_wX]
+      show |wX w ((i : ℤ) - (R : ℤ))
+          - cfFinite (fun k => wA w ((i : ℤ) - (R : ℤ) + (k : ℤ))) M| < δ
+      rw [hcf]
+      exact lt_of_le_of_lt (abs_sub_cfFinite_digit_le M hIoo hirr) hM
+    rw [hdiff]
+    refine le_trans (norm_sum_le _ _) (le_trans (Finset.sum_le_sum
+      (g := fun l => (∑ v ∈ G.Dwords l, ‖G.D l v‖) * ε') ?_) ?_)
+    · intro l _
+      rw [norm_mul, norm_mul, Prop42.norm_torusChar, mul_one]
+      have hDle : ‖G.D l ((windowProj (Nat.le_add_right R M) w).1)‖
+          ≤ ∑ v ∈ G.Dwords l, ‖G.D l v‖ := by
+        by_cases hu : (windowProj (Nat.le_add_right R M) w).1 ∈ G.Dwords l
+        · exact Finset.single_le_sum (fun v _ => norm_nonneg _) hu
+        · rw [G.D_support l _ hu, norm_zero]
+          exact Finset.sum_nonneg fun v _ => norm_nonneg _
+      have hgle : ‖G.g l ((windowProj (Nat.le_add_right R M) w).2.1)
+          - G.g l ((digitTruncWindow R M w).2.1)‖ ≤ ε' := by
+        have h := hδ l _ hproj_mem _ htrunc_mem hdist
+        rw [dist_eq_norm] at h
+        exact h.le
+      exact mul_le_mul hDle hgle (norm_nonneg _)
+        (Finset.sum_nonneg fun v _ => norm_nonneg _)
+    · rw [← Finset.sum_mul, ← hAdef]
+      have h2 : A * ε' ≤ ε / 2 := by
+        rw [hε'def, ← mul_div_assoc,
+          div_le_div_iff₀ (by linarith : (0 : ℝ) < 2 * (A + 1)) (by norm_num : (0 : ℝ) < 2)]
+        nlinarith
+      exact h2
+  calc eLpNorm (fun w : WindowSpace (R + M) =>
+          G.eval (windowProj (Nat.le_add_right R M) w) - G.eval (digitTruncWindow R M w))
+        2 (windowLaw (R + M))
+      ≤ (windowLaw (R + M)) Set.univ ^ (2 : ℝ≥0∞).toReal⁻¹ * ENNReal.ofReal (ε / 2) :=
+        eLpNorm_le_of_ae_bound hae
+    _ = ENNReal.ofReal (ε / 2) := by
+        rw [measure_univ, ENNReal.one_rpow, one_mul]
+    _ < ENNReal.ofReal ε := by
+        rw [ENNReal.ofReal_lt_ofReal_iff hε]
+        linarith
 
 /-- **A dense-algebra element is bounded wherever the real block lies in
 the unit cube.**  The digit amplitude is dominated by the sum of its

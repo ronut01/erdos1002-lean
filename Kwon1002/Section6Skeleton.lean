@@ -354,30 +354,113 @@ def carryU (x r s : ℝ) (d : ℤ) : ℝ := Int.fract (s - x * ((d : ℝ) + r))
 /-- `d_j = ⌊E_j⌋`, the integer part of the height error. -/
 def actualCarry (α : ℝ) (n j : ℕ) : ℤ := ⌊heightError α n j⌋
 
+/-- **The state split behind (9) and (53)**: the height error splits into
+its integer part, the actual carry `d_j = ⌊E_j⌋`, and its fractional
+part, which is the previous torus coordinate `θ_{j-1}`.  Indeed for
+`j ≥ 1` one has `E_j = n β_{j-1} - N_j` with `N_j ∈ ℕ`, so
+`{E_j} = {n β_{j-1}} = θ_{j-1}`; at `j = 0` all three terms vanish. -/
+theorem heightError_eq_actualCarry_add_thetaPred (α : ℝ) (n j : ℕ) :
+    heightError α n j = (actualCarry α n j : ℝ) + thetaPred α n j := by
+  cases j with
+  | zero =>
+      have h0 : heightError α n 0 = 0 := heightError_zero_eqD α n
+      show heightError α n 0 = ((⌊heightError α n 0⌋ : ℤ) : ℝ) + (0 : ℝ)
+      rw [h0]
+      norm_num
+  | succ m =>
+      have hfr : Int.fract (heightError α n (m + 1)) = thetaPred α n (m + 1) := by
+        rw [heightError_succ_eqD,
+          show ((heightSeq α n (m + 1) : ℕ) : ℝ)
+              = ((heightSeq α n (m + 1) : ℤ) : ℝ) from by rfl,
+          Int.fract_sub_intCast]
+        rfl
+      show heightError α n (m + 1)
+          = ((⌊heightError α n (m + 1)⌋ : ℤ) : ℝ) + thetaPred α n (m + 1)
+      rw [← hfr]
+      exact (Int.floor_add_fract _).symm
+
 /-- **(9)** in the present notation: the actual carry `u_j` of §2 is
-`carryU` evaluated at the actual state. -/
+`carryU` evaluated at the actual state.  The proof combines the split
+`E_j = d_j + θ_{j-1}` with display (10), `θ_j = {u_j + x_j E_j}`. -/
 theorem carry_eq_carryU (α : ℝ) (n j : ℕ) (hα : α ∈ Ioo (0 : ℝ) 1)
     (hirr : Irrational α) :
     carry α n j
       = carryU (gaussIter α j) (thetaPred α n j) (theta α n j) (actualCarry α n j) := by
-  sorry
+  show carry α n j
+      = Int.fract (theta α n j
+          - gaussIter α j * ((actualCarry α n j : ℝ) + thetaPred α n j))
+  rw [← heightError_eq_actualCarry_add_thetaPred α n j, theta_eq α hα hirr n j]
+  have hkey : Int.fract (carry α n j + gaussIter α j * heightError α n j)
+      - gaussIter α j * heightError α n j
+      = carry α n j
+        + ((-⌊carry α n j + gaussIter α j * heightError α n j⌋ : ℤ) : ℝ) := by
+    rw [Int.fract]
+    push_cast
+    ring
+  rw [hkey, Int.fract_add_intCast]
+  show Int.fract ((heightSeq α n j : ℝ) * gaussIter α j)
+      = Int.fract (Int.fract ((heightSeq α n j : ℝ) * gaussIter α j))
+  exact (Int.fract_fract _).symm
 
 /-- v5 lines 1251-1252: the actual carries satisfy
-`d_{j+1} = φ_{(x_j, θ_{j-1}, θ_j)}(d_j)`. -/
+`d_{j+1} = φ_{(x_j, θ_{j-1}, θ_j)}(d_j)`.  From the error recursion (5),
+`E_{j+1} = x_j E_j + u_j`, so `⌊E_{j+1}⌋ = ⌊x_j E_j + u_j⌋`, while the
+ceiling on the right unwinds through `θ_j = {u_j + x_j E_j}` and
+`⌈-u_j⌉ = 0`. -/
 theorem actualCarry_succ (α : ℝ) (n j : ℕ) (hα : α ∈ Ioo (0 : ℝ) 1)
     (hirr : Irrational α) :
     actualCarry α n (j + 1)
       = carryMap (gaussIter α j) (thetaPred α n j) (theta α n j) (actualCarry α n j) := by
-  sorry
+  show ⌊heightError α n (j + 1)⌋
+      = ⌈gaussIter α j * ((actualCarry α n j : ℝ) + thetaPred α n j) - theta α n j⌉
+  rw [← heightError_eq_actualCarry_add_thetaPred α n j,
+    heightError_recD α hα hirr n j, theta_eq α hα hirr n j]
+  have hkey : gaussIter α j * heightError α n j
+      - Int.fract (carry α n j + gaussIter α j * heightError α n j)
+      = -(carry α n j)
+        + ((⌊carry α n j + gaussIter α j * heightError α n j⌋ : ℤ) : ℝ) := by
+    rw [Int.fract]
+    push_cast
+    ring
+  rw [hkey, Int.ceil_add_intCast, Int.ceil_neg,
+    Int.floor_eq_zero_iff.mpr ⟨carry_nonneg α n j, carry_lt_one α n j⟩,
+    show gaussIter α j * heightError α n j + carry α n j
+        = carry α n j + gaussIter α j * heightError α n j from by ring]
+  simp
+
+/-- `E* ≤ 9/2`: the reciprocal-Fibonacci series is dominated termwise by
+the geometric series `(3/2)(2/3)^ℓ`, whose sum is `9/2`. -/
+theorem Estar_le_nine_halves : Estar ≤ 9 / 2 := by
+  have hE : Estar = ∑' ℓ : ℕ, ((Nat.fib (ℓ + 1) : ℝ))⁻¹ := rfl
+  have hsum : Summable (fun ℓ : ℕ => (3 / 2 : ℝ) * ((2 : ℝ) / 3) ^ ℓ) :=
+    (summable_geometric_of_lt_one (by norm_num) (by norm_num)).mul_left _
+  have h1 : ∑' ℓ : ℕ, ((Nat.fib (ℓ + 1) : ℝ))⁻¹
+      ≤ ∑' ℓ : ℕ, (3 / 2 : ℝ) * ((2 : ℝ) / 3) ^ ℓ :=
+    Summable.tsum_le_tsum (fun ℓ => inv_fib_le_geomD ℓ) summable_inv_fibD hsum
+  have h2 : ∑' ℓ : ℕ, (3 / 2 : ℝ) * ((2 : ℝ) / 3) ^ ℓ = (3 / 2 : ℝ) * (1 - 2 / 3)⁻¹ := by
+    rw [tsum_mul_left, tsum_geometric_of_lt_one (by norm_num) (by norm_num)]
+  rw [hE]
+  rw [h2] at h1
+  norm_num at h1
+  linarith
 
 /-- v5 lines 1253-1258: combining the contraction `xe ≤ e' < xe + 1` with
 the Fibonacci product bound (6), all actual trajectories and all pullback
 trajectories started from zero stay in `[0, D]` for an absolute integer
-`D`. -/
+`D`.  Here `D = 9`, matching the carry-graph bound of
+`Kwon1002.CarryGraph`; the actual carries in fact satisfy the sharper
+`d_j = ⌊E_j⌋ ∈ [0, ⌊E*⌋] ⊆ [0, 4]` by display (7). -/
 theorem exists_absolute_carry_bound :
     ∃ D : ℕ, ∀ (α : ℝ), α ∈ Ioo (0 : ℝ) 1 → Irrational α → ∀ n j : ℕ,
       0 ≤ actualCarry α n j ∧ actualCarry α n j ≤ (D : ℤ) := by
-  sorry
+  refine ⟨9, fun α hα hirr n j => ?_⟩
+  have hE := heightError_mem_Icc α hα hirr n j
+  constructor
+  · exact Int.floor_nonneg.mpr hE.1
+  · have h1 : heightError α n j ≤ 9 :=
+      le_trans hE.2 (le_trans Estar_le_nine_halves (by norm_num))
+    have h2 : ((⌊heightError α n j⌋ : ℤ) : ℝ) ≤ 9 := le_trans (Int.floor_le _) h1
+    exact_mod_cast h2
 
 /-- **(54)** The reset set
 `R = {(x,r,s) : x < 1/(4(D+1)), 1/2 < s < 3/4}`. -/
@@ -598,24 +681,191 @@ def windowCarry (R : ℕ) (w : WindowSpace R) : ℕ → ℤ
       carryMap (wX w (-(R : ℤ) + k)) (wTh w (-(R : ℤ) + k - 1)) (wTh w (-(R : ℤ) + k))
         (windowCarry R w k)
 
-/-- **The function `B^{(R)} : X_R → ℝ`** of v5 lines 1298-1305: a
-bounded Borel function whose restriction to the orbit-consistent support
-represents `B_j^{(R)}`.  It is written out here rather than merely
-asserted to exist, which is stronger and makes the almost-everywhere
-continuity claim checkable. -/
+/-- **The function `B^{(R)} : X_R → ℝ`** of v5 lines 1298-1305: a Borel
+function whose restriction to the orbit-consistent support represents
+`B_j^{(R)}` (`Bwindow_actualWindow`).  It is written out here rather than
+merely asserted to exist, which makes the almost-everywhere claims
+checkable — but note that, unlike the bounded representative whose
+existence v5 asserts, this explicit choice is **not** globally bounded:
+see `bwindow_unbounded` below. -/
 def Bwindow (R : ℕ) (w : WindowSpace R) : ℝ :=
   Phi (wX w 0) (carryU (wX w 0) (wTh w (-1)) (wTh w 0) (windowCarry R w R))
     - (wA w 0 : ℝ) * W (wTh w 0)
 
+/-- The digit reader on an actual window: `wA` at offset `t` reads
+`digit α (j + t)`, whenever the offset is in range and `j ≥ R` keeps the
+truncated subtraction honest. -/
+theorem wA_actualWindow (R : ℕ) (α : ℝ) (n j : ℕ) (hj : R ≤ j) {t : ℤ}
+    (h1 : -(R : ℤ) ≤ t) (h2 : t ≤ (R : ℤ)) :
+    wA (actualWindow R α n j) t = digit α ((j : ℤ) + t).toNat := by
+  have hc : 0 ≤ t + (R : ℤ) ∧ t + (R : ℤ) < 2 * (R : ℤ) + 1 := ⟨by omega, by omega⟩
+  simp only [wA, actualWindow, dif_pos hc]
+  congr 1
+  omega
+
+/-- The real reader on an actual window. -/
+theorem wX_actualWindow (R : ℕ) (α : ℝ) (n j : ℕ) (hj : R ≤ j) {t : ℤ}
+    (h1 : -(R : ℤ) ≤ t) (h2 : t ≤ (R : ℤ)) :
+    wX (actualWindow R α n j) t = gaussIter α ((j : ℤ) + t).toNat := by
+  have hc : 0 ≤ t + (R : ℤ) ∧ t + (R : ℤ) < 2 * (R : ℤ) + 1 := ⟨by omega, by omega⟩
+  simp only [wX, actualWindow, dif_pos hc]
+  congr 1
+  omega
+
+/-- The torus reader on an actual window: `wTh` at offset `t` reads
+`θ_{j+t}`. -/
+theorem wTh_actualWindow (R : ℕ) (α : ℝ) (n j : ℕ) (hj : R + 1 ≤ j) {t : ℤ}
+    (h1 : -(R : ℤ) - 1 ≤ t) (h2 : t ≤ (R : ℤ)) :
+    wTh (actualWindow R α n j) t = theta α n ((j : ℤ) + t).toNat := by
+  have hc : 0 ≤ t + (R : ℤ) + 1 ∧ t + (R : ℤ) + 1 < 2 * (R : ℤ) + 2 := ⟨by omega, by omega⟩
+  simp only [wTh, actualWindow, dif_pos hc]
+  congr 1
+  omega
+
+/-- Iterating the window carry along an actual window reads exactly the
+actual coordinates `(x_{j-R+k}, θ_{j-R+k-1}, θ_{j-R+k})`, so it computes
+`carryFrom` restarted at time `j - R`. -/
+theorem windowCarry_actualWindow (R : ℕ) (α : ℝ) (n j : ℕ) (hj : R + 1 ≤ j) :
+    ∀ k, k ≤ R → windowCarry R (actualWindow R α n j) k = carryFrom α n (j - R) k := by
+  intro k
+  induction k with
+  | zero => intro _; rfl
+  | succ k ih =>
+      intro hk
+      have hk' : k ≤ R := by omega
+      show carryMap (wX (actualWindow R α n j) (-(R : ℤ) + k))
+          (wTh (actualWindow R α n j) (-(R : ℤ) + k - 1))
+          (wTh (actualWindow R α n j) (-(R : ℤ) + k))
+          (windowCarry R (actualWindow R α n j) k)
+        = carryMap (gaussIter α (j - R + k)) (thetaPred α n (j - R + k))
+            (theta α n (j - R + k)) (carryFrom α n (j - R) k)
+      have hpred : thetaPred α n (j - R + k) = theta α n (j - R + k - 1) := by
+        obtain ⟨m, hm⟩ : ∃ m, j - R + k = m + 1 := ⟨j - R + k - 1, by omega⟩
+        rw [hm]
+        rfl
+      rw [wX_actualWindow R α n j (by omega) (t := -(R : ℤ) + k) (by omega) (by omega),
+        wTh_actualWindow R α n j hj (t := -(R : ℤ) + k - 1) (by omega) (by omega),
+        wTh_actualWindow R α n j hj (t := -(R : ℤ) + k) (by omega) (by omega),
+        ih hk', hpred,
+        show ((j : ℤ) + (-(R : ℤ) + k)).toNat = j - R + k from by omega,
+        show ((j : ℤ) + (-(R : ℤ) + k - 1)).toNat = j - R + k - 1 from by omega]
+
 /-- `B_j^{(R)} = B^{(R)}(W^{(R)}_{n,j})` (v5 lines 1300-1302). -/
 theorem Bwindow_actualWindow (R : ℕ) (α : ℝ) (n j : ℕ) (hj : R + 1 ≤ j) :
     Bwindow R (actualWindow R α n j) = BremainderTrunc α n R j := by
-  sorry
+  have hX0 : wX (actualWindow R α n j) 0 = gaussIter α j := by
+    rw [wX_actualWindow R α n j (by omega) (by omega) (by omega)]
+    congr 1
+  have hT0 : wTh (actualWindow R α n j) 0 = theta α n j := by
+    rw [wTh_actualWindow R α n j hj (by omega) (by omega)]
+    congr 1
+  have hTm : wTh (actualWindow R α n j) (-1) = thetaPred α n j := by
+    rw [wTh_actualWindow R α n j hj (by omega) (by omega)]
+    have hpred : thetaPred α n j = theta α n (j - 1) := by
+      obtain ⟨m, hm⟩ : ∃ m, j = m + 1 := ⟨j - 1, by omega⟩
+      rw [hm]
+      rfl
+    rw [hpred]
+    congr 1
+    omega
+  have hA0 : wA (actualWindow R α n j) 0 = digit α j := by
+    rw [wA_actualWindow R α n j (by omega) (by omega) (by omega)]
+    congr 1
+  have hWC : windowCarry R (actualWindow R α n j) R = carryTrunc α n R j :=
+    windowCarry_actualWindow R α n j hj R le_rfl
+  show Phi (wX (actualWindow R α n j) 0)
+      (carryU (wX (actualWindow R α n j) 0) (wTh (actualWindow R α n j) (-1))
+        (wTh (actualWindow R α n j) 0) (windowCarry R (actualWindow R α n j) R))
+    - (wA (actualWindow R α n j) 0 : ℝ) * W (wTh (actualWindow R α n j) 0)
+    = BremainderTrunc α n R j
+  rw [hX0, hTm, hT0, hA0, hWC]
+  rfl
 
-/-- `B^{(R)}` is bounded and `μ_R`-almost-everywhere continuous: its
-discontinuities lie on countably many Gauss boundaries and finitely many
-ceiling or fractional-part hypersurfaces, all `μ_R`-null (v5 lines
-1302-1305). -/
+/-- **`B^{(R)}` as written is *not* globally bounded on `WindowSpace R`.**
+The digit block of `WindowSpace R` is an unconstrained copy of `ℕ` and the
+type does not couple it to the real block, so the term
+`a_{j+1} W(θ_j)` grows without bound along windows whose central digit is
+large while `W(θ_j) = 1/8` stays put; nothing in `Φ` can compensate,
+because the real coordinate is pinned at `1` where `Φ` is bounded.  This
+refutes the boundedness half of `Bwindow_bounded_and_ae_continuous`
+below, for every `R`; see the docstring there for the corrected
+reading. -/
+theorem bwindow_unbounded (R : ℕ) :
+    ¬ ∃ C : ℝ, ∀ w : WindowSpace R, |Bwindow R w| ≤ C := by
+  rintro ⟨C, hC⟩
+  obtain ⟨m, hm⟩ := exists_nat_gt (8 * (C + 1))
+  set w : WindowSpace R :=
+    (fun _ => m, fun _ => (1 : ℝ), fun _ => (1 / 2 : ℝ)) with hw
+  have hcA : 0 ≤ (0 : ℤ) + (R : ℤ) ∧ (0 : ℤ) + (R : ℤ) < 2 * (R : ℤ) + 1 :=
+    ⟨by omega, by omega⟩
+  have hcT : 0 ≤ (0 : ℤ) + (R : ℤ) + 1 ∧ (0 : ℤ) + (R : ℤ) + 1 < 2 * (R : ℤ) + 2 :=
+    ⟨by omega, by omega⟩
+  have hA : wA w 0 = m := by
+    simp only [hw, wA, dif_pos hcA]
+  have hX : wX w 0 = 1 := by
+    simp only [hw, wX, dif_pos hcA]
+  have hT : wTh w 0 = 1 / 2 := by
+    simp only [hw, wTh, dif_pos hcT]
+  set u : ℝ := carryU (wX w 0) (wTh w (-1)) (wTh w 0) (windowCarry R w R) with hu
+  have hu0 : 0 ≤ u := by
+    rw [hu]
+    simp only [carryU]
+    exact Int.fract_nonneg _
+  have hu1 : u < 1 := by
+    rw [hu]
+    simp only [carryU]
+    exact Int.fract_lt_one _
+  have hW : W (1 / 2 : ℝ) = 1 / 8 := by
+    unfold W
+    rw [Int.fract_eq_self.mpr (by norm_num)]
+    norm_num
+  have hB : Bwindow R w = Phi 1 u - (m : ℝ) * (1 / 8) := by
+    show Phi (wX w 0) u - (wA w 0 : ℝ) * W (wTh w 0) = Phi 1 u - (m : ℝ) * (1 / 8)
+    rw [hX, hA, hT, hW]
+  have hPhi : |Phi 1 u| ≤ 1 / 2 := by
+    unfold Phi
+    rw [abs_le]
+    constructor <;> nlinarith
+  have hkey := hC w
+  rw [hB] at hkey
+  have hlow : (m : ℝ) / 8 - 1 / 2 ≤ |Phi 1 u - (m : ℝ) * (1 / 8)| := by
+    have h1 : (m : ℝ) * (1 / 8) - Phi 1 u ≤ |Phi 1 u - (m : ℝ) * (1 / 8)| := by
+      rw [abs_sub_comm]
+      exact le_abs_self _
+    have h2 : Phi 1 u ≤ 1 / 2 := (abs_le.mp hPhi).2
+    linarith
+  linarith
+
+/-- `B^{(R)}` is bounded and `μ_R`-almost-everywhere continuous (v5 lines
+1302-1305).
+
+**FALSE AS STATED — machine-refuted.**  The boundedness half
+`∀ w, |Bwindow R w| ≤ C` fails for every `C` and every `R`:
+`bwindow_unbounded` above exhibits windows with central digit `m → ∞`,
+real block `1` and torus block `1/2`, along which
+`Bwindow = Φ(1, u) - m/8 → -∞`.  The manuscript is *not* refuted: v5
+asserts only that *some* bounded Borel function on `X_R` restricts to
+`B_j^{(R)}` on the orbit-consistent support, whereas this file's
+`Bwindow` wrote out the naive formula on all of `WindowSpace R`, where
+the type does not couple the digit block to the real block (compare the
+docstrings of `Prop64.digit_truncation` and `ae_orbitConsistent`).  What
+is true of this `Bwindow`:
+
+* it is measurable (the ingredients are `measurable_wX`,
+  `measurable_wTh`, `measurable_wA`, `measurable_windowCarry` in
+  `WindowLaws.lean`);
+* it is bounded `μ_R`-almost everywhere (on orbit-consistent windows the
+  digit is the Gauss digit of the real coordinate, and the
+  `BremainderTrunc` bound `Prop64.abs_BremainderTrunc_le` transfers);
+* its discontinuity set is `μ_R`-null.
+
+Repair options: clamp `Bwindow` into `[-C, C]` (changing the statements
+of `display_55_monomial_approximation` and `actual_L2_transfer`, which
+consume `Bwindow` verbatim), or weaken this statement and
+`lemma_6_3_full_state_transfer`'s hypothesis to an a.e. bound.  Both
+ripple into Lemma 6.3-gated statements, so the choice is left open;
+until then this statement stays sorried and **must not be consumed for
+its boundedness half**. -/
 theorem Bwindow_bounded_and_ae_continuous (R : ℕ) :
     ∃ C : ℝ, (∀ w, |Bwindow R w| ≤ C) ∧
       Measurable (Bwindow R) ∧

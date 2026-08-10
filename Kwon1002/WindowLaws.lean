@@ -175,6 +175,14 @@ theorem measurable_stationaryWindow (R : ℕ) : Measurable (stationaryWindow R) 
     · exact measurable_pi_lambda _ fun i =>
         measurable_snd.comp (measurable_snd.comp (measurable_hatSzpow _))
 
+/-- `μ_R` is a probability measure: the pushforward of the probability
+measure `μ̂₀` (`isProbabilityMeasure_hatMu0`) along the measurable
+stationary window. -/
+instance isProbabilityMeasure_windowLaw (R : ℕ) :
+    IsProbabilityMeasure (windowLaw R) := by
+  show IsProbabilityMeasure (hatMu0.map (stationaryWindow R))
+  exact Measure.isProbabilityMeasure_map (measurable_stationaryWindow R).aemeasurable
+
 /-- **(`(π_{R',R})_* μ_{R'} = μ_R`)**, v5 line 1165. -/
 theorem windowProj_map_windowLaw {R' R : ℕ} (h : R ≤ R') :
     (windowLaw R').map (windowProj h) = windowLaw R := by
