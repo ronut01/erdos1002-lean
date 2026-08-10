@@ -33,13 +33,19 @@ Apache License 2.0. See [LICENSE](LICENSE).
 The Lean development builds against Lean v4.27.0 and mathlib pinned in
 `lake-manifest.json`.
 
-**1,583 theorems, 1,389 of them axiom-clean**, under the discipline this
+**1,681 theorems, 1,499 of them axiom-clean**, under the discipline this
 project enforces in CI: axioms exactly `propext`, `Classical.choice`,
 `Quot.sound`, with no `sorry` in any completed result, no `native_decide`,
 and no custom axioms anywhere, including the vendored infrastructure. The
-current measurement reports **zero** theorems on a non-standard axiom. The
-remaining 194 are the open goals and the results downstream of them: 94
-carry a placeholder directly, and the other 100 depend on one.
+current measurement reports **zero** theorems on a non-standard axiom. Of
+the theorems still open, 86 carry a placeholder directly; the rest depend
+on one.
+
+Nearly every remaining open goal now traces to a single analytic input:
+the manuscript's display (16) and its corollary (20), the large-deviation
+bound for the continuants, which is absent from this development and from
+the vendored substrate. The conditional machinery is in place on both
+consuming paths, so a proof or citation for (16) discharges them at once.
 
 Section 2 is formalized. Section 3 is formalized apart from Lemma 3.1(i),
 which this development does not use. The conditional multi-block mixing
