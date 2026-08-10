@@ -116,7 +116,22 @@ already quantified over all `d < k`. The reason v8 needed the refinement is
 a genuine measurability gap in v5, since the two-block amplitude is not
 constant on depth-`j` cylinders. The one new obligation is the
 depth-ordering side conditions the refinement creates, each of which holds
-with room to spare from (19) but none of which is stated.
+with room to spare from (19). Update (stage C): these are now stated and
+proved in `Kwon1002/PhaseBounds.lean` §6 (`lt_kMinus_of_bulk`,
+`prefix_lt_kMinus_toNat_of_bulk` — `j+R < t₋` and `k+R < t₋` over the bulk
+with `60H − R − 1` to spare, `succ_lt_kMinus_toNat_of_bulk` — the
+`j_s + 1 < k₋` ordering that display (22) consumes in the §4 body,
+`subResonance_prefix_lt_kMinus_toNat` — `k + R < t₋` under `k < t₀ − 100H`,
+and the (20)-range bounds `kMinus/kPlus_toNat_le_two_mIndex_of_bulk`).
+Also in stage C: `natExt_marginal` is proved (case 1 of the proof of 4.2 is
+now sorry-free end to end in its primed form), and PhaseBounds §7 proves the
+(20)-free sub-steps of cases 2 and 3 — the pair oscillatory form
+(`monoAt_mul_oscillatory`), frequency freezing (`Qpair_congr`), the
+explicit-`O(1)` exponent identities at both cuts
+(`kMinus/kPlus_exponent_identity`, defect `A ∈ (−3λ, 0]`), and the retained
+`q_{t₋}² ≤ 2e^{−cH} n|Q|` / ascended `q_{t₊}² ≥ e^{γ₊H/2} n|Q_j|`
+inequalities (`retained_descendant_bound_at_cut`,
+`ascended_descendant_bound_at_cut`).
 
 **Section 5.** No amendment forced by v8. Lines 834 to 1056 of v8 are
 byte-identical to v5, and the diagonal choice of `ε_n` was not removed but
