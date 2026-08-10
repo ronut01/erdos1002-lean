@@ -43,9 +43,12 @@ to point here.
 It is *not* by itself the digit-block marginal.  Orbit consistency ties
 the digits of one window to each other; identifying the law of the digit
 at offset `t` with the Gauss digit law needs the stationarity of `μ̂₀`
-under `hatS` (`Lemma62.hatS_measurePreserving`), which is now proved, plus
-the identification of the `t = 0` marginal of `ν̂` with the Gauss density,
-which is not.  See the note on `Prop64.event_truncation`.
+under the cocycle in both time directions
+(`Lemma62.hatS_measurePreserving` and `Kwon1002.hatSinv_measurePreserving`)
+plus the identification of the `t = 0` marginal of `ν̂` with the Gauss
+density (`NatExtMeasure.hatNu_fst_marginal`).  Both are now proved, and
+`Kwon1002/DigitLaw.lean` assembles them into the single-digit tail bound
+`windowLaw_digit_tail` that `Prop64.event_truncation` consumes.
 -/
 
 open MeasureTheory Set Filter

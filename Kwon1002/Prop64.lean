@@ -1,6 +1,7 @@
 import Kwon1002.Section6Skeleton
 import Kwon1002.WindowLaws
 import Kwon1002.WindowMarginal
+import Kwon1002.DigitLaw
 
 /-!
 # Proposition 6.4 of v5: the bounded-remainder weak law, reduced to named inputs
@@ -670,6 +671,29 @@ def cfFinite (a : ℕ → ℕ) : ℕ → ℝ
   | 0 => 0
   | M + 1 => ((a 0 : ℝ) + cfFinite (fun k => a (k + 1)) M)⁻¹
 
+/-- `cfFinite` is nonnegative for *every* digit family, including the
+degenerate ones: each step is `(a + u)⁻¹` of a nonnegative quantity, and
+Lean's `0⁻¹ = 0` keeps even the empty corner at `0`. -/
+theorem cfFinite_nonneg : ∀ (M : ℕ) (a : ℕ → ℕ), 0 ≤ cfFinite a M
+  | 0, _ => by simp [cfFinite]
+  | M + 1, a => by
+      have h := cfFinite_nonneg M (fun k => a (k + 1))
+      simp only [cfFinite]
+      exact inv_nonneg.mpr (add_nonneg (Nat.cast_nonneg _) h)
+
+/-- If the digits actually read are all `≥ 1` — which
+`ae_orbitConsistent` guarantees almost surely, and which fails for an
+arbitrary point of `WindowSpace R` (a digit `0` at the top makes
+`cfFinite` an unbounded `u⁻¹`) — then `cfFinite a M ≤ 1`. -/
+theorem cfFinite_le_one : ∀ (M : ℕ) (a : ℕ → ℕ),
+    (∀ k, k < M → 1 ≤ a k) → cfFinite a M ≤ 1
+  | 0, _, _ => by simp [cfFinite]
+  | M + 1, a, ha => by
+      have h0 : (1:ℝ) ≤ (a 0 : ℝ) := by exact_mod_cast ha 0 (Nat.succ_pos M)
+      have hnn := cfFinite_nonneg M (fun k => a (k + 1))
+      simp only [cfFinite]
+      exact inv_le_one_of_one_le₀ (by linarith)
+
 /-- The `M`-digit truncation `X_{R+M} → X_R`: keep the digit and torus
 coordinates of the radius-`R` sub-window, and replace the real coordinate
 at offset `t` by `[0; a_{j+t+1}, …, a_{j+t+M}]`, which is read off the
@@ -864,41 +888,111 @@ theorem digit_truncation (R : ℕ) (G : DenseElt R) (ε : ℝ) (hε : 0 < ε) :
         2 (windowLaw (R + M)) < ENNReal.ofReal ε := by
   sorry
 
-/-- **Input (step 3, digit truncation).**  v5 lines 1345-1356:
+/-- **A dense-algebra element is bounded wherever the real block lies in
+the unit cube.**  The digit amplitude is dominated by the sum of its
+finitely many nonzero values, the continuous factor by its supremum on the
+compact cube, and the character has modulus one.  On all of `X_R` the
+`g_ℓ` are unbounded — the cube hypothesis is where
+`ae_norm_digitTrunc_le` puts the truncated real block almost surely. -/
+theorem denseElt_bound {R : ℕ} (G : DenseElt R) :
+    ∃ B : ℝ, 0 ≤ B ∧ ∀ v : WindowSpace R,
+      (∀ i, v.2.1 i ∈ Icc (0:ℝ) 1) → ‖G.eval v‖ ≤ B := by
+  have hD : ∀ (l : Fin G.len) (u : Fin (2 * R + 1) → ℕ),
+      ‖G.D l u‖ ≤ ∑ v ∈ G.Dwords l, ‖G.D l v‖ := by
+    intro l u
+    by_cases hu : u ∈ G.Dwords l
+    · exact Finset.single_le_sum (fun v _ => norm_nonneg _) hu
+    · rw [G.D_support l u hu, norm_zero]
+      exact Finset.sum_nonneg fun v _ => norm_nonneg _
+  have hg : ∀ l : Fin G.len, ∃ C : ℝ, 0 ≤ C ∧
+      ∀ x ∈ Set.univ.pi fun _ : Fin (2 * R + 1) => Icc (0:ℝ) 1, ‖G.g l x‖ ≤ C := by
+    intro l
+    obtain ⟨C, hC⟩ := (isCompact_univ_pi fun _ : Fin (2 * R + 1) =>
+      isCompact_Icc (a := (0:ℝ)) (b := 1)).exists_bound_of_continuousOn
+      (G.g_continuous l).continuousOn
+    exact ⟨max C 0, le_max_right _ _, fun x hx => le_trans (hC x hx) (le_max_left _ _)⟩
+  choose Cg hCg0 hCg using hg
+  refine ⟨∑ l : Fin G.len, (∑ v ∈ G.Dwords l, ‖G.D l v‖) * Cg l, ?_, ?_⟩
+  · exact Finset.sum_nonneg fun l _ =>
+      mul_nonneg (Finset.sum_nonneg fun v _ => norm_nonneg _) (hCg0 l)
+  · intro v hv
+    refine le_trans (norm_sum_le _ _) (Finset.sum_le_sum fun l _ => ?_)
+    rw [norm_mul, norm_mul, Prop42.norm_torusChar, mul_one]
+    have hvc : v.2.1 ∈ Set.univ.pi fun _ : Fin (2 * R + 1) => Icc (0:ℝ) 1 :=
+      fun i _ => hv i
+    exact mul_le_mul (hD l v.1) (hCg l _ hvc) (norm_nonneg _)
+      (Finset.sum_nonneg fun u _ => norm_nonneg _)
+
+/-- **`G_M` is almost surely bounded.**  On the orbit-consistent
+full-measure event of `ae_orbitConsistent` every digit read by
+`digitTruncWindow` is a genuine Gauss digit of an irrational point of
+`(0,1)`, hence `≥ 1`, so the truncated real block `cfFinite` lands in
+`[0,1]^{2R+1}` (`cfFinite_le_one`), where `denseElt_bound` applies.  The
+bound is *not* pointwise: an arbitrary window may carry digit `0`, where
+`cfFinite` degenerates to an unbounded `u⁻¹`. -/
+theorem ae_norm_digitTrunc_le (R M : ℕ) (G : DenseElt R) :
+    ∃ B : ℝ, 0 ≤ B ∧
+      ∀ᵐ w ∂(windowLaw (R + M)), ‖G.eval (digitTruncWindow R M w)‖ ≤ B := by
+  obtain ⟨B, hB0, hB⟩ := denseElt_bound G
+  refine ⟨B, hB0, ?_⟩
+  filter_upwards [ae_orbitConsistent (R + M)] with w hw
+  refine hB _ fun i => ?_
+  refine ⟨cfFinite_nonneg M _, cfFinite_le_one M _ fun k hk => ?_⟩
+  have hi := i.isLt
+  have h1 : -(((R + M) : ℕ) : ℤ) ≤ (i:ℤ) - (R:ℤ) + (k:ℤ) := by push_cast; omega
+  have h2 : (i:ℤ) - (R:ℤ) + (k:ℤ) ≤ (((R + M) : ℕ) : ℤ) := by push_cast; omega
+  obtain ⟨hIoo, hirr, hdig⟩ := hw.1 _ h1 h2
+  rw [hdig]
+  exact one_le_digit hIoo hirr 0
+
+/-- **The union bound for the digit-cap complement**:
+`μ_{R'}(E_{M,K}^c) ≤ (2R'+1) · 2/(K+1)`.  Stationarity has already made
+every offset's tail equal to the `t = 0` Gauss tail
+(`Kwon1002.windowLaw_digitCoord_tail`, `Kwon1002/DigitLaw.lean`), so the
+manuscript's `O_R(M/K)` appears in the explicit form `(2R'+1) · 2/(K+1)`. -/
+theorem windowLaw_digitCapEvent_compl_le (R' K : ℕ) :
+    windowLaw R' ((digitCapEvent R' K)ᶜ)
+      ≤ ENNReal.ofReal ((2 * (R' : ℝ) + 1) * (2 / ((K : ℝ) + 1))) := by
+  have hcompl : (digitCapEvent R' K)ᶜ
+      = ⋃ i : Fin (2 * R' + 1), {w : WindowSpace R' | K + 1 ≤ w.1 i} := by
+    ext w
+    simp only [digitCapEvent, Set.mem_compl_iff, Set.mem_setOf_eq, not_forall, not_le,
+      Set.mem_iUnion]
+    exact exists_congr fun i => Nat.lt_iff_add_one_le
+  rw [hcompl]
+  refine le_trans (measure_iUnion_le _) ?_
+  rw [tsum_fintype]
+  refine le_trans (Finset.sum_le_sum fun i _ => windowLaw_digitCoord_tail R' i K) ?_
+  rw [Finset.sum_const, Finset.card_univ, Fintype.card_fin, nsmul_eq_mul,
+    ← ENNReal.ofReal_natCast, ← ENNReal.ofReal_mul (by positivity)]
+  refine ENNReal.ofReal_le_ofReal (le_of_eq ?_)
+  push_cast
+  ring
+
+/-- **Input (step 3, digit truncation)**, v5 lines 1345-1356 — **closed**.
 `μ_{R+M}(E_{M,K}^c) = O_R(M/K)` by Lemma 3.1(ii), stationarity and a union
 bound, and `G_M` is bounded, so
 `‖G_M - G_M 1_{E_{M,K}}‖²_{L²} ≤ ‖G_M‖_∞² μ_{R+M}(E_{M,K}^c)`.
 
-Consumes `Kwon1002.digit_tail_product` (Lemma 3.1(ii), proved).
+The two halves the earlier obstruction note asked for are now in the tree,
+and this proof only assembles them.
 
-**Obstruction, precisely.**  Two steps, and they have different status.
+1. *The digit-block marginal.*  Stationarity of `μ̂₀` under the cocycle in
+   **both** time directions (`Lemma62.hatS_measurePreserving` and the new
+   `Kwon1002.hatSinv_measurePreserving`) makes all `2R'+1` union-bound
+   terms equal to the `t = 0` term, and the `t = 0` term is the
+   future-coordinate marginal of `ν̂`
+   (`NatExtMeasure.hatNu_fst_marginal`) fed through the one-level Gauss
+   tail: `μ_{R'}{a_t ≥ K+1} ≤ 2/(K+1)` at every offset
+   (`Kwon1002.windowLaw_digitCoord_tail`).  The union bound is
+   `windowLaw_digitCapEvent_compl_le` above.
+2. *Boundedness of `G_M`.*  Not pointwise — the `g_ℓ` are unbounded on
+   the real block — but almost sure, via `ae_orbitConsistent` and
+   `cfFinite_le_one` (`ae_norm_digitTrunc_le` above).
 
-1. **Orbit consistency: SUPPLIED.**  `Kwon1002.ae_orbitConsistent`
-   (`Kwon1002/WindowMarginal.lean`) gives `a_t = ⌊1/x_t⌋` along an
-   irrational Gauss orbit for `μ_{R+M}`-almost every window, so the digit
-   block of a window really is a block of Gauss digits and not an
-   unconstrained element of `ℕ^{2R'+1}`.
-
-2. **The digit-block marginal: still missing, and it is not a corollary
-   of item 1.**  Orbit consistency ties the digits of one window to each
-   other; what the union bound needs is the *law* of the digit at offset
-   `t`, i.e. that `(hatSzpow t z).1.1` has the Gauss distribution under
-   `μ̂₀` for every `t`, not just `t = 0`.
-
-   **Half of this obstruction is now gone.**  Stationarity of `μ̂₀` under
-   `hatS` is `Lemma62.hatS_measurePreserving`, which is proved, on top of
-   `Lemma62.natExtMap_measurePreserving` (the branchwise change of
-   variables of `Kwon1002/NatExtInvariance.lean`) and
-   `Lemma62.torusFibre_measurePreserving`.  Stationarity makes the law of
-   the digit at offset `t` the *same* for every `t`, so the `2R'` terms of
-   the union bound are now all equal to the `t = 0` term.
-
-   What is left is the `t = 0` term itself: identifying the marginal of
-   `ν̂` in the future coordinate with the Gauss density `1/(log 2 (1+x))`,
-   and then feeding `Kwon1002.digit_tail_product` through it.  The inner
-   `y`-integral of `hatNu` is exactly that density — the computation is
-   the inner half of `Kwon1002.hatNu_univ` — but it has not been recorded
-   as a marginal statement, and the union bound has not been assembled. -/
+With an a.e. bound `B` and the measure bound, the difference is dominated
+by `(B+1) 1_{E^c}`, whose `L²` norm is `(B+1) μ(E^c)^{1/2}`; any
+`K > 2(2R'+1)(B+1)²/ε²` then wins. -/
 theorem event_truncation (R M : ℕ) (G : DenseElt R) (ε : ℝ) (hε : 0 < ε) :
     ∃ K : ℕ,
       eLpNorm (fun w : WindowSpace (R + M) =>
@@ -906,7 +1000,60 @@ theorem event_truncation (R M : ℕ) (G : DenseElt R) (ε : ℝ) (hε : 0 < ε) 
             - (digitCapEvent (R + M) K).indicator
                 (fun v => G.eval (digitTruncWindow R M v)) w)
         2 (windowLaw (R + M)) < ENNReal.ofReal ε := by
-  sorry
+  obtain ⟨B, hB0, hBae⟩ := ae_norm_digitTrunc_le R M G
+  have hB1 : (0:ℝ) < B + 1 := by linarith
+  set δ : ℝ := ε / (B + 1) with hδdef
+  have hδ : 0 < δ := div_pos hε hB1
+  have hδ2 : (0:ℝ) < δ ^ 2 := by positivity
+  obtain ⟨K, hKgt⟩ := exists_nat_gt ((2 * (((R + M) : ℕ) : ℝ) + 1) * 2 / δ ^ 2)
+  have hK1 : (0:ℝ) < (K:ℝ) + 1 := by positivity
+  have hKbound : (2 * (((R + M) : ℕ) : ℝ) + 1) * (2 / ((K:ℝ) + 1)) < δ ^ 2 := by
+    rw [div_lt_iff₀ hδ2] at hKgt
+    rw [← mul_div_assoc, div_lt_iff₀ hK1]
+    nlinarith
+  refine ⟨K, ?_⟩
+  -- the difference vanishes on `E` and is the a.e.-bounded `G_M` off it:
+  -- dominate it by the constant `B + 1` cut to the complement
+  have hdom : ∀ᵐ w ∂(windowLaw (R + M)),
+      ‖G.eval (digitTruncWindow R M w)
+          - (digitCapEvent (R + M) K).indicator
+              (fun v => G.eval (digitTruncWindow R M v)) w‖
+        ≤ ‖((digitCapEvent (R + M) K)ᶜ).indicator (fun _ => B + 1) w‖ := by
+    filter_upwards [hBae] with w hw
+    by_cases hwE : w ∈ digitCapEvent (R + M) K
+    · rw [Set.indicator_of_mem hwE, sub_self, norm_zero,
+        Set.indicator_of_notMem (by simpa using hwE)]
+      simp
+    · rw [Set.indicator_of_notMem hwE, sub_zero,
+        Set.indicator_of_mem (by simpa using hwE), Real.norm_of_nonneg (by linarith)]
+      linarith
+  refine lt_of_le_of_lt (eLpNorm_mono_ae hdom) ?_
+  rw [eLpNorm_indicator_const (measurableSet_digitCapEvent (R + M) K).compl
+    (by norm_num) (by norm_num)]
+  have htwo : (1 : ℝ) / (2 : ℝ≥0∞).toReal = (1 / 2 : ℝ) := by norm_num
+  rw [htwo, Real.enorm_eq_ofReal (by linarith : (0:ℝ) ≤ B + 1)]
+  -- the measure factor is strictly below `δ`, and `(B+1)δ = ε`
+  have hmeaslt : windowLaw (R + M) ((digitCapEvent (R + M) K)ᶜ)
+      < ENNReal.ofReal (δ ^ 2) :=
+    lt_of_le_of_lt (windowLaw_digitCapEvent_compl_le (R + M) K)
+      ((ENNReal.ofReal_lt_ofReal_iff hδ2).mpr hKbound)
+  have hrpow : (ENNReal.ofReal (δ ^ 2)) ^ ((1 : ℝ) / 2) = ENNReal.ofReal δ := by
+    rw [ENNReal.ofReal_pow hδ.le, ← ENNReal.rpow_natCast (ENNReal.ofReal δ) 2,
+      ← ENNReal.rpow_mul]
+    norm_num
+  have hne0 : ENNReal.ofReal (B + 1) ≠ 0 := by
+    simp [ENNReal.ofReal_eq_zero, not_le, hB1]
+  calc ENNReal.ofReal (B + 1)
+        * windowLaw (R + M) ((digitCapEvent (R + M) K)ᶜ) ^ ((1:ℝ) / 2)
+      < ENNReal.ofReal (B + 1) * ENNReal.ofReal δ := by
+        refine ENNReal.mul_lt_mul_right hne0 ENNReal.ofReal_ne_top ?_
+        rw [← hrpow]
+        exact ENNReal.rpow_lt_rpow hmeaslt (by norm_num)
+    _ = ENNReal.ofReal ε := by
+        rw [← ENNReal.ofReal_mul (by linarith)]
+        congr 1
+        rw [hδdef]
+        field_simp
 
 /-- **Input (step 4, identity (31)).**  v5 lines 1357-1372: on `E_{M,K}`
 only finitely many full digit words survive, and on each of them identity
