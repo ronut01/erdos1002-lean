@@ -48,11 +48,9 @@ copied, so the statements are literally about the same objects.
   `torusChar_hatS_iterate` at time `m` never cancels a fixed nonzero
   character once `m` is large.
 
-## What is not proved here, and why
+## The measure-theoretic substrate
 
-`lemma_6_2_gauss_torus_mixing` is left sorried, together with the two
-inputs it still needs.  The measure-theoretic substrate is no longer the
-obstruction:
+Everything below is proved; this file carries no `sorry`.
 
 * `natExtMap_measurePreserving` is **proved**, in
   `Kwon1002/NatExtInvariance.lean`: the natural extension preserves
@@ -89,9 +87,15 @@ argument, Fourier density on `AddCircle 1` through the null seam, cylinder
 shrinking plus outer regularity on the Gauss factor, and the digit-cap
 refinement to a common radius).
 
-What remains open is the assembly `lemma_6_2_gauss_torus_mixing` that
-consumes `natExt_zero_mode_mixing` and `cylinderChar_dense_L2`.  That is
-the one sorry this file cannot yet discharge.
+`lemma_6_2_gauss_torus_mixing` is now **proved**, in the `Assembly62`
+section: `monoInd_corrTo` computes the `m`-step correlation of a single
+pair of monomials exactly (Fubini over `μ̂₀ = ν̂ ⊗ m`, the cocycle
+identity `torusChar_hatS_iterate`, and either `natExt_zero_mode_mixing`
+for the zero modes or `resonance_bounded` plus the mean-zero character
+integral for the rest), `span_corrTo` extends the limit bilinearly over
+`Submodule.span ℂ monoSet`, and the final proof trades the indicators of
+two arbitrary measurable sets for span members at an `L²`-controlled
+`L¹` cost that is uniform in `m` by `hatS_measurePreserving`.
 
 -/
 
@@ -608,6 +612,497 @@ theorem cylinderChar_dense_L2 (f : NatExtTorus → ℂ) (hf : MemLp f 2 hatMu0)
       eLpNorm (fun z => f z - U.eval z) 2 hatMu0 < ENNReal.ofReal ε :=
   CylinderCharDense.cylinderChar_dense_L2_core f hf ε hε
 
+/-! ## The assembly: from monomials to arbitrary indicators
+
+The proof of Lemma 6.2 runs over the test class
+`CylinderCharDense.monoSet`, the base-set indicators times two-mode torus
+characters whose span is dense in `L²(μ̂₀)` (`monoSet_span_dense`).  For a
+single pair of monomials the `m`-step correlation is computed exactly:
+the cocycle identity `torusChar_hatS_iterate` collapses the two torus
+characters into one of mode `k + (A_{a_m} ⋯ A_{a_1})ᵀ ℓ`, Fubini over
+`μ̂₀ = ν̂ ⊗ m` (`hatMu0_eq_prod`) integrates that character out to an
+indicator of the resonance (50), and then either all modes vanish — the
+zero-mode case, closed by `natExt_zero_mode_mixing` — or
+`resonance_bounded` kills the fibre integral outright for all large `m`
+while `integral_torusChar_pair_eq_zero` kills the limit.  Bilinearity
+extends the limit over the span, and an `L²`-approximation argument
+extends it from the span to indicators of arbitrary measurable sets. -/
+
+section Assembly62
+
+open CylinderCharDense
+
+/-- A single Gauss-torus monomial: the indicator of a base set times a
+two-mode torus character.  Every generator of `monoSet` has this shape
+(`monoSet_repr`), and it is the shape the §6 cocycle computation
+consumes. -/
+def monoInd (D : Set (ℝ × ℝ)) (r s : ℤ) : NatExtTorus → ℂ := fun z =>
+  indC D z.1 * torusChar ((r : ℝ) * z.2.1 + (s : ℝ) * z.2.2)
+
+theorem norm_indC_le {X : Type*} (D : Set X) (x : X) : ‖indC D x‖ ≤ 1 := by
+  by_cases h : x ∈ D <;> simp [indC, Set.indicator_apply, h]
+
+theorem indC_eq_ofReal {X : Type*} (D : Set X) (x : X) :
+    indC D x = ((D.indicator (fun _ => (1 : ℝ)) x : ℝ) : ℂ) := by
+  by_cases h : x ∈ D <;> simp [indC, Set.indicator_apply, h]
+
+theorem integral_indC {X : Type*} [MeasurableSpace X] (μ : Measure X) {D : Set X}
+    (hD : MeasurableSet D) : ∫ x, indC D x ∂μ = ((μ.real D : ℝ) : ℂ) := by
+  rw [indC, integral_indicator_const (1 : ℂ) hD, Complex.real_smul, mul_one]
+
+theorem norm_monoInd_le (D : Set (ℝ × ℝ)) (r s : ℤ) (z : NatExtTorus) :
+    ‖monoInd D r s z‖ ≤ 1 := by
+  simp only [monoInd, norm_mul, Prop42.norm_torusChar, mul_one]
+  exact norm_indC_le D z.1
+
+theorem measurable_monoInd {D : Set (ℝ × ℝ)} (hD : MeasurableSet D) (r s : ℤ) :
+    Measurable (monoInd D r s) := by
+  refine ((measurable_indC hD).comp measurable_fst).mul ?_
+  exact Prop42.continuous_torusChar.measurable.comp
+    (((measurable_fst.comp measurable_snd).const_mul _).add
+      ((measurable_snd.comp measurable_snd).const_mul _))
+
+/-- Every generator of `monoSet` is a `monoInd` at a measurable base
+rectangle: the two cylinder indicators merge into the indicator of their
+product, and the two one-mode characters merge into one two-mode
+character. -/
+theorem monoSet_repr {g : NatExtTorus → ℂ} (hg : g ∈ monoSet) :
+    ∃ (D : Set (ℝ × ℝ)) (r s : ℤ), MeasurableSet D ∧ g = monoInd D r s := by
+  obtain ⟨g₁, hg₁, g₂, hg₂, rfl⟩ := hg
+  obtain ⟨i₁, hi₁, i₂, hi₂, rfl⟩ := hg₁
+  obtain ⟨c₁, hc₁, c₂, hc₂, rfl⟩ := hg₂
+  obtain ⟨d₁, w₁, rfl⟩ := hi₁
+  obtain ⟨d₂, w₂, rfl⟩ := hi₂
+  obtain ⟨r, rfl⟩ := hc₁
+  obtain ⟨s, rfl⟩ := hc₂
+  refine ⟨Prop41.cylinder d₁ w₁ ×ˢ Prop41.cylinder d₂ w₂, r, s,
+    (measurableSet_cylinder d₁ w₁).prod (measurableSet_cylinder d₂ w₂), ?_⟩
+  funext z
+  simp only [monoInd]
+  rw [MonomialCore.torusChar_add]
+  have hind : indC (Prop41.cylinder d₁ w₁) z.1.1 * indC (Prop41.cylinder d₂ w₂) z.1.2
+      = indC (Prop41.cylinder d₁ w₁ ×ˢ Prop41.cylinder d₂ w₂) z.1 := by
+    by_cases h1 : z.1.1 ∈ Prop41.cylinder d₁ w₁ <;>
+      by_cases h2 : z.1.2 ∈ Prop41.cylinder d₂ w₂ <;>
+        simp [indC, Set.indicator_apply, h1, h2, Set.mem_prod]
+  rw [← hind]
+
+theorem vecPair_eq_zero_iff {r s : ℤ} : (![r, s] : Fin 2 → ℤ) = 0 ↔ r = 0 ∧ s = 0 := by
+  constructor
+  · intro h
+    exact ⟨by simpa using congrFun h 0, by simpa using congrFun h 1⟩
+  · rintro ⟨rfl, rfl⟩
+    funext i
+    fin_cases i <;> rfl
+
+theorem pair_ne_of_ne_zero {u : Fin 2 → ℤ} (hu : u ≠ 0) : (u 0, u 1) ≠ (0, 0) := by
+  intro h
+  apply hu
+  funext i
+  fin_cases i
+  · simpa using congrArg Prod.fst h
+  · simpa using congrArg Prod.snd h
+
+/-- The Haar integral of a two-mode character: `1` at the trivial mode,
+`0` otherwise (`MonomialCore.integral_torusChar_pair_eq_zero`). -/
+theorem integral_torusChar_vec (u : Fin 2 → ℤ) :
+    (∫ q in Ioo (0 : ℝ) 1 ×ˢ Ioo (0 : ℝ) 1,
+        torusChar ((u 0 : ℝ) * q.1 + (u 1 : ℝ) * q.2))
+      = if u = 0 then 1 else 0 := by
+  by_cases hu : u = 0
+  · subst hu
+    simp only [Pi.zero_apply, Int.cast_zero, zero_mul, add_zero, torusChar_zero, if_pos]
+    simp
+  · rw [if_neg hu]
+    exact MonomialCore.integral_torusChar_pair_eq_zero (pair_ne_of_ne_zero hu)
+
+/-- The pointwise collapse of an `m`-step monomial correlation: the two
+torus characters merge into a single character whose mode is the
+resonance combination `k + (A_{a_m} ⋯ A_{a_1})ᵀ ℓ` of (50). -/
+theorem monoInd_mul_comp (D₁ D₂ : Set (ℝ × ℝ)) (r₁ s₁ r₂ s₂ : ℤ) (m : ℕ)
+    (z : NatExtTorus) :
+    monoInd D₁ r₁ s₁ z * monoInd D₂ r₂ s₂ (hatS^[m] z)
+      = (indC D₁ z.1 * indC D₂ (natExtMap^[m] z.1)) *
+          torusChar
+            ((((![r₁, s₁] + (fibreProd (fun i => digit z.1.1 (i - 1)) m).transpose.mulVec
+                ![r₂, s₂]) 0 : ℤ) : ℝ) * z.2.1
+              + (((![r₁, s₁] + (fibreProd (fun i => digit z.1.1 (i - 1)) m).transpose.mulVec
+                ![r₂, s₂]) 1 : ℤ) : ℝ) * z.2.2) := by
+  have hχ := torusChar_hatS_iterate m z ![r₂, s₂]
+  simp only [Matrix.cons_val_zero, Matrix.cons_val_one, Matrix.head_cons] at hχ
+  have hmerge : torusChar ((r₁ : ℝ) * z.2.1 + (s₁ : ℝ) * z.2.2)
+      * torusChar
+          ((((fibreProd (fun i => digit z.1.1 (i - 1)) m).transpose.mulVec ![r₂, s₂]) 0 : ℝ)
+              * z.2.1
+            + (((fibreProd (fun i => digit z.1.1 (i - 1)) m).transpose.mulVec ![r₂, s₂]) 1 : ℝ)
+              * z.2.2)
+      = torusChar
+          ((((![r₁, s₁] + (fibreProd (fun i => digit z.1.1 (i - 1)) m).transpose.mulVec
+              ![r₂, s₂]) 0 : ℤ) : ℝ) * z.2.1
+            + (((![r₁, s₁] + (fibreProd (fun i => digit z.1.1 (i - 1)) m).transpose.mulVec
+              ![r₂, s₂]) 1 : ℤ) : ℝ) * z.2.2) := by
+    rw [← MonomialCore.torusChar_add]
+    congr 1
+    simp only [Pi.add_apply, Matrix.cons_val_zero, Matrix.cons_val_one]
+    push_cast
+    ring
+  simp only [monoInd, hatS_iterate_fst, hχ]
+  rw [mul_mul_mul_comm, hmerge]
+
+/-- The `m`-step monomial correlation, Fubini'd: the torus factor
+integrates to the indicator of the resonance (50). -/
+theorem monoInd_corr_eq {D₁ D₂ : Set (ℝ × ℝ)} (hD₁ : MeasurableSet D₁)
+    (hD₂ : MeasurableSet D₂) (r₁ s₁ r₂ s₂ : ℤ) (m : ℕ) :
+    ∫ z, monoInd D₁ r₁ s₁ z * monoInd D₂ r₂ s₂ (hatS^[m] z) ∂hatMu0
+      = ∫ p, (indC D₁ p * indC D₂ (natExtMap^[m] p)) *
+          (if ![r₁, s₁] + (fibreProd (fun i => digit p.1 (i - 1)) m).transpose.mulVec ![r₂, s₂]
+              = 0 then 1 else 0) ∂hatNu := by
+  have hint : Integrable
+      (fun z : NatExtTorus => monoInd D₁ r₁ s₁ z * monoInd D₂ r₂ s₂ (hatS^[m] z)) hatMu0 := by
+    refine (integrable_const (1 : ℝ)).mono'
+      ((measurable_monoInd hD₁ r₁ s₁).mul ((measurable_monoInd hD₂ r₂ s₂).comp
+        (hatS_measurePreserving.measurable.iterate m))).aestronglyMeasurable
+      (Eventually.of_forall fun z => ?_)
+    rw [norm_mul]
+    exact mul_le_one₀ (norm_monoInd_le _ _ _ _) (norm_nonneg _) (norm_monoInd_le _ _ _ _)
+  rw [funext (monoInd_mul_comp D₁ D₂ r₁ s₁ r₂ s₂ m)] at hint ⊢
+  rw [hatMu0_eq_prod] at hint ⊢
+  rw [MeasureTheory.integral_prod _ hint]
+  refine integral_congr_ae (Eventually.of_forall fun p => ?_)
+  dsimp only
+  rw [MeasureTheory.integral_const_mul]
+  congr 1
+  exact integral_torusChar_vec _
+
+/-- The stationary integral of a monomial: the base mass times the
+indicator of the trivial mode. -/
+theorem monoInd_integral {D : Set (ℝ × ℝ)} (hD : MeasurableSet D) (r s : ℤ) :
+    ∫ z, monoInd D r s z ∂hatMu0
+      = ((hatNu.real D : ℝ) : ℂ) * (if r = 0 ∧ s = 0 then 1 else 0) := by
+  have hsplit := MeasureTheory.integral_prod_mul (μ := hatNu)
+      (ν := (volume : Measure (ℝ × ℝ)).restrict (Ioo (0 : ℝ) 1 ×ˢ Ioo (0 : ℝ) 1))
+      (f := indC D) (g := fun q : ℝ × ℝ => torusChar ((r : ℝ) * q.1 + (s : ℝ) * q.2))
+  rw [hatMu0_eq_prod]
+  rw [show (fun z : NatExtTorus => monoInd D r s z)
+      = fun z : (ℝ × ℝ) × ℝ × ℝ => indC D z.1
+          * (fun q : ℝ × ℝ => torusChar ((r : ℝ) * q.1 + (s : ℝ) * q.2)) z.2 from rfl]
+  rw [hsplit, integral_indC hatNu hD]
+  congr 1
+  have hv := integral_torusChar_vec ![r, s]
+  simp only [Matrix.cons_val_zero, Matrix.cons_val_one, Matrix.head_cons] at hv
+  rw [hv]
+  simp [vecPair_eq_zero_iff]
+
+/-- The two-sided correlation property against `hatS`: the `m`-step
+correlation converges to the product of the stationary means. -/
+def CorrTo (f g : NatExtTorus → ℂ) : Prop :=
+  Tendsto (fun m : ℕ => ∫ z, f z * g (hatS^[m] z) ∂hatMu0) atTop
+    (𝓝 ((∫ z, f z ∂hatMu0) * ∫ z, g z ∂hatMu0))
+
+/-- **The generator case of Lemma 6.2**: the correlation limit for a
+single pair of monomials.  Zero modes reduce to the mixing of the Gauss
+natural extension; a nonzero mode pair makes the correlation *equal* to
+zero for all large `m` by (50), while the limit is zero because a
+nontrivial character has mean zero. -/
+theorem monoInd_corrTo {D₁ D₂ : Set (ℝ × ℝ)} (hD₁ : MeasurableSet D₁)
+    (hD₂ : MeasurableSet D₂) (r₁ s₁ r₂ s₂ : ℤ) :
+    CorrTo (monoInd D₁ r₁ s₁) (monoInd D₂ r₂ s₂) := by
+  by_cases hzero : r₁ = 0 ∧ s₁ = 0 ∧ r₂ = 0 ∧ s₂ = 0
+  · obtain ⟨h1, h2, h3, h4⟩ := hzero
+    subst h1; subst h2; subst h3; subst h4
+    have hv : (![(0 : ℤ), 0] : Fin 2 → ℤ) = 0 := vecPair_eq_zero_iff.mpr ⟨rfl, rfl⟩
+    have hseq : ∀ m : ℕ, ∫ z, monoInd D₁ 0 0 z * monoInd D₂ 0 0 (hatS^[m] z) ∂hatMu0
+        = ((hatNu.real (D₁ ∩ natExtMap^[m] ⁻¹' D₂) : ℝ) : ℂ) := by
+      intro m
+      rw [monoInd_corr_eq hD₁ hD₂ 0 0 0 0 m]
+      rw [show (fun p : ℝ × ℝ => (indC D₁ p * indC D₂ (natExtMap^[m] p)) *
+            (if ![(0 : ℤ), 0] + (fibreProd (fun i => digit p.1 (i - 1)) m).transpose.mulVec
+                ![(0 : ℤ), 0] = 0 then (1 : ℂ) else 0))
+          = fun p : ℝ × ℝ =>
+              (((D₁.indicator (fun _ => (1 : ℝ)) p
+                  * D₂.indicator (fun _ => (1 : ℝ)) (natExtMap^[m] p) : ℝ)) : ℂ) by
+        funext p
+        rw [if_pos (by rw [hv, Matrix.mulVec_zero, add_zero]), mul_one,
+          indC_eq_ofReal, indC_eq_ofReal, Complex.ofReal_mul]]
+      rw [integral_complex_ofReal, ← NatExtMixing.hatNuReal_inter_eq D₁ D₂ hD₁ hD₂ m]
+    have hlim : Tendsto (fun m => ((hatNu.real (D₁ ∩ natExtMap^[m] ⁻¹' D₂) : ℝ) : ℂ)) atTop
+        (𝓝 ((hatNu.real D₁ * hatNu.real D₂ : ℝ) : ℂ)) :=
+      (Complex.continuous_ofReal.tendsto _).comp
+        (NatExtMixing.natExt_zero_mode_mixing D₁ D₂ hD₁ hD₂)
+    unfold CorrTo
+    rw [monoInd_integral hD₁ 0 0, monoInd_integral hD₂ 0 0, if_pos ⟨rfl, rfl⟩, mul_one, mul_one,
+      show ((hatNu.real D₁ : ℝ) : ℂ) * ((hatNu.real D₂ : ℝ) : ℂ)
+        = ((hatNu.real D₁ * hatNu.real D₂ : ℝ) : ℂ) by push_cast; ring]
+    exact Tendsto.congr (fun m => (hseq m).symm) hlim
+  · have hor : (![r₁, s₁] : Fin 2 → ℤ) ≠ 0 ∨ (![r₂, s₂] : Fin 2 → ℤ) ≠ 0 := by
+      by_contra hcon
+      push_neg at hcon
+      exact hzero ⟨(vecPair_eq_zero_iff.mp hcon.1).1, (vecPair_eq_zero_iff.mp hcon.1).2,
+        (vecPair_eq_zero_iff.mp hcon.2).1, (vecPair_eq_zero_iff.mp hcon.2).2⟩
+    obtain ⟨M₀, hM₀⟩ := resonance_bounded ![r₁, s₁] ![r₂, s₂] hor
+    have hev : (fun m : ℕ => ∫ z, monoInd D₁ r₁ s₁ z * monoInd D₂ r₂ s₂ (hatS^[m] z) ∂hatMu0)
+        =ᶠ[atTop] fun _ => (0 : ℂ) := by
+      filter_upwards [eventually_ge_atTop M₀] with m hm
+      rw [monoInd_corr_eq hD₁ hD₂ r₁ s₁ r₂ s₂ m]
+      refine integral_eq_zero_of_ae ?_
+      filter_upwards [NatExtMixing.hatNu_ae_good] with p hp
+      rw [if_neg (hM₀ m hm (fun i => digit p.1 (i - 1))
+        (fun i => one_le_digit hp.1 hp.2.2 (i - 1))), mul_zero]
+      rfl
+    have hzero_lim : (∫ z, monoInd D₁ r₁ s₁ z ∂hatMu0) * ∫ z, monoInd D₂ r₂ s₂ z ∂hatMu0
+        = 0 := by
+      rcases hor with hk | hl
+      · rw [monoInd_integral hD₁ r₁ s₁,
+          if_neg (fun hc => hk (vecPair_eq_zero_iff.mpr hc)), mul_zero, zero_mul]
+      · rw [monoInd_integral hD₂ r₂ s₂,
+          if_neg (fun hc => hl (vecPair_eq_zero_iff.mpr hc)), mul_zero, mul_zero]
+    unfold CorrTo
+    rw [hzero_lim]
+    exact Tendsto.congr' hev.symm tendsto_const_nhds
+
+/-! ### The correlation calculus over the span -/
+
+/-- Bounded measurable observables: the closure properties the bilinear
+extension of the correlation limit needs. -/
+structure Tame (f : NatExtTorus → ℂ) : Prop where
+  meas : Measurable f
+  bdd : ∃ C : ℝ, ∀ z, ‖f z‖ ≤ C
+
+theorem tame_of_mem_monoSet {f : NatExtTorus → ℂ} (hf : f ∈ monoSet) : Tame f := by
+  obtain ⟨D, r, s, hD, rfl⟩ := monoSet_repr hf
+  exact ⟨measurable_monoInd hD r s, 1, norm_monoInd_le D r s⟩
+
+theorem tame_of_mem_span {f : NatExtTorus → ℂ}
+    (hf : f ∈ Submodule.span ℂ monoSet) : Tame f := by
+  induction hf using Submodule.span_induction with
+  | mem g hg => exact tame_of_mem_monoSet hg
+  | zero => exact ⟨measurable_const, 0, fun z => by simp⟩
+  | add f₁ f₂ _ _ h₁ h₂ =>
+      obtain ⟨C₁, hC₁⟩ := h₁.bdd
+      obtain ⟨C₂, hC₂⟩ := h₂.bdd
+      exact ⟨h₁.meas.add h₂.meas, C₁ + C₂,
+        fun z => (norm_add_le _ _).trans (add_le_add (hC₁ z) (hC₂ z))⟩
+  | smul c f₁ _ h =>
+      obtain ⟨C, hC⟩ := h.bdd
+      refine ⟨h.meas.const_smul c, ‖c‖ * C, fun z => ?_⟩
+      rw [Pi.smul_apply, norm_smul]
+      exact mul_le_mul_of_nonneg_left (hC z) (norm_nonneg c)
+
+theorem Tame.integrable {f : NatExtTorus → ℂ} (hf : Tame f) : Integrable f hatMu0 := by
+  obtain ⟨C, hC⟩ := hf.bdd
+  exact (integrable_const C).mono' hf.meas.aestronglyMeasurable (Eventually.of_forall hC)
+
+theorem integrable_corr {f g : NatExtTorus → ℂ} (hf : Tame f) (hg : Tame g) (m : ℕ) :
+    Integrable (fun z => f z * g (hatS^[m] z)) hatMu0 := by
+  obtain ⟨C₁, hC₁⟩ := hf.bdd
+  obtain ⟨C₂, hC₂⟩ := hg.bdd
+  refine (integrable_const (C₁ * C₂)).mono'
+    (hf.meas.mul (hg.meas.comp (hatS_measurePreserving.measurable.iterate m))).aestronglyMeasurable
+    (Eventually.of_forall fun z => ?_)
+  rw [norm_mul]
+  exact mul_le_mul (hC₁ z) (hC₂ _) (norm_nonneg _) ((norm_nonneg _).trans (hC₁ z))
+
+theorem corrTo_zero_right (f : NatExtTorus → ℂ) : CorrTo f 0 := by
+  unfold CorrTo
+  simp only [Pi.zero_apply, mul_zero, integral_zero]
+  exact tendsto_const_nhds
+
+theorem corrTo_zero_left (g : NatExtTorus → ℂ) : CorrTo 0 g := by
+  unfold CorrTo
+  simp only [Pi.zero_apply, zero_mul, integral_zero]
+  exact tendsto_const_nhds
+
+theorem corrTo_add_right {f g₁ g₂ : NatExtTorus → ℂ} (hf : Tame f) (hg₁ : Tame g₁)
+    (hg₂ : Tame g₂) (h₁ : CorrTo f g₁) (h₂ : CorrTo f g₂) : CorrTo f (g₁ + g₂) := by
+  unfold CorrTo at h₁ h₂ ⊢
+  have hseq : ∀ m : ℕ, ∫ z, f z * (g₁ + g₂) (hatS^[m] z) ∂hatMu0
+      = (∫ z, f z * g₁ (hatS^[m] z) ∂hatMu0) + ∫ z, f z * g₂ (hatS^[m] z) ∂hatMu0 := by
+    intro m
+    rw [← integral_add (integrable_corr hf hg₁ m) (integrable_corr hf hg₂ m)]
+    refine integral_congr_ae (Eventually.of_forall fun z => ?_)
+    simp only [Pi.add_apply]
+    ring
+  have htarget : (∫ z, f z ∂hatMu0) * ∫ z, (g₁ + g₂) z ∂hatMu0
+      = (∫ z, f z ∂hatMu0) * ∫ z, g₁ z ∂hatMu0
+        + (∫ z, f z ∂hatMu0) * ∫ z, g₂ z ∂hatMu0 := by
+    simp only [Pi.add_apply]
+    rw [integral_add hg₁.integrable hg₂.integrable]
+    ring
+  rw [htarget]
+  exact Tendsto.congr (fun m => (hseq m).symm) (h₁.add h₂)
+
+theorem corrTo_add_left {f₁ f₂ g : NatExtTorus → ℂ} (hf₁ : Tame f₁) (hf₂ : Tame f₂)
+    (hg : Tame g) (h₁ : CorrTo f₁ g) (h₂ : CorrTo f₂ g) : CorrTo (f₁ + f₂) g := by
+  unfold CorrTo at h₁ h₂ ⊢
+  have hseq : ∀ m : ℕ, ∫ z, (f₁ + f₂) z * g (hatS^[m] z) ∂hatMu0
+      = (∫ z, f₁ z * g (hatS^[m] z) ∂hatMu0) + ∫ z, f₂ z * g (hatS^[m] z) ∂hatMu0 := by
+    intro m
+    rw [← integral_add (integrable_corr hf₁ hg m) (integrable_corr hf₂ hg m)]
+    refine integral_congr_ae (Eventually.of_forall fun z => ?_)
+    simp only [Pi.add_apply]
+    ring
+  have htarget : (∫ z, (f₁ + f₂) z ∂hatMu0) * ∫ z, g z ∂hatMu0
+      = (∫ z, f₁ z ∂hatMu0) * ∫ z, g z ∂hatMu0
+        + (∫ z, f₂ z ∂hatMu0) * ∫ z, g z ∂hatMu0 := by
+    simp only [Pi.add_apply]
+    rw [integral_add hf₁.integrable hf₂.integrable]
+    ring
+  rw [htarget]
+  exact Tendsto.congr (fun m => (hseq m).symm) (h₁.add h₂)
+
+theorem corrTo_smul_right {f g : NatExtTorus → ℂ} (c : ℂ) (h : CorrTo f g) :
+    CorrTo f (c • g) := by
+  unfold CorrTo at h ⊢
+  have hseq : ∀ m : ℕ, ∫ z, f z * (c • g) (hatS^[m] z) ∂hatMu0
+      = c * ∫ z, f z * g (hatS^[m] z) ∂hatMu0 := by
+    intro m
+    rw [← MeasureTheory.integral_const_mul]
+    refine integral_congr_ae (Eventually.of_forall fun z => ?_)
+    simp only [Pi.smul_apply, smul_eq_mul]
+    ring
+  have htarget : (∫ z, f z ∂hatMu0) * ∫ z, (c • g) z ∂hatMu0
+      = c * ((∫ z, f z ∂hatMu0) * ∫ z, g z ∂hatMu0) := by
+    simp only [Pi.smul_apply]
+    rw [integral_smul, smul_eq_mul]
+    ring
+  rw [htarget]
+  exact Tendsto.congr (fun m => (hseq m).symm) (h.const_mul c)
+
+theorem corrTo_smul_left {f g : NatExtTorus → ℂ} (c : ℂ) (h : CorrTo f g) :
+    CorrTo (c • f) g := by
+  unfold CorrTo at h ⊢
+  have hseq : ∀ m : ℕ, ∫ z, (c • f) z * g (hatS^[m] z) ∂hatMu0
+      = c * ∫ z, f z * g (hatS^[m] z) ∂hatMu0 := by
+    intro m
+    rw [← MeasureTheory.integral_const_mul]
+    refine integral_congr_ae (Eventually.of_forall fun z => ?_)
+    simp only [Pi.smul_apply, smul_eq_mul]
+    ring
+  have htarget : (∫ z, (c • f) z ∂hatMu0) * ∫ z, g z ∂hatMu0
+      = c * ((∫ z, f z ∂hatMu0) * ∫ z, g z ∂hatMu0) := by
+    simp only [Pi.smul_apply]
+    rw [integral_smul, smul_eq_mul]
+    ring
+  rw [htarget]
+  exact Tendsto.congr (fun m => (hseq m).symm) (h.const_mul c)
+
+theorem corrTo_of_mem {f g : NatExtTorus → ℂ} (hf : f ∈ monoSet) (hg : g ∈ monoSet) :
+    CorrTo f g := by
+  obtain ⟨D₁, r₁, s₁, hD₁, rfl⟩ := monoSet_repr hf
+  obtain ⟨D₂, r₂, s₂, hD₂, rfl⟩ := monoSet_repr hg
+  exact monoInd_corrTo hD₁ hD₂ r₁ s₁ r₂ s₂
+
+/-- The correlation limit holds across the whole span of the monomials. -/
+theorem span_corrTo {f g : NatExtTorus → ℂ}
+    (hf : f ∈ Submodule.span ℂ monoSet)
+    (hg : g ∈ Submodule.span ℂ monoSet) : CorrTo f g := by
+  induction hf using Submodule.span_induction with
+  | mem f₀ hf₀ =>
+      induction hg using Submodule.span_induction with
+      | mem g₀ hg₀ => exact corrTo_of_mem hf₀ hg₀
+      | zero => exact corrTo_zero_right _
+      | add g₁ g₂ hg₁ hg₂ h₁ h₂ =>
+          exact corrTo_add_right (tame_of_mem_monoSet hf₀)
+            (tame_of_mem_span hg₁) (tame_of_mem_span hg₂) h₁ h₂
+      | smul c g₁ _ h => exact corrTo_smul_right c h
+  | zero => exact corrTo_zero_left _
+  | add f₁ f₂ hf₁ hf₂ h₁ h₂ =>
+      exact corrTo_add_left (tame_of_mem_span hf₁) (tame_of_mem_span hf₂)
+        (tame_of_mem_span hg) h₁ h₂
+  | smul c f₁ _ h => exact corrTo_smul_left c h
+
+/-! ### The `L²` approximation step -/
+
+/-- Push-forward invariance of `μ̂₀`-integrals along the iterated cocycle. -/
+theorem integral_comp_hatS_iterate (h : NatExtTorus → ℝ) (hm : Measurable h) (m : ℕ) :
+    ∫ z, h (hatS^[m] z) ∂hatMu0 = ∫ z, h z ∂hatMu0 := by
+  have hmp : MeasurePreserving (hatS^[m]) hatMu0 hatMu0 := hatS_measurePreserving.iterate m
+  calc ∫ z, h (hatS^[m] z) ∂hatMu0
+      = ∫ y, h y ∂(hatMu0.map (hatS^[m])) :=
+        (integral_map hmp.measurable.aemeasurable hm.aestronglyMeasurable).symm
+    _ = ∫ z, h z ∂hatMu0 := by rw [hmp.map_eq]
+
+/-- `L¹(μ̂₀)` control from `L²(μ̂₀)` control, on the probability space. -/
+theorem integral_norm_le_of_L2 {u : NatExtTorus → ℂ} (hu : Measurable u) {ε : ℝ}
+    (hε : 0 < ε) (h2 : eLpNorm u 2 hatMu0 < ENNReal.ofReal ε) :
+    ∫ z, ‖u z‖ ∂hatMu0 ≤ ε := by
+  have h1 : eLpNorm u 1 hatMu0 ≤ eLpNorm u 2 hatMu0 :=
+    eLpNorm_le_eLpNorm_of_exponent_le (by norm_num) hu.aestronglyMeasurable
+  have hnorm : ∫ z, ‖u z‖ ∂hatMu0 = (eLpNorm u 1 hatMu0).toReal := by
+    rw [eLpNorm_one_eq_lintegral_enorm]
+    exact integral_norm_eq_lintegral_enorm hu.aestronglyMeasurable
+  rw [hnorm]
+  exact ENNReal.toReal_le_of_le_ofReal hε.le (h1.trans h2.le)
+
+/-- Replacing the left factor of a correlation costs at most the `L¹`
+distance, when the right factor is bounded by `1`. -/
+theorem corr_replace_left {f₁ f₂ g : NatExtTorus → ℂ} (h₁ : Tame f₁) (h₂ : Tame f₂)
+    (hg : Tame g) (hgb : ∀ z, ‖g z‖ ≤ 1) (m : ℕ) :
+    ‖(∫ z, f₁ z * g (hatS^[m] z) ∂hatMu0) - ∫ z, f₂ z * g (hatS^[m] z) ∂hatMu0‖
+      ≤ ∫ z, ‖(f₁ - f₂) z‖ ∂hatMu0 := by
+  rw [← integral_sub (integrable_corr h₁ hg m) (integrable_corr h₂ hg m)]
+  refine (norm_integral_le_integral_norm _).trans ?_
+  refine integral_mono ((integrable_corr h₁ hg m).sub (integrable_corr h₂ hg m)).norm
+    (h₁.integrable.sub h₂.integrable).norm fun z => ?_
+  rw [show f₁ z * g (hatS^[m] z) - f₂ z * g (hatS^[m] z)
+      = (f₁ z - f₂ z) * g (hatS^[m] z) by ring, norm_mul, Pi.sub_apply]
+  exact mul_le_of_le_one_right (norm_nonneg _) (hgb _)
+
+/-- Replacing the right factor of a correlation costs at most the sup
+bound of the left factor times the `L¹` distance, by stationarity. -/
+theorem corr_replace_right {f g₁ g₂ : NatExtTorus → ℂ} (hf : Tame f) {Cf : ℝ}
+    (hfb : ∀ z, ‖f z‖ ≤ Cf) (h₁ : Tame g₁) (h₂ : Tame g₂) (m : ℕ) :
+    ‖(∫ z, f z * g₁ (hatS^[m] z) ∂hatMu0) - ∫ z, f z * g₂ (hatS^[m] z) ∂hatMu0‖
+      ≤ Cf * ∫ z, ‖(g₁ - g₂) z‖ ∂hatMu0 := by
+  have hdint : Integrable (fun z => ‖(g₁ - g₂) (hatS^[m] z)‖) hatMu0 := by
+    obtain ⟨C₁, hC₁⟩ := h₁.bdd
+    obtain ⟨C₂, hC₂⟩ := h₂.bdd
+    refine (integrable_const (C₁ + C₂)).mono'
+      (((h₁.meas.sub h₂.meas).norm).comp
+        (hatS_measurePreserving.measurable.iterate m)).aestronglyMeasurable
+      (Eventually.of_forall fun z => ?_)
+    rw [Real.norm_eq_abs, abs_of_nonneg (norm_nonneg _), Pi.sub_apply]
+    exact (norm_sub_le _ _).trans (add_le_add (hC₁ _) (hC₂ _))
+  rw [← integral_sub (integrable_corr hf h₁ m) (integrable_corr hf h₂ m)]
+  refine (norm_integral_le_integral_norm _).trans ?_
+  have hcomp : ∫ z, ‖(g₁ - g₂) (hatS^[m] z)‖ ∂hatMu0 = ∫ z, ‖(g₁ - g₂) z‖ ∂hatMu0 :=
+    integral_comp_hatS_iterate _ ((h₁.meas.sub h₂.meas).norm) m
+  calc ∫ z, ‖f z * g₁ (hatS^[m] z) - f z * g₂ (hatS^[m] z)‖ ∂hatMu0
+      ≤ ∫ z, Cf * ‖(g₁ - g₂) (hatS^[m] z)‖ ∂hatMu0 := by
+        refine integral_mono
+          ((integrable_corr hf h₁ m).sub (integrable_corr hf h₂ m)).norm
+          (hdint.const_mul Cf) fun z => ?_
+        rw [show f z * g₁ (hatS^[m] z) - f z * g₂ (hatS^[m] z)
+            = f z * ((g₁ - g₂) (hatS^[m] z)) by rw [Pi.sub_apply]; ring, norm_mul]
+        exact mul_le_mul_of_nonneg_right (hfb z) (norm_nonneg _)
+    _ = Cf * ∫ z, ‖(g₁ - g₂) (hatS^[m] z)‖ ∂hatMu0 := MeasureTheory.integral_const_mul _ _
+    _ = Cf * ∫ z, ‖(g₁ - g₂) z‖ ∂hatMu0 := by rw [hcomp]
+
+theorem norm_integral_sub_le {f g : NatExtTorus → ℂ} (hf : Tame f) (hg : Tame g) :
+    ‖(∫ z, f z ∂hatMu0) - ∫ z, g z ∂hatMu0‖ ≤ ∫ z, ‖(f - g) z‖ ∂hatMu0 := by
+  rw [← integral_sub hf.integrable hg.integrable]
+  exact norm_integral_le_integral_norm _
+
+theorem norm_integral_le_one {h : NatExtTorus → ℂ} (hb : ∀ z, ‖h z‖ ≤ 1) :
+    ‖∫ z, h z ∂hatMu0‖ ≤ 1 := by
+  have := norm_integral_le_of_norm_le_const (μ := hatMu0) (C := 1)
+    (Eventually.of_forall hb)
+  simpa using this
+
+/-- The `m`-step indicator correlation as an integral, complex form. -/
+theorem corr_indicator_eq {A B : Set NatExtTorus} (hA : MeasurableSet A)
+    (hB : MeasurableSet B) (m : ℕ) :
+    ((hatMu0.real (A ∩ hatS^[m] ⁻¹' B) : ℝ) : ℂ)
+      = ∫ z, indC A z * indC B (hatS^[m] z) ∂hatMu0 := by
+  have hmeas : MeasurableSet (A ∩ hatS^[m] ⁻¹' B) :=
+    hA.inter ((hatS_measurePreserving.measurable.iterate m) hB)
+  rw [← integral_indC hatMu0 hmeas]
+  refine integral_congr_ae (Eventually.of_forall fun z => ?_)
+  by_cases h1 : z ∈ A <;> by_cases h2 : hatS^[m] z ∈ B <;>
+    simp [indC, Set.indicator_apply, h1, h2, Set.mem_inter_iff, Set.mem_preimage]
+
+end Assembly62
+
 /-- **Lemma 6.2** (Gauss-torus mixing), v5 lines 1112-1114.  The system
 `(Ω̂ × T², μ̂₀, S)` is mixing.
 
@@ -615,21 +1110,162 @@ theorem cylinderChar_dense_L2 (f : NatExtTorus → ℂ) (hf : MemLp f 2 hatMu0)
 out: correlations of indicators of measurable sets converge to the
 product of the masses.
 
-**Obstruction.**  The §6 combinatorics of the proof are complete above:
-`torusChar_hatS_iterate` turns an `m`-step correlation of cylinder times
-character into a single character with mode
-`(A_{a_m} ⋯ A_{a_1})ᵀ k + ℓ`, and `resonance_bounded_along_orbit` says
-that mode is nonzero for all large `m`, so the fibre integral vanishes.
-What is missing is entirely measure-theoretic: `hatS_measurePreserving`
-(to have a dynamical system at all), the vanishing of the `μ̂₀`-integral
-of a nonzero torus character (Fubini against Haar on the fibre),
-`natExt_zero_mode_mixing` for the zero modes, and `cylinderChar_dense_L2`
-to pass from the test class to indicators of arbitrary measurable sets. -/
+**Proof.**  The §6 combinatorics are `torusChar_hatS_iterate` and
+`resonance_bounded` above; the measure theory is `hatS_measurePreserving`,
+`natExt_zero_mode_mixing`, and the density of the monomial span
+(`CylinderCharDense.monoSet_span_dense`).  The assembly is the section
+`Assembly62`: `monoInd_corrTo` settles a single pair of monomials by the
+Fubini/resonance computation, `span_corrTo` extends bilinearly over the
+span, and here the indicators of `A` and `B` are traded for span members
+at an `L²` (hence `L¹`) cost that is uniform in `m` because `hatS`
+preserves `μ̂₀`. -/
 theorem lemma_6_2_gauss_torus_mixing (A B : Set NatExtTorus)
     (hA : MeasurableSet A) (hB : MeasurableSet B) :
     Tendsto (fun m : ℕ => hatMu0.real (A ∩ hatS^[m] ⁻¹' B)) atTop
       (𝓝 (hatMu0.real A * hatMu0.real B)) := by
-  sorry
+  classical
+  rw [Metric.tendsto_atTop]
+  intro ε hε
+  set η : ℝ := min ε 1 / 8 with hηdef
+  have hη0 : 0 < η := div_pos (lt_min hε one_pos) (by norm_num)
+  have hη1 : η ≤ 1 / 8 := by
+    rw [hηdef]
+    have := min_le_right ε 1
+    linarith
+  have hη8 : 8 * η ≤ ε := by
+    rw [hηdef]
+    have := min_le_left ε 1
+    linarith
+  have htIA : Tame (CylinderCharDense.indC A) :=
+    ⟨CylinderCharDense.measurable_indC hA, 1, norm_indC_le A⟩
+  have htIB : Tame (CylinderCharDense.indC B) :=
+    ⟨CylinderCharDense.measurable_indC hB, 1, norm_indC_le B⟩
+  have hMemA : MemLp (CylinderCharDense.indC A) 2 hatMu0 :=
+    memLp_indicator_const 2 hA (1 : ℂ) (Or.inr (measure_ne_top _ _))
+  have hMemB : MemLp (CylinderCharDense.indC B) 2 hatMu0 :=
+    memLp_indicator_const 2 hB (1 : ℂ) (Or.inr (measure_ne_top _ _))
+  obtain ⟨f', hf'span, hf'close⟩ := CylinderCharDense.monoSet_span_dense hMemA hη0
+  have htf : Tame f' := tame_of_mem_span hf'span
+  obtain ⟨C₀, hC₀⟩ := htf.bdd
+  set Cf : ℝ := max C₀ 1 with hCfdef
+  have hCf1 : (1 : ℝ) ≤ Cf := le_max_right _ _
+  have hCf0 : (0 : ℝ) < Cf := lt_of_lt_of_le one_pos hCf1
+  have hCfb : ∀ z, ‖f' z‖ ≤ Cf := fun z => (hC₀ z).trans (le_max_left _ _)
+  have hη20 : 0 < η / Cf := div_pos hη0 hCf0
+  obtain ⟨g', hg'span, hg'close⟩ := CylinderCharDense.monoSet_span_dense hMemB hη20
+  have htg : Tame g' := tame_of_mem_span hg'span
+  have hL1A : ∫ z, ‖(CylinderCharDense.indC A - f') z‖ ∂hatMu0 ≤ η :=
+    integral_norm_le_of_L2 (htIA.meas.sub htf.meas) hη0 hf'close
+  have hL1B : ∫ z, ‖(CylinderCharDense.indC B - g') z‖ ∂hatMu0 ≤ η / Cf :=
+    integral_norm_le_of_L2 (htIB.meas.sub htg.meas) hη20 hg'close
+  obtain ⟨N, hN⟩ := Metric.tendsto_atTop.mp (span_corrTo hf'span hg'span) η hη0
+  refine ⟨N, fun m hm => ?_⟩
+  have hT3 : ‖(∫ z, f' z * g' (hatS^[m] z) ∂hatMu0)
+      - (∫ z, f' z ∂hatMu0) * ∫ z, g' z ∂hatMu0‖ < η := by
+    have := hN m hm
+    rwa [dist_eq_norm] at this
+  have hT1 : ‖(∫ z, CylinderCharDense.indC A z * CylinderCharDense.indC B (hatS^[m] z) ∂hatMu0)
+      - ∫ z, f' z * CylinderCharDense.indC B (hatS^[m] z) ∂hatMu0‖ ≤ η :=
+    (corr_replace_left htIA htf htIB (norm_indC_le B) m).trans hL1A
+  have hT2 : ‖(∫ z, f' z * CylinderCharDense.indC B (hatS^[m] z) ∂hatMu0)
+      - ∫ z, f' z * g' (hatS^[m] z) ∂hatMu0‖ ≤ η := by
+    refine (corr_replace_right htf hCfb htIB htg m).trans ?_
+    calc Cf * ∫ z, ‖(CylinderCharDense.indC B - g') z‖ ∂hatMu0
+        ≤ Cf * (η / Cf) := mul_le_mul_of_nonneg_left hL1B hCf0.le
+      _ = η := by field_simp
+  have hmA : ‖(∫ z, CylinderCharDense.indC A z ∂hatMu0) - ∫ z, f' z ∂hatMu0‖ ≤ η :=
+    (norm_integral_sub_le htIA htf).trans hL1A
+  have hmB : ‖(∫ z, CylinderCharDense.indC B z ∂hatMu0) - ∫ z, g' z ∂hatMu0‖ ≤ η := by
+    refine (norm_integral_sub_le htIB htg).trans (hL1B.trans ?_)
+    calc η / Cf ≤ η / 1 := by
+          apply div_le_div_of_nonneg_left hη0.le one_pos hCf1
+      _ = η := div_one η
+  have hbA : ‖∫ z, CylinderCharDense.indC A z ∂hatMu0‖ ≤ 1 :=
+    norm_integral_le_one (norm_indC_le A)
+  have hbB : ‖∫ z, CylinderCharDense.indC B z ∂hatMu0‖ ≤ 1 :=
+    norm_integral_le_one (norm_indC_le B)
+  have hbg : ‖∫ z, g' z ∂hatMu0‖ ≤ 1 + η := by
+    calc ‖∫ z, g' z ∂hatMu0‖
+        = ‖(∫ z, CylinderCharDense.indC B z ∂hatMu0)
+            - ((∫ z, CylinderCharDense.indC B z ∂hatMu0) - ∫ z, g' z ∂hatMu0)‖ := by
+          congr 1
+          ring
+      _ ≤ ‖∫ z, CylinderCharDense.indC B z ∂hatMu0‖
+            + ‖(∫ z, CylinderCharDense.indC B z ∂hatMu0) - ∫ z, g' z ∂hatMu0‖ :=
+          norm_sub_le _ _
+      _ ≤ 1 + η := add_le_add hbB hmB
+  have hT4 : ‖((∫ z, f' z ∂hatMu0) * ∫ z, g' z ∂hatMu0)
+      - (∫ z, CylinderCharDense.indC A z ∂hatMu0)
+          * ∫ z, CylinderCharDense.indC B z ∂hatMu0‖ ≤ η * (1 + η) + η := by
+    rw [show ((∫ z, f' z ∂hatMu0) * ∫ z, g' z ∂hatMu0)
+        - (∫ z, CylinderCharDense.indC A z ∂hatMu0)
+            * ∫ z, CylinderCharDense.indC B z ∂hatMu0
+      = ((∫ z, f' z ∂hatMu0) - ∫ z, CylinderCharDense.indC A z ∂hatMu0)
+            * (∫ z, g' z ∂hatMu0)
+        + (∫ z, CylinderCharDense.indC A z ∂hatMu0)
+            * ((∫ z, g' z ∂hatMu0) - ∫ z, CylinderCharDense.indC B z ∂hatMu0) by ring]
+    refine (norm_add_le _ _).trans ?_
+    rw [norm_mul, norm_mul]
+    have hpart1 : ‖(∫ z, f' z ∂hatMu0) - ∫ z, CylinderCharDense.indC A z ∂hatMu0‖
+        * ‖∫ z, g' z ∂hatMu0‖ ≤ η * (1 + η) := by
+      refine mul_le_mul ?_ hbg (norm_nonneg _) hη0.le
+      rw [norm_sub_rev]
+      exact hmA
+    have hpart2 : ‖∫ z, CylinderCharDense.indC A z ∂hatMu0‖
+        * ‖(∫ z, g' z ∂hatMu0) - ∫ z, CylinderCharDense.indC B z ∂hatMu0‖ ≤ η := by
+      calc ‖∫ z, CylinderCharDense.indC A z ∂hatMu0‖
+          * ‖(∫ z, g' z ∂hatMu0) - ∫ z, CylinderCharDense.indC B z ∂hatMu0‖
+          ≤ 1 * η := by
+            refine mul_le_mul hbA ?_ (norm_nonneg _) zero_le_one
+            rw [norm_sub_rev]
+            exact hmB
+        _ = η := one_mul η
+    linarith
+  -- assemble the chain in `ℂ` and read it back in `ℝ`
+  have hchain : ∀ a b c d e : ℂ, ‖a - e‖ ≤ ‖a - b‖ + ‖b - c‖ + ‖c - d‖ + ‖d - e‖ := by
+    intro a b c d e
+    have h1 : a - e = (a - b) + (b - c) + (c - d) + (d - e) := by ring
+    calc ‖a - e‖ = ‖(a - b) + (b - c) + (c - d) + (d - e)‖ := by rw [← h1]
+      _ ≤ ‖(a - b) + (b - c) + (c - d)‖ + ‖d - e‖ := norm_add_le _ _
+      _ ≤ ‖a - b‖ + ‖b - c‖ + ‖c - d‖ + ‖d - e‖ := by
+          have h2 := norm_add_le ((a - b) + (b - c)) (c - d)
+          have h3 := norm_add_le (a - b) (b - c)
+          linarith
+  have hkey : ‖((hatMu0.real (A ∩ hatS^[m] ⁻¹' B) : ℝ) : ℂ)
+      - ((hatMu0.real A * hatMu0.real B : ℝ) : ℂ)‖ < ε := by
+    have hIA : ((hatMu0.real A : ℝ) : ℂ) = ∫ z, CylinderCharDense.indC A z ∂hatMu0 :=
+      (integral_indC hatMu0 hA).symm
+    have hIB : ((hatMu0.real B : ℝ) : ℂ) = ∫ z, CylinderCharDense.indC B z ∂hatMu0 :=
+      (integral_indC hatMu0 hB).symm
+    rw [corr_indicator_eq hA hB m, Complex.ofReal_mul, hIA, hIB]
+    have hηsq : η * η ≤ η := by nlinarith
+    calc ‖(∫ z, CylinderCharDense.indC A z * CylinderCharDense.indC B (hatS^[m] z) ∂hatMu0)
+        - (∫ z, CylinderCharDense.indC A z ∂hatMu0)
+            * ∫ z, CylinderCharDense.indC B z ∂hatMu0‖
+        ≤ ‖(∫ z, CylinderCharDense.indC A z * CylinderCharDense.indC B (hatS^[m] z) ∂hatMu0)
+              - ∫ z, f' z * CylinderCharDense.indC B (hatS^[m] z) ∂hatMu0‖
+          + ‖(∫ z, f' z * CylinderCharDense.indC B (hatS^[m] z) ∂hatMu0)
+              - ∫ z, f' z * g' (hatS^[m] z) ∂hatMu0‖
+          + ‖(∫ z, f' z * g' (hatS^[m] z) ∂hatMu0)
+              - (∫ z, f' z ∂hatMu0) * ∫ z, g' z ∂hatMu0‖
+          + ‖((∫ z, f' z ∂hatMu0) * ∫ z, g' z ∂hatMu0)
+              - (∫ z, CylinderCharDense.indC A z ∂hatMu0)
+                  * ∫ z, CylinderCharDense.indC B z ∂hatMu0‖ := hchain _ _ _ _ _
+      _ < ε := by
+          have h4 : ‖((∫ z, f' z ∂hatMu0) * ∫ z, g' z ∂hatMu0)
+              - (∫ z, CylinderCharDense.indC A z ∂hatMu0)
+                  * ∫ z, CylinderCharDense.indC B z ∂hatMu0‖ ≤ 2 * η + η * η := by
+            refine hT4.trans (le_of_eq ?_)
+            ring
+          linarith
+  rw [Real.dist_eq, ← Real.norm_eq_abs,
+    show hatMu0.real (A ∩ hatS^[m] ⁻¹' B) - hatMu0.real A * hatMu0.real B
+      = hatMu0.real (A ∩ hatS^[m] ⁻¹' B) - (hatMu0.real A * hatMu0.real B) from rfl]
+  calc ‖hatMu0.real (A ∩ hatS^[m] ⁻¹' B) - hatMu0.real A * hatMu0.real B‖
+      = ‖((hatMu0.real (A ∩ hatS^[m] ⁻¹' B) : ℝ) : ℂ)
+          - ((hatMu0.real A * hatMu0.real B : ℝ) : ℂ)‖ := by
+        rw [← Complex.ofReal_sub, Complex.norm_real]
+    _ < ε := hkey
 
 end
 
