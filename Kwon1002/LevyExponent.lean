@@ -259,7 +259,29 @@ lemma factorialMoment_eq_tupleSum (c : ℝ) {B : Set ℝ} (hB : MeasurableSet B)
 §4 quasi-independence input (Prop 4.1) together with the tuple bookkeeping of
 (39): Jackson approximation of `φ ∘ mark`, the `a ≤ L^D` digit cut, the
 `O(L^{r-1}H)` bad-tuple count and the parity/ordering partition.  Nothing
-below this line is assumed. -/
+below this line is assumed.
+
+**Gate, sharpened 2026-08-10 (stage D).**  `Kwon1002/TupleFinal.lean` reduces
+this statement to three residuals (the §7/§4 index-set bridge
+`bulk_window_bridge_tuple`, display (35) on the deterministic bulk, and
+`goodSet_mark_factorization` = Prop 4.1 for the mark event); the bad-tuple
+count and the diagonal bookkeeping are proved there.  The Prop-4.1 residual
+genuinely needs the **full** proposition, not only its zero mode: the mark
+indicator `1_B`, expanded in the digit-Fourier modes of (24), has nonzero
+modes, and the proved `Prop41Final.zero_mode_factorization_f` (axiom-clean,
+verified) covers mode `0` alone.  The nonzero-mode branch is *not* available:
+`ErrorShape.nonzero_mode_small` is sorried outright, and
+`ZeroMode.nonzero_mode_small` is sorry-tainted through the sorried
+`ZeroMode.nonzero_mode_three_step` (`#print axioms` verified for both).  The
+honest conditional shape is display-(20)-gated, and stage D closes the one
+gap of its step 1: `RetainedCut.nonzero_mode_cut_of_display20` (proved,
+axiom-clean) converts any `P42Cases.Display20` instance — the tree contains
+none — into the retained word family with `O(e^{-c₀√L})` discarded mass and
+the step-1 cut bound for every nonzero mode.  What remains open even
+conditionally on (20): step 2's Lebesgue-conditional stationary-mean
+replacement, both inequalities of (29), the Jackson/digit-cut passage putting
+`1_B` into `P_D(L)` (its provable half is `CovarianceChain` §9), and the two
+non-§4 residuals of `TupleFinal`. -/
 theorem tuple_measure_convergence (c : ℝ) (B : Set ℝ) (_hB : MeasurableSet B)
     (_hB0 : ∃ δ > 0, ∀ x ∈ B, δ ≤ |x|) (_hBbd : ∃ R : ℝ, ∀ x ∈ B, |x| ≤ R) (k : ℕ) :
     Tendsto (fun n : ℕ => ∑ f : Fin k ↪ (Finset.range (n + 1) : Finset ℕ),

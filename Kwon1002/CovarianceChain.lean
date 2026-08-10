@@ -25,7 +25,11 @@ everything proved outright, `markSymbol`, `truncatedMark_eq_symbol`,
 `farWindow_sum_small_of_covariance_decay`, `logFactor_le_rpow`,
 `card_le_sharp`, reports exactly `[propext, Classical.choice, Quot.sound]`.
 The four targets report those three plus `sorryAx`, coming from
-`farWindow_sum_small` and from nothing else.
+`farWindow_sum_small` and from nothing else.  The stage-D additions of §9
+(`lipTrunc` and its five lemmas, `truncatedMark_sub_lipTrunc_L1_of_band`,
+`truncatedMark_sub_lipTrunc_L1`, `truncatedMark_digitCut_L1`) are all proved
+outright and report exactly the three standard axioms; none consumes any
+sorried statement.
 
 ## What is new here
 
@@ -256,7 +260,14 @@ that statement bounds each far-pair covariance individually by `δ/L²`, and
 * the digit cut at `A_L = L^D` (`D > 2`) and, since
   `Kwon1002.truncatedMark` is the *hard* truncation, an `L¹` approximation of
   `z ↦ z·1{z ≤ εL}` in place of the manuscript's Jackson step, the symbol
-  `markSymbol` of §1 is bounded and monotone but not Lipschitz;
+  `markSymbol` of §1 is bounded and monotone but not Lipschitz.  **§9 below
+  (stage D) discharges the provable half of this item**: the digit cut is
+  proved (`truncatedMark_digitCut_L1`, cost `CεL/A = o(L^{-2})` at
+  `A = L^D`), a Lipschitz surrogate is built with its hard-cutoff distance
+  and Lipschitz constant machine-checked, and the remaining sub-residual is
+  isolated as the single band-mass hypothesis of
+  `truncatedMark_sub_lipTrunc_L1_of_band` — a stationary-law estimate that
+  finding (F7) shows is *not* derivable from the display-(15) tails;
 * the removal of the stopping-time factor isolated in §1, which display (27)
   knows nothing about and which the manuscript never meets, its (41) being
   stated over the deterministic `J_n` of (19). -/
@@ -674,6 +685,266 @@ example (c : ℝ) :
         ∑ p ∈ (Finset.range (n + 1) ×ˢ Finset.range (n + 1)) \ B,
             offdiagTerm c ε n p ≤ ε / 2 :=
   bulk_offdiagonal_far_od c
+
+/-! ## 9. The truncation surrogate: the provable half of the Jackson step
+
+The §3 residual note records that a discharge must replace the manuscript's
+Jackson approximation of a *Lipschitz* truncation `χ` by an `L¹`
+approximation, because `truncatedMark` is the **hard** cutoff
+`z ↦ z·1{z ≤ εL}` and `markSymbol` of §1 is bounded and monotone but not
+Lipschitz.  This section proves the half of that replacement that the tree's
+inputs reach, and pins the half they cannot.
+
+* `lipTrunc M δ` is the Lipschitz surrogate: `z` below `M − δ`, `0` above
+  `M`, linear in between.  It **is** Lipschitz
+  (`abs_lipTrunc_sub_lipTrunc_le`), so it is a legitimate Jackson target,
+  and it differs from the hard cutoff only on the band `(M − δ, M]`, by at
+  most `M` there (`abs_hardTrunc_sub_lipTrunc_le`).
+* `truncatedMark_sub_lipTrunc_L1_of_band` is the **residual interface**: any
+  bound `m` on the band mass `P((1−h)εL < Z ≤ εL)` converts into the `L¹`
+  bound `εL·m` between `Z^{(ε)}` and its surrogate.  This is the exact shape
+  in which a stationary-law input must arrive.
+* `truncatedMark_digitCut_L1` is the digit cut: `E[Z^{(ε)} 1{a > A}] ≤ CεL/A`,
+  so the manuscript's cut `A_L = L^D`, `D > 2`, costs `o(L^{-2})` and
+  survives the `O(L²)` pair count.  Proved from `digit_tail_product`.
+
+**Finding (F7): the tail input caps the surrogate distance at a constant.**
+`truncatedMark_sub_lipTrunc_L1` bounds the `L¹` distance by `C/(1−h)` out of
+the uniform mark tail `P(Z > t) ≤ C/(1+t)` (`L2Estimate.mark_tail_bound`,
+display (15)) — bounded uniformly in `n`, but **not** `o(1)`, and no better
+bound follows from tails alone: a law with its full allowed mass
+`≍ C/(1+εL)` sitting just below the cutoff satisfies every tail bound of
+display (15) yet keeps the band `L¹` cost at `εL·C/(1+εL) ≍ C`.  Beating it
+requires a *band-mass* (local) estimate `P((1−h)εL < Z ≤ εL) = O(h)`-shaped
+under the stationary digit law — a statement about where the law of
+`a·W(θ)` puts its mass, i.e. §4's equidistribution input again, and not a
+consequence of `digit_tail_product`.  `DigitLaw.lean`'s stage-1 outputs
+(`gaussMarginal_digit_tail`, `windowLaw_digit_tail`) are tails as well, so
+they cannot fill the interface either.  The residual of §3 is therefore
+unchanged in *content* by this section; what has changed is that the
+`L¹`-approximation step is now proved down to exactly one named measure
+bound (`hband` of the interface lemma) plus Proposition 4.1 for the
+Lipschitz surrogate. -/
+
+/-- The Lipschitz surrogate of the hard cutoff `z ↦ z·1{z ≤ M}`: equal to
+`z` below `M − δ`, `0` above `M`, linear in between. -/
+def lipTrunc (M δ z : ℝ) : ℝ :=
+  max 0 (min z ((M - z) * ((M - δ) / δ)))
+
+lemma lipTrunc_nonneg (M δ z : ℝ) : 0 ≤ lipTrunc M δ z := le_max_left _ _
+
+lemma lipTrunc_le_self {M δ z : ℝ} (hz : 0 ≤ z) : lipTrunc M δ z ≤ z :=
+  max_le hz (min_le_left _ _)
+
+lemma lipTrunc_eq_self {M δ z : ℝ} (hδ0 : 0 < δ) (hz0 : 0 ≤ z)
+    (hz : z ≤ M - δ) : lipTrunc M δ z = z := by
+  unfold lipTrunc
+  have hk0 : (0 : ℝ) ≤ (M - δ) / δ := div_nonneg (by linarith) hδ0.le
+  have hline : z ≤ (M - z) * ((M - δ) / δ) := by
+    have h1 : δ ≤ M - z := by linarith
+    calc z ≤ M - δ := hz
+      _ = δ * ((M - δ) / δ) := by field_simp
+      _ ≤ (M - z) * ((M - δ) / δ) := mul_le_mul_of_nonneg_right h1 hk0
+  rw [min_eq_left hline, max_eq_right hz0]
+
+lemma lipTrunc_eq_zero {M δ z : ℝ} (hδ0 : 0 < δ) (hδM : δ ≤ M) (hz : M ≤ z) :
+    lipTrunc M δ z = 0 := by
+  unfold lipTrunc
+  have hline : (M - z) * ((M - δ) / δ) ≤ 0 :=
+    mul_nonpos_of_nonpos_of_nonneg (by linarith) (div_nonneg (by linarith) hδ0.le)
+  rw [max_eq_left]
+  exact le_trans (min_le_right _ _) hline
+
+/-- **The surrogate is Lipschitz**, with constant `max 1 ((M − δ)/δ)`: the
+property the hard cutoff lacks and the Jackson step needs. -/
+lemma abs_lipTrunc_sub_lipTrunc_le {M δ : ℝ} (hδ0 : 0 < δ) (hδM : δ ≤ M)
+    (a b : ℝ) :
+    |lipTrunc M δ a - lipTrunc M δ b| ≤ max 1 ((M - δ) / δ) * |a - b| := by
+  set k : ℝ := (M - δ) / δ with hkdef
+  have hk0 : (0 : ℝ) ≤ k := div_nonneg (by linarith) hδ0.le
+  have h1 : |lipTrunc M δ a - lipTrunc M δ b|
+      ≤ |min a ((M - a) * k) - min b ((M - b) * k)| := by
+    unfold lipTrunc
+    rw [max_comm 0 (min a _), max_comm 0 (min b _)]
+    exact abs_max_sub_max_le_abs _ _ 0
+  refine le_trans h1 (le_trans (abs_min_sub_min_le_max _ _ _ _) ?_)
+  have h2 : |(M - a) * k - (M - b) * k| = k * |a - b| := by
+    have h3 : (M - a) * k - (M - b) * k = (b - a) * k := by ring
+    rw [h3, abs_mul, abs_of_nonneg hk0, abs_sub_comm b a, mul_comm]
+  rw [h2, max_mul_of_nonneg 1 k (abs_nonneg (a - b)), one_mul]
+
+/-- The hard cutoff and its surrogate differ only on the band `(M − δ, M]`,
+and by at most `M` there. -/
+lemma abs_hardTrunc_sub_lipTrunc_le {M δ z : ℝ} (hδ0 : 0 < δ) (hδM : δ ≤ M)
+    (hz0 : 0 ≤ z) :
+    |(if z ≤ M then z else 0) - lipTrunc M δ z|
+      ≤ M * (if M - δ < z ∧ z ≤ M then 1 else 0) := by
+  have hM0 : (0 : ℝ) ≤ M := le_trans hδ0.le hδM
+  rcases le_or_gt z (M - δ) with hlow | hhigh
+  · rw [lipTrunc_eq_self hδ0 hz0 hlow, if_pos (by linarith : z ≤ M), sub_self,
+      abs_zero]
+    split_ifs <;> nlinarith
+  · rcases le_or_gt z M with hle | hgt
+    · rw [if_pos hle, if_pos ⟨hhigh, hle⟩, mul_one]
+      have h1 := lipTrunc_nonneg M δ z
+      have h2 := lipTrunc_le_self (M := M) (δ := δ) hz0
+      rw [abs_of_nonneg (by linarith)]
+      linarith
+    · rw [if_neg (not_le.mpr hgt), lipTrunc_eq_zero hδ0 hδM hgt.le, sub_zero,
+        abs_zero, if_neg (fun hc => absurd hc.2 (not_le.mpr hgt)), mul_zero]
+
+/-- **The residual interface.**  Any bound `m` on the band mass
+`P((1−h)εL < Z ≤ εL)` converts into the `L¹` bound `εL·m` between the hard
+cutoff `Z^{(ε)}` and its Lipschitz surrogate at band width `h·εL`.  This is
+the exact currency in which the missing stationary-law input must arrive;
+see finding (F7) in the section header. -/
+theorem truncatedMark_sub_lipTrunc_L1_of_band (ε h m : ℝ) (hε : 0 < ε)
+    (hh0 : 0 < h) (hh1 : h < 1) (n j : ℕ) (hL : 0 < Lnorm n)
+    (hband : (volume {α : ℝ | α ∈ Ioo (0 : ℝ) 1 ∧
+        (1 - h) * (ε * Lnorm n) < mark α n j ∧ mark α n j ≤ ε * Lnorm n}).toReal
+      ≤ m) :
+    (∫ α in Ioo (0 : ℝ) 1,
+        |truncatedMark ε α n j
+          - lipTrunc (ε * Lnorm n) (h * (ε * Lnorm n)) (mark α n j)|)
+      ≤ ε * Lnorm n * m := by
+  classical
+  set M : ℝ := ε * Lnorm n with hMdef
+  have hM0 : (0 : ℝ) < M := by positivity
+  have hδ0 : (0 : ℝ) < h * M := by positivity
+  have hδM : h * M ≤ M := by nlinarith
+  set B : Set ℝ := {α : ℝ | (1 - h) * M < mark α n j ∧ mark α n j ≤ M} with hBdef
+  have hBm : MeasurableSet B :=
+    (measurableSet_lt measurable_const (measurable_mark n j)).inter
+      (measurableSet_le (measurable_mark n j) measurable_const)
+  have hg : Integrable (B.indicator fun _ => M) (volume.restrict (Ioo (0 : ℝ) 1)) :=
+    (integrable_const _).indicator hBm
+  have hpt : ∀ α : ℝ,
+      |truncatedMark ε α n j - lipTrunc M (h * M) (mark α n j)|
+        ≤ B.indicator (fun _ => M) α := by
+    intro α
+    have hhard : truncatedMark ε α n j
+        = (if mark α n j ≤ M then mark α n j else 0) := rfl
+    have hband' : M - h * M = (1 - h) * M := by ring
+    have h1 := abs_hardTrunc_sub_lipTrunc_le (M := M) (δ := h * M) hδ0 hδM
+      (mark_nonneg α n j)
+    rw [hhard]
+    refine le_trans h1 ?_
+    rw [hband', Set.indicator_apply]
+    by_cases hmem : α ∈ B
+    · rw [if_pos hmem, if_pos ?_, mul_one]
+      exact hmem
+    · rw [if_neg hmem, if_neg ?_, mul_zero]
+      exact hmem
+  have hmono : (∫ α in Ioo (0 : ℝ) 1,
+      |truncatedMark ε α n j - lipTrunc M (h * M) (mark α n j)|)
+      ≤ ∫ α in Ioo (0 : ℝ) 1, B.indicator (fun _ => M) α := by
+    refine integral_mono_of_nonneg ?_ hg ?_
+    · filter_upwards with α
+      exact abs_nonneg _
+    · filter_upwards with α
+      exact hpt α
+  refine le_trans hmono ?_
+  rw [integral_indicator hBm, setIntegral_const, measureReal_restrict_apply hBm,
+    smul_eq_mul]
+  have hcap : volume.real (B ∩ Ioo (0 : ℝ) 1) ≤ m := by
+    have hsub : B ∩ Ioo (0 : ℝ) 1 ⊆ {α : ℝ | α ∈ Ioo (0 : ℝ) 1 ∧
+        (1 - h) * M < mark α n j ∧ mark α n j ≤ M} := by
+      rintro α ⟨h1, h2⟩
+      exact ⟨h2, h1⟩
+    refine le_trans (ENNReal.toReal_mono
+      (L2Estimate.volume_ne_top_of_subset_Ioo (fun α hα => hα.1))
+      (measure_mono hsub)) hband
+  calc volume.real (B ∩ Ioo (0 : ℝ) 1) * M ≤ m * M :=
+        mul_le_mul_of_nonneg_right hcap hM0.le
+    _ = M * m := by ring
+
+/-- **The tail input alone caps the surrogate distance at `C/(1−h)`.**  From
+the uniform mark tail (display (15)) the `L¹` distance between the hard
+cutoff and its Lipschitz surrogate is bounded uniformly in `n` — but only by
+a constant, not `o(1)`; finding (F7) explains why tails can do no better. -/
+theorem truncatedMark_sub_lipTrunc_L1 :
+    ∃ C : ℝ, 0 < C ∧ ∀ (ε h : ℝ), 0 < ε → 0 < h → h < 1 → ∀ n j : ℕ,
+      0 < Lnorm n →
+      (∫ α in Ioo (0 : ℝ) 1,
+          |truncatedMark ε α n j
+            - lipTrunc (ε * Lnorm n) (h * (ε * Lnorm n)) (mark α n j)|)
+        ≤ C / (1 - h) := by
+  obtain ⟨K, hK, htail⟩ := L2Estimate.mark_tail_bound
+  refine ⟨K, hK, ?_⟩
+  intro ε h hε hh0 hh1 n j hL
+  set M : ℝ := ε * Lnorm n with hMdef
+  have hM0 : (0 : ℝ) < M := by positivity
+  have ht0 : (0 : ℝ) < (1 - h) * M := by nlinarith
+  have hbandtail : (volume {α : ℝ | α ∈ Ioo (0 : ℝ) 1 ∧
+      (1 - h) * M < mark α n j ∧ mark α n j ≤ M}).toReal
+      ≤ K / (1 + (1 - h) * M) := by
+    refine le_trans (ENNReal.toReal_mono
+      (L2Estimate.volume_ne_top_of_subset_Ioo (fun α hα => hα.1))
+      (measure_mono ?_)) (htail n j ((1 - h) * M) ht0)
+    rintro α ⟨hα, h1, -⟩
+    exact ⟨hα, h1⟩
+  refine le_trans (truncatedMark_sub_lipTrunc_L1_of_band ε h _ hε hh0 hh1 n j hL
+    hbandtail) ?_
+  have hden : (0 : ℝ) < 1 + (1 - h) * M := by nlinarith
+  rw [mul_div_assoc', div_le_div_iff₀ hden (by linarith : (0 : ℝ) < 1 - h)]
+  nlinarith [hK.le, hM0.le]
+
+/-- **The digit-cut cost.**  Cutting the digits at `a ≤ A` costs
+`E[Z^{(ε)} 1{a ≥ A}] ≤ C ε L / A`, so the manuscript's cut `A_L = L^D` with
+`D > 2` costs `o(L^{-2})` per level and survives the `O(L²)` pair count of
+the far-window sum.  Proved from `digit_tail_product` (display (15)). -/
+theorem truncatedMark_digitCut_L1 :
+    ∃ C : ℝ, 0 < C ∧ ∀ ε : ℝ, 0 ≤ ε → ∀ A : ℝ, 1 ≤ A → ∀ n j : ℕ,
+      (∫ α in Ioo (0 : ℝ) 1,
+          (if A ≤ (digit α j : ℝ) then truncatedMark ε α n j else 0))
+        ≤ C * ε * Lnorm n / A := by
+  classical
+  obtain ⟨C₀, hC₀, hprod⟩ := digit_tail_product
+  refine ⟨C₀, hC₀, ?_⟩
+  intro ε hε A hA n j
+  have hApos : (0 : ℝ) < A := lt_of_lt_of_le zero_lt_one hA
+  set S : Set ℝ := {α : ℝ | A ≤ (digit α j : ℝ)} with hSdef
+  have hdigm : Measurable fun α : ℝ => digit α j := by
+    unfold digit
+    exact (measurable_of_countable Int.toNat).comp ((measurable_gaussIter j).inv.floor)
+  have hSm : MeasurableSet S :=
+    measurableSet_le measurable_const
+      ((measurable_from_top (f := fun a : ℕ => (a : ℝ))).comp hdigm)
+  have htail : volume.real (S ∩ Ioo (0 : ℝ) 1) ≤ C₀ / A := by
+    have hspec := hprod 1 (fun _ : Fin 1 => j) (fun _ : Fin 1 => A)
+      (fun a b _ => Subsingleton.elim a b) (fun _ => hA)
+    have hsub : S ∩ Ioo (0 : ℝ) 1 ⊆ {α : ℝ | α ∈ Ioo (0 : ℝ) 1 ∧
+        ∀ _i : Fin 1, A ≤ (digit α j : ℝ)} := by
+      rintro α ⟨h1, h2⟩
+      exact ⟨h2, fun _ => h1⟩
+    refine le_trans (ENNReal.toReal_mono
+      (L2Estimate.volume_ne_top_of_subset_Ioo (fun α hα => hα.1))
+      (measure_mono hsub)) (le_trans hspec ?_)
+    simp only [pow_one, Finset.prod_const, Finset.card_univ, Fintype.card_fin]
+    rw [div_eq_mul_inv]
+  have hg : Integrable (S.indicator fun _ => ε * Lnorm n)
+      (volume.restrict (Ioo (0 : ℝ) 1)) := (integrable_const _).indicator hSm
+  have hmono : (∫ α in Ioo (0 : ℝ) 1,
+      (if A ≤ (digit α j : ℝ) then truncatedMark ε α n j else 0))
+      ≤ ∫ α in Ioo (0 : ℝ) 1, S.indicator (fun _ => ε * Lnorm n) α := by
+    refine integral_mono_of_nonneg ?_ hg ?_
+    · filter_upwards with α
+      split_ifs with hmem
+      · exact truncatedMark_nonneg ε α n j
+      · exact le_rfl
+    · filter_upwards with α
+      rw [Set.indicator_apply]
+      by_cases hmem : A ≤ (digit α j : ℝ)
+      · rw [if_pos hmem, if_pos (show α ∈ S from hmem)]
+        exact truncatedMark_le ε hε α n j
+      · rw [if_neg hmem, if_neg (show α ∉ S from hmem)]
+  refine le_trans hmono ?_
+  rw [integral_indicator hSm, setIntegral_const, measureReal_restrict_apply hSm,
+    smul_eq_mul]
+  have hεL : (0 : ℝ) ≤ ε * Lnorm n := mul_nonneg hε (Lnorm_nonneg n)
+  calc volume.real (S ∩ Ioo (0 : ℝ) 1) * (ε * Lnorm n)
+      ≤ (C₀ / A) * (ε * Lnorm n) := mul_le_mul_of_nonneg_right htail hεL
+    _ = C₀ * ε * Lnorm n / A := by ring
 
 end
 

@@ -259,7 +259,26 @@ elsewhere, `Finset.prod_add` turns the left side into
 tuple sum for the bounded complex symbol `x ↦ (e^{itx}−1)·1{|x|>ε}`; the
 uniform-in-`n` domination is available from the proved
 `TupleMeasure.tuple_measure_le` and `L2Estimate.stoppingTime_le_log`.  What is
-missing is the tuple limit for a complex symbol, Proposition 4.1. -/
+missing is the tuple limit for a complex symbol, Proposition 4.1.
+
+**Gate, verified 2026-08-10 (stage D).**  A reconciliation note listed
+`PoissonRoute.largeJump_tendsto_compoundPoisson` among the *proved*
+ingredients available here.  That is wrong: `#print axioms` reports `sorryAx`
+on it — it delegates to the sorried `PoissonRoute.xi_largeIntegral_weak_limit`
+and proves nothing by itself.  The genuinely proved pieces
+(`CauchyLaw.charFun_cauchyProb`, `LevyExponent.levy_exponent_limit_raw`,
+`CompoundCauchy.tendsto_levyExponent_trunc`) all live in the `ε ↓ 0` layer
+and do not touch the fixed-`ε`, `n → ∞` limit asserted here.  Moreover the
+residual is *exactly equivalent* to the point-process weak limit, both
+directions now machine-checked: `xi_largeIntegral_weak_limit_F` below derives
+the weak limit from this statement, and
+`largeSum_charFun_limit_of_weak_limit` below derives this statement from the
+weak limit (via the proved substrate continuity
+`Erdos1002.continuous_charFun_probabilityMeasure`).  So the gate is
+Proposition 4.1's tuple form for the complex symbol
+`x ↦ (e^{itx}−1)·1{|x|>ε}`, whose nonzero-mode branch is display-(20)-gated
+(`P42Cases.Display20`, no proved instance anywhere in the tree); nothing
+weaker discharges it. -/
 theorem largeSum_charFun_limit (c ε : ℝ) (_hε0 : 0 < ε) (_hε1 : ε < 1) (t : ℝ) :
     Tendsto (fun n : ℕ => ∫ α in Ioo (0 : ℝ) 1,
         Complex.exp ((t : ℂ) * (largeSum c ε α n : ℂ) * Complex.I)) atTop
@@ -267,6 +286,50 @@ theorem largeSum_charFun_limit (c ε : ℝ) (_hε0 : 0 < ε) (_hε1 : ε < 1) (t
           (Complex.exp ((t : ℂ) * (x : ℂ) * Complex.I) - 1)
             * (levyIntensityDensity x : ℂ)))) := by
   sorry
+
+/-- **The converse direction: DEBT 1 is not stronger than the point-process
+weak limit.**  If the statement of `PoissonRoute.xi_largeIntegral_weak_limit`
+holds (taken here as an explicit hypothesis, reproduced token for token), then
+`largeSum_charFun_limit`'s conclusion follows.
+
+Proved from three sorry-free inputs: the substrate continuity of
+`charFun (·) t` on `ProbabilityMeasure ℝ`
+(`Erdos1002.continuous_charFun_probabilityMeasure`, the easy direction of
+Lévy continuity), the compound-Poisson exponent identity
+(`CompoundCauchy.charFun_compoundPoisson_levy`), and
+`charFun_largeSum_law` above.  Together with `xi_largeIntegral_weak_limit_F`
+below this makes DEBT 1 *equivalent* to the weak limit — the residual sits at
+exactly the Proposition-4.1 gate, neither above nor below it. -/
+theorem largeSum_charFun_limit_of_weak_limit (c ε : ℝ) (hε0 : 0 < ε) (_hε1 : ε < 1)
+    (hweak : ∀ (r : ℝ≥0) (ν : ProbabilityMeasure ℝ),
+      (r : ℝ≥0∞) = levyIntensity (PoissonRoute.truncSet ε) →
+      (r : ℝ≥0∞) • (ν : Measure ℝ) = levyIntensity.restrict (PoissonRoute.truncSet ε) →
+      ∀ μs : ℕ → ProbabilityMeasure ℝ,
+        (∀ n, (μs n : Measure ℝ) = unifIoo.map
+          (fun α => ∫ x in PoissonRoute.truncSet ε, x ∂(PoissonRoute.xiMeasure c α n))) →
+        Tendsto μs atTop (𝓝 (Erdos1002.continuousCompoundPoissonProbability r ν)))
+    (t : ℝ) :
+    Tendsto (fun n : ℕ => ∫ α in Ioo (0 : ℝ) 1,
+        Complex.exp ((t : ℂ) * (largeSum c ε α n : ℂ) * Complex.I)) atTop
+      (𝓝 (Complex.exp (∫ x in {x : ℝ | ε < |x|},
+          (Complex.exp ((t : ℂ) * (x : ℂ) * Complex.I) - 1)
+            * (levyIntensityDensity x : ℂ)))) := by
+  obtain ⟨r, ν, hrate, hjump⟩ := PoissonRoute.exists_levy_truncation_data hε0
+  have hconv := hweak r ν hrate hjump (fun n => largeProb c ε n)
+    (fun n => PoissonRoute.largeProb_eq_xi_law c ε hε0.le n)
+  have hchar := ((Erdos1002.continuous_charFun_probabilityMeasure t).tendsto
+    (Erdos1002.continuousCompoundPoissonProbability r ν)).comp hconv
+  have hjump' : (r : ℝ≥0∞) • (ν : Measure ℝ)
+      = levyIntensity.restrict {x : ℝ | ε < |x|} := hjump
+  have hcp : ((Erdos1002.continuousCompoundPoissonProbability r ν :
+        ProbabilityMeasure ℝ) : Measure ℝ)
+      = Erdos1002.continuousCompoundPoissonMeasure r ν :=
+    Erdos1002.continuousCompoundPoissonProbability_toMeasure r ν
+  rw [Function.comp_def, CompoundCauchy.charFun_compoundPoisson_levy hε0 t
+    (Erdos1002.continuousCompoundPoissonProbability r ν) r ν hjump' hcp] at hchar
+  refine Filter.Tendsto.congr (fun n => ?_) hchar
+  exact charFun_largeSum_law c ε hε0.le n t (largeProb c ε n)
+    (PoissonRoute.largeProb_eq_xi_law c ε hε0.le n)
 
 /-- `Kwon1002.xi_charFun_limit` (the residual of `Kwon1002/FiveFinal.lean`),
 reproduced token for token and **proved** from `largeSum_charFun_limit`. -/
