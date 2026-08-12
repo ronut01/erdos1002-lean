@@ -8,8 +8,7 @@ Lem 7.1 (stopping time `H = L^{3/4}` and end terms) and the Slutsky
 combination are glue over §§2-6; their statements firm up at M5-M6.
 The master target is stated now so the artifact has a single top-level
 sorried goal from day one, and the project's sorry count is the honest
-progress metric until the CI gate (no sorry, three axioms,
-no native_decide) goes green.
+progress metric until the CI trust-policy gate goes green.
 -/
 
 namespace Kwon1002
