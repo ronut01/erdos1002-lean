@@ -43,9 +43,19 @@ on one.
 
 Nearly every remaining open goal now traces to a single analytic input:
 the manuscript's display (16) and its corollary (20), the large-deviation
-bound for the continuants, which is absent from this development and from
-the vendored substrate. The conditional machinery is in place on both
-consuming paths, so a proof or citation for (16) discharges them at once.
+bound for the continuants. The conditional machinery is in place on both
+consuming paths, so a proof of (16) discharges them at once.
+
+On (16) the manuscript and the formalization take different routes to the
+same estimate, by agreement with the author. The manuscript proves it
+through the perturbed transfer operator, analytic perturbation of the
+leading eigenvalue, and a Chernoff argument, with Vallée (Acta Arith. 81,
+1997) as the Gauss-specific reference for that framework. This
+development proves the same bound by a self-contained route built on the
+mixing estimates already formalized here, since reproducing the full
+perturbation machinery in Lean would be disproportionate. Shouqiao Wang's
+vendored code is used throughout as shared Gauss-transfer infrastructure,
+not as route-specific proof architecture.
 
 Section 2 is formalized. Section 3 is formalized apart from Lemma 3.1(i),
 which this development does not use. The conditional multi-block mixing
