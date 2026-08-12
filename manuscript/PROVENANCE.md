@@ -6,14 +6,44 @@ formalized against.
 
 ## Current target
 
+**Version 9, dated August 11, 2026.**
+
+| File | sha256 |
+|---|---|
+| `erdos1002_cauchy_limit_revision_v9.pdf` | `c695c9214310ac75abe1f0f62c6fd5c25f3e7a8fb34bffd62faa086e6e6fe2bd` |
+| `erdos1002_cauchy_limit_revision_v9.tex` | `2b0de746256a544a41233f0768d5dfd5d21b95fca1d08200974e336e61957ade` |
+| `erdos1002_v8_to_v9.diff` (author-supplied) | `59ca90124fe53e4bb97a1b94548208b5e600e2129c5ef01d069238b9d611802d` |
+
+## What changed from v8 to v9
+
+Verified independently by diffing the two TeX sources; the result matches
+the author-supplied diff. Four hunks, none touching a theorem statement,
+numbered equation, constant, or proof step:
+
+- The version line and date.
+- One sentence citing Vallée, *Opérateurs de Ruelle-Mayer généralisés et
+  analyse en moyenne des algorithmes d'Euclide et de Gauss*, Acta Arith. 81
+  (1997), as the Gauss-specific reference for the perturbative framework
+  behind display (16), plus the bibliography entry. The proof route is
+  unchanged; the manuscript still derives the Bernstein form by Chernoff.
+- A clarification paragraph in the section 6 mixing proof: two-sided digit
+  cylinder correlations reduce to one-sided Gauss cylinder correlations
+  with separation `m - O(1)`, then cylinder density finishes. This
+  describes the reduction; the Lean development proves the statement
+  independently (`NatExtMixing.lean`, for arbitrary measurable sets, by a
+  different route through Lipschitz observables).
+
+No reconciliation work arises: every formalized statement targeted at v8
+is unchanged in v9.
+
+## Superseded
+
 **Version 8, dated August 6, 2026.**
 
 | File | sha256 |
 |---|---|
 | `erdos1002_cauchy_limit_revision_v8.pdf` | `54736403682df31a3d6e0770892602b580b529241a8bb8d44c4c343ae7210017` |
 | `erdos1002_cauchy_limit_revision_v8.tex` | `d4e8a2d3cfb3836392a838ad4b947f9764dcaea32f9d529320d6067d67d29bbc` |
-
-## Superseded
 
 | File | sha256 |
 |---|---|

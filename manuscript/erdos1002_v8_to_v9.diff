@@ -1,0 +1,52 @@
+--- /mnt/data/erdos1002_cauchy_limit_revision_v8(2).tex	2026-08-11 06:44:39.408323818 +0000
++++ /mnt/data/erdos1002_cauchy_limit_revision_v9.tex	2026-08-11 06:49:14.806026904 +0000
+@@ -39,7 +39,7 @@
+ \author{Sangyoon Kwon}
+ \address{Independent researcher}
+ \email{is011061@gmail.com}
+-\date{Version 8, August 6, 2026}
++\date{Version 9, August 11, 2026}
+ \subjclass[2020]{11K38, 11A55, 37A50, 60F05}
+ \keywords{continued fractions, discrepancy sums, Cauchy law, stable limits,
+ Gauss map}
+@@ -339,9 +339,10 @@
+ form an analytic family on $BV$ for $|t|<1/2$.  Indeed, on every smaller
+ complex disc the branch series and all its $t$-derivatives converge in
+ operator norm, since their bounds reduce to convergent series of the form
+-$\sum_{a\ge1}a^{-2+t_0}(1+(\log a)^k)$.  Analytic perturbation of the simple
+-leading eigenvalue \cite[Chap.~VII]{Kato95} therefore gives, after decreasing
+-$t_0>0$ if necessary,
++$\sum_{a\ge1}a^{-2+t_0}(1+(\log a)^k)$.  For the Gauss-specific
++Ruelle--Mayer framework underlying this perturbation argument, see
++\cite{Vallee97}.  Analytic perturbation of the simple leading eigenvalue
++\cite[Chap.~VII]{Kato95} therefore gives, after decreasing $t_0>0$ if necessary,
+ \[
+  \begin{aligned}
+   \mathcal L_t&=\kappa(t)\Pi_t+N_t,
+@@ -1233,7 +1234,12 @@
+ Thus the resonance relation is impossible for all sufficiently large $m$.
+ The zero modes reduce to mixing of the Gauss natural extension; this follows
+ from Lemma~\ref{lem:gauss-estimates}(i), since the natural extension of a
+-mixing probability-preserving endomorphism is mixing.
++mixing probability-preserving endomorphism is mixing.  Concretely, every
++finite two-sided digit cylinder is a fixed iterate of a one-sided cylinder,
++so by invariance a correlation of two such cylinders is a one-sided Gauss
++cylinder correlation with separation $m-O(1)$; Lemma~\ref{lem:gauss-estimates}(i)
++then factors it as $m\to\infty$.  Density of finite cylinders gives the
++natural-extension mixing statement.
+ Density of cylinder functions times characters in $L^2$ completes the proof.
+ \end{proof}
+ 
+@@ -1735,6 +1741,12 @@
+ Millennium Research report, 2026,
+ \url{https://github.com/ibrahimmian36/Tesserarius/blob/main/reports/erdos-1002.md}.
+ 
++\bibitem{Vallee97}
++B.~Vall\'ee,
++\emph{Op\'erateurs de Ruelle--Mayer g\'en\'eralis\'es et analyse en moyenne
++des algorithmes d'Euclide et de Gauss},
++Acta Arith. 81 (1997), no.~2, 101--144.
++
+ \bibitem{Vardi93}
+ I.~Vardi,
+ \emph{Dedekind sums have a limiting distribution},

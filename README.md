@@ -78,7 +78,8 @@ vendored verbatim at commit `d28713ac8245` with a provenance header added to
 each file, and used with his explicit agreement. See `wang_substrate/PROVENANCE.md`.
 
 `manuscript/` holds every version of the manuscript received, pinned by
-sha256 in `manuscript/PROVENANCE.md`. The current target is **version 8**
-(August 6, 2026); reconciliation of the development against it is in
-progress, and until that completes the statements here are formalized
-against v5 except where a file records otherwise.
+sha256 in `manuscript/PROVENANCE.md`. The current target is **version 9**
+(August 11, 2026). The v8-to-v9 diff is verified minimal — a reference,
+a clarifying paragraph, and the date, with no statement, equation, or
+constant changed — so the completed v8 reconciliation
+(`RECONCILIATION_V8.md`) carries over to v9 unchanged.
