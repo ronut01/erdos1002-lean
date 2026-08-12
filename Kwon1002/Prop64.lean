@@ -1,0 +1,1744 @@
+import Kwon1002.Section6Skeleton
+import Kwon1002.WindowLaws
+import Kwon1002.WindowMarginal
+import Kwon1002.DigitLaw
+import Kwon1002.CarryGraph
+
+/-!
+# Proposition 6.4 of v5: the bounded-remainder weak law, reduced to named inputs
+
+This file carries out the assembly step of Section 6 of manuscript v5
+(`manuscript/erdos1002_cauchy_limit_revision_v5.tex`, lines 1295-1463) and
+of the revision note `manuscript/proposition_6_4_revision_note.pdf`.
+
+Two targets of `Kwon1002.Section6Skeleton` are reproduced here verbatim,
+`display_55_monomial_approximation` and
+`prop_6_4_bounded_remainder_weak_law`, and both are *proved* from a short
+list of explicitly named inputs.  The inputs are the analytic facts of the
+section; everything that is bookkeeping (Minkowski, Chebyshev, the change
+of variables along `π_{R+M,R}`, the passage from a complex to a real
+combination of monomials, the order of the three limits) is carried out.
+
+## What is proved outright
+
+* A small `L²` toolkit: Chebyshev in the form the last line of the proof
+  needs, the centering bound `‖Z - E Z‖₂ ≤ 2‖Z‖₂`, and the Minkowski
+  estimate for the alternating normalised averages, displays (58) and (59)
+  of v5.
+* `card_bulkJ_le`: `|J_n| ≤ L/λ + 1`, which is what turns the per-index
+  `L²` bounds into a bound on the average with an absolute constant.
+* The window-symbol algebra `symConj`, `symAdd`, `symSmul`, `symRe` and the
+  identity `(symRe U).evalWindow w = ((U.evalWindow w).re : ℂ)`.  This
+  is the step "adjoining the conjugate monomials shows that `Re P` is
+  again a finite linear combination of monomials".
+* `display_55_monomial_approximation` from the four chain steps of the
+  revision note, `B^{(R)} → G → G_M → G_M 1_E → P_{R,M}`, including the
+  identity `‖f ∘ π_{R+M,R}‖_{L²(μ_{R+M})} = ‖f‖_{L²(μ_R)}` coming from
+  `windowProj_map_windowLaw`.
+* `prop_6_4_bounded_remainder_weak_law` from the three `L²` inputs
+  (carry truncation, polynomial approximation, polynomial variance), with
+  the limits taken in the order `n → ∞`, then `M → ∞`, then `R → ∞`.
+
+## Inputs left sorried
+
+Each is stated in this file with the manuscript step it corresponds to and
+the obstruction that prevents closing it here.  None of them is a
+restatement of a target; each is a strictly smaller analytic fact.
+-/
+
+open MeasureTheory Set Filter
+open scoped BigOperators Topology ENNReal
+
+namespace Kwon1002
+
+namespace Prop64
+
+noncomputable section
+
+/-! ## The probability space `((0,1), Lebesgue)` -/
+
+instance isProbabilityMeasure_restrict_Ioo :
+    IsProbabilityMeasure (volume.restrict (Ioo (0 : ℝ) 1)) := by
+  constructor
+  rw [Measure.restrict_apply_univ, Real.volume_Ioo]
+  simp
+
+/-! ## An `L²` toolkit -/
+
+/-- Chebyshev's inequality in the shape used to close Proposition 6.4:
+an `L²` bound `t` on `f` bounds the measure of `{|f| ≥ ε}` by `(t/ε)²`. -/
+theorem measReal_ge_le_of_eLpNorm_le {μ : Measure ℝ} [IsFiniteMeasure μ] {f : ℝ → ℝ}
+    (hf : AEStronglyMeasurable f μ) {ε t : ℝ} (hε : 0 < ε) (ht : 0 ≤ t)
+    (h : eLpNorm f 2 μ ≤ ENNReal.ofReal t) :
+    μ.real {α : ℝ | ε ≤ |f α|} ≤ (t / ε) ^ 2 := by
+  have hset : {α : ℝ | ε ≤ |f α|} = {α : ℝ | ENNReal.ofReal ε ≤ ‖f α‖ₑ} := by
+    ext α
+    simp only [Set.mem_setOf_eq, Real.enorm_eq_ofReal_abs]
+    exact (ENNReal.ofReal_le_ofReal_iff (abs_nonneg _)).symm
+  have hne0 : ENNReal.ofReal ε ≠ 0 := by
+    simp [ENNReal.ofReal_eq_zero, not_le, hε]
+  have hcheb := meas_ge_le_mul_pow_eLpNorm_enorm μ (p := 2) (f := f)
+      (by norm_num) (by norm_num) hf hne0 (fun h => absurd h ENNReal.ofReal_ne_top)
+  have h2 : ((2 : ℝ≥0∞).toReal) = 2 := by norm_num
+  rw [h2] at hcheb
+  have hstep : μ {α : ℝ | ε ≤ |f α|} ≤ ENNReal.ofReal ((t / ε) ^ 2) := by
+    rw [hset]
+    refine hcheb.trans ?_
+    have hmono : eLpNorm f 2 μ ^ (2 : ℝ) ≤ (ENNReal.ofReal t) ^ (2 : ℝ) :=
+      ENNReal.rpow_le_rpow h (by norm_num)
+    refine (mul_le_mul_left' hmono _).trans ?_
+    have hinv : (ENNReal.ofReal ε)⁻¹ = ENNReal.ofReal ε⁻¹ :=
+      (ENNReal.ofReal_inv_of_pos hε).symm
+    rw [hinv]
+    have e1 : (ENNReal.ofReal ε⁻¹) ^ (2 : ℝ) = ENNReal.ofReal ((ε⁻¹) ^ 2) := by
+      rw [ENNReal.ofReal_pow (by positivity)]
+      rw [show (2 : ℝ) = ((2 : ℕ) : ℝ) by norm_num, ENNReal.rpow_natCast]
+    have e2 : (ENNReal.ofReal t) ^ (2 : ℝ) = ENNReal.ofReal (t ^ 2) := by
+      rw [ENNReal.ofReal_pow ht]
+      rw [show (2 : ℝ) = ((2 : ℕ) : ℝ) by norm_num, ENNReal.rpow_natCast]
+    rw [e1, e2, ← ENNReal.ofReal_mul (by positivity)]
+    apply le_of_eq
+    congr 1
+    field_simp
+  have hle := ENNReal.toReal_mono (by simp) hstep
+  rwa [ENNReal.toReal_ofReal (by positivity)] at hle
+
+/-- Convergence in probability from convergence in `L²`, the final step of
+the proof of Proposition 6.4. -/
+theorem tendsto_measReal_of_eLpNorm {μ : Measure ℝ} [IsFiniteMeasure μ] {f : ℕ → ℝ → ℝ}
+    (hf : ∀ n, AEStronglyMeasurable (f n) μ)
+    (h : ∀ η : ℝ, 0 < η → ∀ᶠ n : ℕ in atTop, eLpNorm (f n) 2 μ ≤ ENNReal.ofReal η)
+    {ε : ℝ} (hε : 0 < ε) :
+    Tendsto (fun n : ℕ => μ.real {α : ℝ | ε ≤ |f n α|}) atTop (𝓝 0) := by
+  rw [NormedAddCommGroup.tendsto_nhds_zero]
+  intro η hη
+  have hspos : 0 < Real.sqrt (η / 2) := Real.sqrt_pos.mpr (by linarith)
+  have ht : 0 < ε * Real.sqrt (η / 2) := by positivity
+  filter_upwards [h (ε * Real.sqrt (η / 2)) ht] with n hn
+  have hb := measReal_ge_le_of_eLpNorm_le (hf n) hε ht.le hn
+  have hdiv : (ε * Real.sqrt (η / 2)) / ε = Real.sqrt (η / 2) := by
+    field_simp
+  rw [hdiv, Real.sq_sqrt (by linarith)] at hb
+  have hnn : 0 ≤ μ.real {α : ℝ | ε ≤ |f n α|} := measureReal_nonneg
+  rw [Real.norm_eq_abs, abs_of_nonneg hnn]
+  linarith
+
+/-- `‖Z - E Z‖₂ ≤ 2‖Z‖₂` on a probability space. -/
+theorem eLpNorm_center_le {μ : Measure ℝ} [IsProbabilityMeasure μ] {Z : ℝ → ℝ}
+    (hZ : MemLp Z 2 μ) :
+    eLpNorm (fun α => Z α - ∫ β, Z β ∂μ) 2 μ ≤ 2 * eLpNorm Z 2 μ := by
+  have h1 : eLpNorm (fun α => Z α - ∫ β, Z β ∂μ) 2 μ
+      ≤ eLpNorm Z 2 μ + eLpNorm (fun _ : ℝ => ∫ β, Z β ∂μ) 2 μ :=
+    eLpNorm_sub_le hZ.1 aestronglyMeasurable_const (by norm_num)
+  have h2 : eLpNorm (fun _ : ℝ => ∫ β, Z β ∂μ) 2 μ = ‖∫ β, Z β ∂μ‖ₑ := by
+    rw [eLpNorm_const' _ (by norm_num) (by norm_num)]
+    simp
+  have h3 : ‖∫ β, Z β ∂μ‖ₑ ≤ eLpNorm Z 2 μ := by
+    calc ‖∫ β, Z β ∂μ‖ₑ ≤ ∫⁻ β, ‖Z β‖ₑ ∂μ := enorm_integral_le_lintegral_enorm _
+      _ = eLpNorm Z 1 μ := eLpNorm_one_eq_lintegral_enorm.symm
+      _ ≤ eLpNorm Z 2 μ := eLpNorm_le_eLpNorm_of_exponent_le (by norm_num) hZ.1
+  rw [h2] at h1
+  calc eLpNorm (fun α => Z α - ∫ β, Z β ∂μ) 2 μ ≤ eLpNorm Z 2 μ + eLpNorm Z 2 μ := by
+        exact h1.trans (by gcongr)
+    _ = 2 * eLpNorm Z 2 μ := (two_mul _).symm
+
+/-! ## The alternating normalised average of §6 -/
+
+/-- `(1/L) Σ_{j ∈ s} (-1)^j (Z_j - E Z_j)`, the quantity of (54) and of
+displays (58) and (59). -/
+def centeredAvg (L : ℝ) (s : Finset ℕ) (Z : ℕ → ℝ → ℝ) (α : ℝ) : ℝ :=
+  (1 / L) * ∑ j ∈ s, (-1 : ℝ) ^ j * (Z j α - ∫ β in Ioo (0 : ℝ) 1, Z j β)
+
+theorem aestronglyMeasurable_centeredAvg {L : ℝ} {s : Finset ℕ} {Z : ℕ → ℝ → ℝ}
+    (hZ : ∀ j ∈ s, AEStronglyMeasurable (Z j) (volume.restrict (Ioo (0 : ℝ) 1))) :
+    AEStronglyMeasurable (centeredAvg L s Z) (volume.restrict (Ioo (0 : ℝ) 1)) := by
+  refine AEStronglyMeasurable.const_mul ?_ _
+  refine Finset.aestronglyMeasurable_fun_sum _ ?_
+  intro j hj
+  exact ((hZ j hj).sub aestronglyMeasurable_const).const_mul _
+
+/-- The average is additive: this is the linearity that lets the three
+`L²` errors of the proof be combined. -/
+theorem centeredAvg_sub {L : ℝ} {s : Finset ℕ} {Z Y : ℕ → ℝ → ℝ}
+    (hZ : ∀ j ∈ s, Integrable (Z j) (volume.restrict (Ioo (0 : ℝ) 1)))
+    (hY : ∀ j ∈ s, Integrable (Y j) (volume.restrict (Ioo (0 : ℝ) 1))) (α : ℝ) :
+    centeredAvg L s Z α - centeredAvg L s Y α
+      = centeredAvg L s (fun j α => Z j α - Y j α) α := by
+  simp only [centeredAvg, ← mul_sub, ← Finset.sum_sub_distrib]
+  congr 1
+  refine Finset.sum_congr rfl fun j hj => ?_
+  rw [integral_sub (hZ j hj) (hY j hj)]
+  ring
+
+/-- **Minkowski for the alternating average**, displays (58) and (59) of
+v5: a uniform per-index `L²` bound `b` gives the bound
+`(2/L)|s| b` for the centered average. -/
+theorem eLpNorm_centeredAvg_le {L b : ℝ} {s : Finset ℕ} {Z : ℕ → ℝ → ℝ}
+    (hL : 0 < L) (hb : 0 ≤ b)
+    (hZ : ∀ j ∈ s, MemLp (Z j) 2 (volume.restrict (Ioo (0 : ℝ) 1)))
+    (hbd : ∀ j ∈ s, eLpNorm (Z j) 2 (volume.restrict (Ioo (0 : ℝ) 1)) ≤ ENNReal.ofReal b) :
+    eLpNorm (centeredAvg L s Z) 2 (volume.restrict (Ioo (0 : ℝ) 1))
+      ≤ ENNReal.ofReal ((2 / L) * s.card * b) := by
+  classical
+  set μ : Measure ℝ := volume.restrict (Ioo (0 : ℝ) 1) with hμ
+  set g : ℕ → ℝ → ℝ := fun j α => (-1 : ℝ) ^ j * (Z j α - ∫ β, Z j β ∂μ) with hg
+  have hgmeas : ∀ j ∈ s, AEStronglyMeasurable (g j) μ := by
+    intro j hj
+    exact (((hZ j hj).1).sub aestronglyMeasurable_const).const_mul _
+  have hkey : ∀ j ∈ s, eLpNorm (g j) 2 μ ≤ 2 * ENNReal.ofReal b := by
+    intro j hj
+    have hsm : g j = ((-1 : ℝ) ^ j) • (fun α => Z j α - ∫ β, Z j β ∂μ) := rfl
+    have hone : ‖((-1 : ℝ) ^ j)‖ₑ = 1 := by
+      rw [Real.enorm_eq_ofReal_abs, abs_pow, abs_neg, abs_one, one_pow, ENNReal.ofReal_one]
+    have h1 : eLpNorm (g j) 2 μ = eLpNorm (fun α => Z j α - ∫ β, Z j β ∂μ) 2 μ := by
+      rw [hsm, eLpNorm_const_smul, hone, one_mul]
+    rw [h1]
+    calc eLpNorm (fun α => Z j α - ∫ β, Z j β ∂μ) 2 μ ≤ 2 * eLpNorm (Z j) 2 μ :=
+          eLpNorm_center_le (hZ j hj)
+      _ ≤ 2 * ENNReal.ofReal b := by gcongr; exact hbd j hj
+  have hcs : centeredAvg L s Z = (1 / L) • (fun α => ∑ j ∈ s, g j α) := rfl
+  have hLn : ‖(1 / L)‖ₑ = ENNReal.ofReal (1 / L) := Real.enorm_eq_ofReal (by positivity)
+  have hsum : eLpNorm (fun α => ∑ j ∈ s, g j α) 2 μ ≤ ∑ j ∈ s, eLpNorm (g j) 2 μ := by
+    have hfun : (fun α => ∑ j ∈ s, g j α) = ∑ j ∈ s, g j := by
+      funext α; simp
+    rw [hfun]
+    exact eLpNorm_sum_le (μ := μ) (p := 2) (f := g) (s := s) hgmeas (by norm_num)
+  rw [hcs, eLpNorm_const_smul, hLn]
+  calc ENNReal.ofReal (1 / L) * eLpNorm (fun α => ∑ j ∈ s, g j α) 2 μ
+      ≤ ENNReal.ofReal (1 / L) * ∑ j ∈ s, eLpNorm (g j) 2 μ := by gcongr
+    _ ≤ ENNReal.ofReal (1 / L) * ∑ _j ∈ s, (2 * ENNReal.ofReal b) := by
+        gcongr with j hj
+        exact hkey j hj
+    _ = ENNReal.ofReal (1 / L) * ((s.card : ℝ≥0∞) * (2 * ENNReal.ofReal b)) := by
+        rw [Finset.sum_const, nsmul_eq_mul]
+    _ = ENNReal.ofReal ((2 / L) * s.card * b) := by
+        rw [show ((s.card : ℝ≥0∞)) = ENNReal.ofReal (s.card : ℝ) from
+              (ENNReal.ofReal_natCast _).symm,
+            show ((2 : ℝ≥0∞)) = ENNReal.ofReal 2 from by
+              rw [show (2 : ℝ) = ((2 : ℕ) : ℝ) by norm_num, ENNReal.ofReal_natCast]; norm_num,
+            ← ENNReal.ofReal_mul (by norm_num : (0 : ℝ) ≤ 2),
+            ← ENNReal.ofReal_mul (Nat.cast_nonneg _),
+            ← ENNReal.ofReal_mul (by positivity : (0 : ℝ) ≤ 1 / L)]
+        congr 1
+        field_simp <;> ring
+
+/-! ## The size of the bulk index set -/
+
+theorem lyapunov_pos : 0 < lyapunov := by
+  unfold lyapunov
+  have h2 : 0 < Real.log 2 := Real.log_pos (by norm_num)
+  have hp : 0 < Real.pi ^ 2 := by positivity
+  exact div_pos hp (by linarith)
+
+theorem Lnorm_nonneg (n : ℕ) : 0 ≤ Lnorm n := by
+  rcases Nat.eq_zero_or_pos n with h | h
+  · simp [Lnorm, h]
+  · exact Real.log_nonneg (by exact_mod_cast h)
+
+theorem one_le_Lnorm {n : ℕ} (hn : 3 ≤ n) : 1 ≤ Lnorm n := by
+  have h3 : (3 : ℝ) ≤ (n : ℝ) := by exact_mod_cast hn
+  have he : Real.exp 1 ≤ (n : ℝ) :=
+    le_trans (le_of_lt (lt_of_lt_of_le Real.exp_one_lt_d9 (by norm_num))) h3
+  have hpos : (0 : ℝ) < (n : ℝ) := by linarith
+  rw [Lnorm, Real.le_log_iff_exp_le hpos]
+  exact he
+
+/-- `|J_n| ≤ L/λ + 1`: the bulk index set sits inside `{0, …, m_n}` and
+`m_n = ⌊L/λ⌋`. -/
+theorem card_bulkJ_le (n : ℕ) : ((bulkJ n).card : ℝ) ≤ Lnorm n / lyapunov + 1 := by
+  have hsub : bulkJ n ⊆ Finset.range (mIndex n + 1) := Finset.filter_subset _ _
+  have hcard : (bulkJ n).card ≤ mIndex n + 1 := by
+    simpa using Finset.card_le_card hsub
+  have hnn : 0 ≤ Lnorm n / lyapunov := div_nonneg (Lnorm_nonneg n) lyapunov_pos.le
+  have hfl : ((mIndex n : ℕ) : ℝ) ≤ Lnorm n / lyapunov := by
+    rw [mIndex]
+    exact Nat.floor_le hnn
+  calc ((bulkJ n).card : ℝ) ≤ ((mIndex n + 1 : ℕ) : ℝ) := by exact_mod_cast hcard
+    _ = (mIndex n : ℝ) + 1 := by push_cast; ring
+    _ ≤ Lnorm n / lyapunov + 1 := by linarith
+
+/-! ## Named inputs for Proposition 6.4
+
+The three `L²` facts the proof of Proposition 6.4 consumes, together with
+the `L²` membership of the three families of random variables. -/
+
+/-- **Input (carry truncation).**  v5 (57) together with the boundedness of
+`Φ` and `W` and `p_R → 0`: for every accuracy `ε` there is a truncation
+radius `R` for which the bounded remainder and its carry-truncated version
+are within `ε` in `L²`, uniformly over the bulk, for all large `n`.
+
+Consumes `Section6Skeleton.carry_coupling` (57),
+`Section6Skeleton.exists_absolute_carry_bound`,
+`Section6Skeleton.noResetProb_tendsto_zero`, and the boundedness of the
+integrand.  **Obstruction.**  `carry_coupling` is Lemma 6.3-gated and
+still sorried in the skeleton.  The other inputs are now in the tree:
+`exists_absolute_carry_bound` is proved there, `noResetProb_tendsto_zero`
+is proved as `CarryGraph.noResetProb_tendsto_zero`, and the uniform
+bounds `|B_j| ≤ C₀` and `|B_j^{(R)}| ≤ 45/8` are `principal_term` and
+`abs_BremainderTrunc_le` below, so once (57) closes this statement is
+Chebyshev bookkeeping. -/
+theorem carry_truncation_L2_small :
+    ∀ ε > 0, ∃ R : ℕ, ∀ᶠ n : ℕ in atTop, ∀ j ∈ bulkJ n,
+      eLpNorm (fun α => Bremainder α n j - BremainderTrunc α n R j) 2
+          (volume.restrict (Ioo (0 : ℝ) 1)) ≤ ENNReal.ofReal ε := by
+  sorry
+
+/-- **Input (polynomial approximation, transferred).**  Display (55) at
+radius `R + M` combined with (56): for every accuracy there is a
+real-valued finite combination `P` of the monomials (32) whose values at
+the actual times `j` approximate the carry-truncated remainder in `L²`,
+uniformly over the bulk, for all large `n`.
+
+Consumes `display_55_monomial_approximation` (proved below from the chain
+of the revision note) and `Section6Skeleton.actual_L2_transfer`.
+**Obstruction.**  `actual_L2_transfer` is sorried, and the present
+statement is its `eLpNorm` form: converting the skeleton's
+`|∫ ‖·‖² - δ²| < ε` into an `eLpNorm` bound needs the `L²`-membership of
+the integrand, which is the content of `memLp_BremainderTrunc` and
+`memLp_symbolAt` below. -/
+theorem trunc_poly_L2_small (R : ℕ) :
+    ∀ ε > 0, ∃ M K : ℕ, ∃ P : WindowSymbol (R + M) K,
+      (∀ w : WindowSpace (R + M), (P.evalWindow w).im = 0) ∧
+      ∀ᶠ n : ℕ in atTop, ∀ j ∈ bulkJ n,
+        eLpNorm (fun α => BremainderTrunc α n R j - (P.at α n j).re) 2
+            (volume.restrict (Ioo (0 : ℝ) 1)) ≤ ENNReal.ofReal ε := by
+  sorry
+
+/-- **Input (variance of the polynomial part).**  For a *fixed* finite
+combination of monomials the alternating centered average has variance
+`o(1)`: v5 lines 1418-1432, the diagonal contributing `O(L)`, the
+exceptional pairs `O(LH) = o(L²)`, and every other pair the three decaying
+terms of (34).
+
+Consumes `Section4.prop_4_2_two_block_factorization` (equivalently
+`V5Prop42.prop_4_2_v5`) and `Section6Skeleton.lemma_6_3_full_state_transfer`
+for the replacement of the stationary means by the actual means.
+**Obstruction.**  Proposition 4.2 is sorried, and the covariance
+bookkeeping that turns it into a variance bound has not been formalised. -/
+theorem poly_centered_avg_L2_tendsto_zero (R M K : ℕ) (P : WindowSymbol (R + M) K) :
+    Tendsto (fun n : ℕ => eLpNorm
+        (centeredAvg (Lnorm n) (bulkJ n) (fun j α => (P.at α n j).re)) 2
+        (volume.restrict (Ioo (0 : ℝ) 1))) atTop (𝓝 0) := by
+  sorry
+
+/-- The §2 carry `u_j = {N_j x_j}` is a measurable function of `α`. -/
+theorem measurable_carry (n j : ℕ) : Measurable fun α : ℝ => carry α n j := by
+  have hcast : Measurable fun α : ℝ => ((heightSeq α n j : ℕ) : ℝ) :=
+    (measurable_from_top (f := fun m : ℕ => (m : ℝ))).comp (measurable_heightSeq n j)
+  simpa [carry] using (hcast.mul (measurable_gaussIter j)).fract
+
+/-- `B_j` is a measurable function of `α`: `Φ` is a rational expression in
+the (measurable) carry and Gauss iterate, and the principal term is the
+measurable mark `a_{j+1} W(θ_j)`. -/
+theorem measurable_Bremainder (n j : ℕ) : Measurable fun α : ℝ => Bremainder α n j := by
+  have hc := measurable_carry n j
+  have hx := measurable_gaussIter j
+  have hPhi : Measurable fun α : ℝ => Phi (gaussIter α j) (carry α n j) := by
+    unfold Phi
+    exact ((hc.mul (measurable_const.sub hc)).div (measurable_const.mul hx)).sub
+      (hc.div measurable_const)
+  have hmark : Measurable fun α : ℝ => (digit α j : ℝ) * W (theta α n j) :=
+    (measurable_digitCast j).mul (measurable_W.comp (measurable_theta n j))
+  simpa [Bremainder] using hPhi.sub hmark
+
+/-- **Input (`L²` membership).**  `B_j` is a bounded measurable function
+of `α`: measurability is `measurable_Bremainder`, and the pointwise bound
+`|B_j| ≤ C₀` on irrationals of `(0,1)` is exactly Proposition 2.2
+(`principal_term`). -/
+theorem memLp_Bremainder (n j : ℕ) :
+    MemLp (fun α => Bremainder α n j) 2 (volume.restrict (Ioo (0 : ℝ) 1)) := by
+  refine MemLp.of_bound (measurable_Bremainder n j).aestronglyMeasurable Czero ?_
+  filter_upwards [ae_restrict_mem measurableSet_Ioo, ae_irrational_restrict] with α hα hirr
+  rw [Real.norm_eq_abs]
+  simpa [Bremainder] using principal_term α hα hirr n j
+
+/-- `θ_{j-1}` lies in `[0,1)`: it is `0` at `j = 0` and a fractional part
+otherwise. -/
+theorem thetaPred_mem_Ico (α : ℝ) (n j : ℕ) : thetaPred α n j ∈ Ico (0 : ℝ) 1 := by
+  cases j with
+  | zero =>
+      show (0 : ℝ) ∈ Ico (0 : ℝ) 1
+      constructor <;> norm_num
+  | succ m => exact ⟨Int.fract_nonneg _, Int.fract_lt_one _⟩
+
+/-- `θ_j` lies in `[0,1)`. -/
+theorem theta_mem_Ico (α : ℝ) (n j : ℕ) : theta α n j ∈ Ico (0 : ℝ) 1 :=
+  ⟨Int.fract_nonneg _, Int.fract_lt_one _⟩
+
+/-- **The absolute bound on the truncated carries** (v5 lines 1253-1258):
+started from `0`, the trajectory of the carry map along the actual orbit
+stays in `[0, 9]`.  The two-step induction is the one of
+`CarryGraph.iterCarry_bounds`: one step gives `c' < x(c+1)+1`, two steps
+contract by `x·Tx ≤ 1/2` (`CarryGraph.mul_gaussMap_le_half`), which beats
+the additive drift. -/
+theorem carryFrom_bounds {α : ℝ} (hα : α ∈ Ioo (0 : ℝ) 1) (hirr : Irrational α)
+    (n i : ℕ) : ∀ k, 0 ≤ carryFrom α n i k ∧ carryFrom α n i k ≤ 9 := by
+  have hx : ∀ m : ℕ, gaussIter α m ∈ Ioo (0 : ℝ) 1 := gaussIter_mem_Ioo hα hirr
+  have hr : ∀ m : ℕ, thetaPred α n m ∈ Ico (0 : ℝ) 1 := thetaPred_mem_Ico α n
+  have hs : ∀ m : ℕ, theta α n m ∈ Ico (0 : ℝ) 1 := theta_mem_Ico α n
+  have hlow : ∀ k, 0 ≤ carryFrom α n i k → 0 ≤ carryFrom α n i (k + 1) := fun k hk =>
+    CarryGraph.carryMap_nonneg (hx (i + k)).1.le (hr (i + k)).1 (hs (i + k)).2 hk
+  have hup : ∀ k, (carryFrom α n i (k + 1) : ℝ)
+      < gaussIter α (i + k) * ((carryFrom α n i k : ℝ) + 1) + 1 := fun k =>
+    CarryGraph.carryMap_lt (hx (i + k)).1 (hr (i + k)).2 (hs (i + k)).1 _
+  have hprod : ∀ k : ℕ, gaussIter α (i + (k + 1)) * gaussIter α (i + k) ≤ 1 / 2 := by
+    intro k
+    have hstep : gaussIter α (i + (k + 1)) = gaussMap (gaussIter α (i + k)) := by
+      rw [show i + (k + 1) = (i + k) + 1 from rfl, gaussIter_succ]
+    rw [hstep, mul_comm]
+    exact CarryGraph.mul_gaussMap_le_half (hx (i + k))
+  have hQ : ∀ k, (0 ≤ carryFrom α n i k ∧ carryFrom α n i k ≤ 9)
+      ∧ (0 ≤ carryFrom α n i (k + 1) ∧ carryFrom α n i (k + 1) ≤ 9) := by
+    intro k
+    induction k with
+    | zero =>
+        have hP0 : 0 ≤ carryFrom α n i 0 ∧ carryFrom α n i 0 ≤ 9 := by
+          show (0 : ℤ) ≤ 0 ∧ (0 : ℤ) ≤ 9
+          norm_num
+        refine ⟨hP0, hlow 0 hP0.1, ?_⟩
+        have h1 := hup 0
+        have hx1 := hx (i + 0)
+        have h00 : carryFrom α n i 0 = 0 := rfl
+        rw [h00] at h1
+        have hlt : (carryFrom α n i (0 + 1) : ℝ) < 2 := by
+          push_cast at h1
+          nlinarith [hx1.2, hx1.1]
+        have hle : carryFrom α n i (0 + 1) < 2 := by exact_mod_cast hlt
+        omega
+    | succ k ih =>
+        obtain ⟨hPk, hPk1⟩ := ih
+        refine ⟨hPk1, hlow (k + 1) hPk1.1, ?_⟩
+        have h2 := hup (k + 1)
+        have hpr := hprod k
+        have hx1 := hx (i + k)
+        have hx2 := hx (i + (k + 1))
+        have hc0 : (0 : ℝ) ≤ (carryFrom α n i k : ℝ) := by exact_mod_cast hPk.1
+        have hc9 : (carryFrom α n i k : ℝ) ≤ 9 := by exact_mod_cast hPk.2
+        have hc10 : (0 : ℝ) ≤ (carryFrom α n i (k + 1) : ℝ) := by exact_mod_cast hPk1.1
+        have hmul1 : gaussIter α (i + (k + 1)) * (carryFrom α n i (k + 1) : ℝ)
+            ≤ gaussIter α (i + (k + 1))
+              * (gaussIter α (i + k) * ((carryFrom α n i k : ℝ) + 1) + 1) :=
+          mul_le_mul_of_nonneg_left (hup k).le hx2.1.le
+        have hmul2 : (gaussIter α (i + (k + 1)) * gaussIter α (i + k))
+              * ((carryFrom α n i k : ℝ) + 1)
+            ≤ (1 / 2) * ((carryFrom α n i k : ℝ) + 1) :=
+          mul_le_mul_of_nonneg_right hpr (by linarith)
+        have hfin : (carryFrom α n i (k + 1 + 1) : ℝ) < 8 := by
+          nlinarith [h2, hmul1, hmul2, hx2.2, hx2.1.le, hc9]
+        have hle7 : carryFrom α n i (k + 1 + 1) < 8 := by exact_mod_cast hfin
+        omega
+  exact fun k => (hQ k).1
+
+/-- `W` only sees the fractional part. -/
+theorem W_fract (t : ℝ) : W (Int.fract t) = W t := by
+  unfold W
+  rw [Int.fract_fract]
+
+/-- **The uniform bound on the carry-truncated remainder**:
+`|B_j^{(R)}| ≤ 45/8` for irrational `α ∈ (0,1)`.  This is the principal
+split of Proposition 2.2 run with the *truncated* carry: with
+`ũ = {θ_j - x_j(d̃ + θ_{j-1})}` and `0 ≤ d̃ ≤ 9` (`carryFrom_bounds`),
+the `W`-Lipschitz estimate gives `|W ũ - W θ_j| ≤ x_j (d̃ + θ_{j-1})/2`,
+and `principal_bound` applies with `E = d̃ + θ_{j-1} ≤ 10`. -/
+theorem abs_BremainderTrunc_le {α : ℝ} (hα : α ∈ Ioo (0 : ℝ) 1) (hirr : Irrational α)
+    (n R j : ℕ) : |BremainderTrunc α n R j| ≤ 45 / 8 := by
+  have hx := gaussIter_mem_Ioo hα hirr j
+  have hx' := gaussIter_mem_Ioo hα hirr (j + 1)
+  have hd0 : 0 ≤ carryTrunc α n R j := (carryFrom_bounds hα hirr n (j - R) R).1
+  have hd9 : carryTrunc α n R j ≤ 9 := (carryFrom_bounds hα hirr n (j - R) R).2
+  have hr := thetaPred_mem_Ico α n j
+  have hd0' : (0 : ℝ) ≤ (carryTrunc α n R j : ℝ) := by exact_mod_cast hd0
+  have hd9' : (carryTrunc α n R j : ℝ) ≤ 9 := by exact_mod_cast hd9
+  have hE0 : 0 ≤ (carryTrunc α n R j : ℝ) + thetaPred α n j := by linarith [hr.1]
+  have hE10 : (carryTrunc α n R j : ℝ) + thetaPred α n j ≤ 10 := by linarith [hr.2]
+  have huf : carryU (gaussIter α j) (thetaPred α n j) (theta α n j) (carryTrunc α n R j)
+      = Int.fract (theta α n j
+          - gaussIter α j * ((carryTrunc α n R j : ℝ) + thetaPred α n j)) := rfl
+  have hu0 : 0 ≤ carryU (gaussIter α j) (thetaPred α n j) (theta α n j)
+      (carryTrunc α n R j) := by
+    rw [huf]
+    exact Int.fract_nonneg _
+  have hu1 : carryU (gaussIter α j) (thetaPred α n j) (theta α n j)
+      (carryTrunc α n R j) < 1 := by
+    rw [huf]
+    exact Int.fract_lt_one _
+  have hd' : |W (carryU (gaussIter α j) (thetaPred α n j) (theta α n j)
+        (carryTrunc α n R j)) - W (theta α n j)|
+      ≤ gaussIter α j * ((carryTrunc α n R j : ℝ) + thetaPred α n j) / 2 := by
+    rw [huf, W_fract,
+      show theta α n j - gaussIter α j * ((carryTrunc α n R j : ℝ) + thetaPred α n j)
+          = theta α n j
+            + -(gaussIter α j * ((carryTrunc α n R j : ℝ) + thetaPred α n j)) from by ring]
+    have h := W_sub_le (theta α n j)
+      (-(gaussIter α j * ((carryTrunc α n R j : ℝ) + thetaPred α n j)))
+    rwa [abs_neg, abs_of_nonneg (mul_nonneg hx.1.le hE0)] at h
+  have hmain := principal_bound (gaussIter α j) (gaussIter α (j + 1))
+    (carryU (gaussIter α j) (thetaPred α n j) (theta α n j) (carryTrunc α n R j))
+    (theta α n j) (digit α j : ℝ) ((carryTrunc α n R j : ℝ) + thetaPred α n j) 10
+    hx.1 hx'.1 hx'.2 hu0 hu1 (Nat.cast_nonneg _)
+    (inv_gaussIter_eq hα hirr j) hE0 hE10 (W_eq_of_mem hu0 hu1) hd'
+  calc |BremainderTrunc α n R j|
+      ≤ 10 / 2 + 5 / 8 := hmain
+    _ = 45 / 8 := by norm_num
+
+/-- The truncated carry `d_j^{(R)}` is a measurable function of `α`. -/
+theorem measurable_carryFrom (n i : ℕ) : ∀ k, Measurable fun α : ℝ => carryFrom α n i k := by
+  intro k
+  induction k with
+  | zero =>
+      simp only [carryFrom]
+      exact measurable_const
+  | succ k ih =>
+      have hcast : Measurable fun α : ℝ => ((carryFrom α n i k : ℤ) : ℝ) :=
+        (measurable_from_top (f := fun m : ℤ => (m : ℝ))).comp ih
+      have hexpr : Measurable fun α : ℝ =>
+          gaussIter α (i + k) * (((carryFrom α n i k : ℤ) : ℝ) + thetaPred α n (i + k))
+            - theta α n (i + k) :=
+        ((measurable_gaussIter (i + k)).mul
+          (hcast.add (Prop42.measurable_thetaPred n (i + k)))).sub
+          (measurable_theta n (i + k))
+      simpa [carryFrom, carryMap] using hexpr.ceil
+
+/-- `B_j^{(R)}` is a measurable function of `α`. -/
+theorem measurable_BremainderTrunc (R n j : ℕ) :
+    Measurable fun α : ℝ => BremainderTrunc α n R j := by
+  have hct : Measurable fun α : ℝ => ((carryTrunc α n R j : ℤ) : ℝ) :=
+    (measurable_from_top (f := fun m : ℤ => (m : ℝ))).comp (measurable_carryFrom n (j - R) R)
+  have hu : Measurable fun α : ℝ =>
+      carryU (gaussIter α j) (thetaPred α n j) (theta α n j) (carryTrunc α n R j) := by
+    have hexpr : Measurable fun α : ℝ =>
+        Int.fract (theta α n j
+          - gaussIter α j * (((carryTrunc α n R j : ℤ) : ℝ) + thetaPred α n j)) :=
+      ((measurable_theta n j).sub ((measurable_gaussIter j).mul
+        (hct.add (Prop42.measurable_thetaPred n j)))).fract
+    simpa [carryU] using hexpr
+  have hPhi : Measurable fun α : ℝ => Phi (gaussIter α j)
+      (carryU (gaussIter α j) (thetaPred α n j) (theta α n j) (carryTrunc α n R j)) := by
+    unfold Phi
+    exact ((hu.mul (measurable_const.sub hu)).div
+        (measurable_const.mul (measurable_gaussIter j))).sub (hu.div measurable_const)
+  have hmark : Measurable fun α : ℝ => (digit α j : ℝ) * W (theta α n j) :=
+    (measurable_digitCast j).mul (measurable_W.comp (measurable_theta n j))
+  simpa [BremainderTrunc] using hPhi.sub hmark
+
+/-- **Input (`L²` membership).**  The carry-truncated remainder is a
+bounded measurable function of `α`: `measurable_BremainderTrunc` and the
+uniform bound `abs_BremainderTrunc_le`. -/
+theorem memLp_BremainderTrunc (R n j : ℕ) :
+    MemLp (fun α => BremainderTrunc α n R j) 2 (volume.restrict (Ioo (0 : ℝ) 1)) := by
+  refine MemLp.of_bound (measurable_BremainderTrunc R n j).aestronglyMeasurable (45 / 8) ?_
+  filter_upwards [ae_restrict_mem measurableSet_Ioo, ae_irrational_restrict] with α hα hirr
+  rw [Real.norm_eq_abs]
+  exact abs_BremainderTrunc_le hα hirr n R j
+
+/-- A window symbol placed at time `j` is a measurable function of `α`:
+the word `w_j(α)` lands in the discrete space `Fin (2R) → ℕ`, so the
+coefficient is measurable with no hypothesis, and the character is
+continuous in `(θ_{j-1}, θ_j)`. -/
+theorem measurable_symbolAt {R K : ℕ} (P : WindowSymbol R K) (n j : ℕ) :
+    Measurable fun α : ℝ => P.at α n j := by
+  unfold WindowSymbol.at
+  refine Finset.measurable_sum _ fun r _ => Finset.measurable_sum _ fun s _ =>
+    Measurable.mul ?_ ?_
+  · exact (Measurable.of_discrete (f := fun v : Fin (2 * R) → ℕ => P.coeff v r s)).comp
+      (measurable_pi_lambda _ fun _ => Prop42.measurable_digitNat _)
+  · exact Prop42.continuous_torusChar.measurable.comp
+      (((Prop42.measurable_thetaPred n j).const_mul _).add
+        ((measurable_theta n j).const_mul _))
+
+/-- A window symbol is bounded by the total mass of its coefficients: each
+monomial has modulus `1`, and the coefficients vanish off the finite word
+set `P.words`. -/
+theorem norm_symbolAt_le {R K : ℕ} (P : WindowSymbol R K) (α : ℝ) (n j : ℕ) :
+    ‖P.at α n j‖
+      ≤ ∑ w ∈ P.words, ∑ r ∈ Finset.Icc (-(K : ℤ)) (K : ℤ),
+          ∑ s ∈ Finset.Icc (-(K : ℤ)) (K : ℤ), ‖P.coeff w r s‖ := by
+  classical
+  have hstep : ‖P.at α n j‖
+      ≤ ∑ r ∈ Finset.Icc (-(K : ℤ)) (K : ℤ), ∑ s ∈ Finset.Icc (-(K : ℤ)) (K : ℤ),
+          ‖P.coeff (windowWord R α j) r s‖ := by
+    refine (norm_sum_le _ _).trans (Finset.sum_le_sum fun r _ => ?_)
+    refine (norm_sum_le _ _).trans (Finset.sum_le_sum fun s _ => ?_)
+    rw [norm_mul, Prop42.norm_torusChar, mul_one]
+  refine hstep.trans ?_
+  by_cases hw : windowWord R α j ∈ P.words
+  · exact Finset.single_le_sum
+      (f := fun w => ∑ r ∈ Finset.Icc (-(K : ℤ)) (K : ℤ),
+        ∑ s ∈ Finset.Icc (-(K : ℤ)) (K : ℤ), ‖P.coeff w r s‖)
+      (fun w _ => Finset.sum_nonneg fun _ _ => Finset.sum_nonneg fun _ _ => norm_nonneg _) hw
+  · have hzero : ∀ r s : ℤ, P.coeff (windowWord R α j) r s = 0 :=
+      fun r s => P.coeff_support _ r s hw
+    simp only [hzero, norm_zero, Finset.sum_const_zero]
+    exact Finset.sum_nonneg fun _ _ =>
+      Finset.sum_nonneg fun _ _ => Finset.sum_nonneg fun _ _ => norm_nonneg _
+
+/-- **Input (`L²` membership).**  A window symbol placed at time `j` is a
+finite sum of bounded measurable functions of `α`. -/
+theorem memLp_symbolAt {R K : ℕ} (P : WindowSymbol R K) (n j : ℕ) :
+    MemLp (fun α => (P.at α n j).re) 2 (volume.restrict (Ioo (0 : ℝ) 1)) := by
+  classical
+  refine MemLp.of_bound
+    ((Complex.measurable_re.comp (measurable_symbolAt P n j)).aestronglyMeasurable)
+    (∑ w ∈ P.words, ∑ r ∈ Finset.Icc (-(K : ℤ)) (K : ℤ),
+      ∑ s ∈ Finset.Icc (-(K : ℤ)) (K : ℤ), ‖P.coeff w r s‖)
+    (Filter.Eventually.of_forall fun α => ?_)
+  refine le_trans ?_ (norm_symbolAt_le P α n j)
+  rw [Real.norm_eq_abs]
+  exact Complex.abs_re_le_norm _
+
+/-! ## Proposition 6.4 -/
+
+/-- The `L²` convergence behind Proposition 6.4: the centered alternating
+average of the bounded remainders tends to `0` in `L²(dα)`.  The three
+limits are taken in the manuscript's order, `n → ∞` for fixed `R, M`, then
+`M → ∞`, then `R → ∞`; here that order is visible as the order in which
+the three inputs are invoked, each one fixing data that the next one uses. -/
+theorem remainderAvg_eLpNorm_small :
+    ∀ η : ℝ, 0 < η → ∀ᶠ n : ℕ in atTop,
+      eLpNorm (centeredAvg (Lnorm n) (bulkJ n) (fun j α => Bremainder α n j)) 2
+          (volume.restrict (Ioo (0 : ℝ) 1)) ≤ ENNReal.ofReal η := by
+  intro η hη
+  have hlyne : lyapunov ≠ 0 := ne_of_gt lyapunov_pos
+  have hlp : 0 < 1 / lyapunov := one_div_pos.mpr lyapunov_pos
+  obtain ⟨A, hApos, hA⟩ : ∃ A : ℝ, 0 < A ∧ (1 : ℝ) / lyapunov + 1 = A :=
+    ⟨1 / lyapunov + 1, by linarith, rfl⟩
+  have hAne : A ≠ 0 := ne_of_gt hApos
+  set b : ℝ := η / (3 * (2 * A)) with hbdef
+  have hbpos : 0 < b := by
+    rw [hbdef]; apply div_pos hη; linarith
+  -- Step 1: fix `R` so that the carry truncation costs at most `b` per index.
+  obtain ⟨R, hR⟩ := carry_truncation_L2_small b hbpos
+  -- Step 2: fix `M, K, P` so that the monomial approximation costs at most `b` per index.
+  obtain ⟨M, K, P, _hPim, hP⟩ := trunc_poly_L2_small R b hbpos
+  -- Step 3: for these fixed data the polynomial average has vanishing variance.
+  have hvar : ∀ᶠ n : ℕ in atTop,
+      eLpNorm (centeredAvg (Lnorm n) (bulkJ n) (fun j α => (P.at α n j).re)) 2
+        (volume.restrict (Ioo (0 : ℝ) 1)) ≤ ENNReal.ofReal (η / 3) :=
+    ENNReal.tendsto_nhds_zero.mp (poly_centered_avg_L2_tendsto_zero R M K P)
+      (ENNReal.ofReal (η / 3)) (by simp [ENNReal.ofReal_pos]; linarith)
+  filter_upwards [hR, hP, hvar, eventually_ge_atTop 3] with n h1 h2 h3 hn3
+  set μ : Measure ℝ := volume.restrict (Ioo (0 : ℝ) 1) with hμ
+  set L : ℝ := Lnorm n with hL
+  have hLpos : 0 < L := lt_of_lt_of_le zero_lt_one (one_le_Lnorm hn3)
+  have hL1 : 1 ≤ L := one_le_Lnorm hn3
+  set s : Finset ℕ := bulkJ n with hs
+  set ZB : ℕ → ℝ → ℝ := fun j α => Bremainder α n j with hZB
+  set ZT : ℕ → ℝ → ℝ := fun j α => BremainderTrunc α n R j with hZT
+  set ZP : ℕ → ℝ → ℝ := fun j α => (P.at α n j).re with hZP
+  set D1 : ℕ → ℝ → ℝ := fun j α => ZB j α - ZT j α with hD1
+  set D2 : ℕ → ℝ → ℝ := fun j α => ZT j α - ZP j α with hD2
+  -- the constant produced by Minkowski plus `|J_n| ≤ L/λ + 1`
+  have hcard : (2 / L) * s.card * b ≤ η / 3 := by
+    have hc := card_bulkJ_le n
+    rw [← hs, ← hL] at hc
+    have hLne : L ≠ 0 := ne_of_gt hLpos
+    have hLinv : 1 / L ≤ 1 := by
+      rw [div_le_one hLpos]; exact hL1
+    have h0 : (0 : ℝ) ≤ (s.card : ℝ) := Nat.cast_nonneg _
+    have hstep : (1 / L) * (s.card : ℝ) ≤ A := by
+      have hmul : (1 / L) * (s.card : ℝ) ≤ (1 / L) * (L / lyapunov + 1) := by
+        apply mul_le_mul_of_nonneg_left hc (by positivity)
+      have hexp : (1 / L) * (L / lyapunov + 1) = 1 / lyapunov + 1 / L := by
+        field_simp <;> ring
+      rw [hexp] at hmul
+      rw [← hA]
+      linarith
+    have heq : (2 / L) * (s.card : ℝ) * b = 2 * ((1 / L) * (s.card : ℝ)) * b := by
+      ring
+    rw [heq]
+    have hbb : 2 * ((1 / L) * (s.card : ℝ)) * b ≤ 2 * A * b := by
+      apply mul_le_mul_of_nonneg_right _ hbpos.le
+      linarith
+    have hfin : 2 * A * b = η / 3 := by
+      rw [hbdef]
+      field_simp <;> ring
+    linarith
+  -- integrability and `L²` membership
+  have hmB : ∀ j ∈ s, MemLp (ZB j) 2 μ := fun j _ => memLp_Bremainder n j
+  have hmT : ∀ j ∈ s, MemLp (ZT j) 2 μ := fun j _ => memLp_BremainderTrunc R n j
+  have hmP : ∀ j ∈ s, MemLp (ZP j) 2 μ := fun j _ => memLp_symbolAt P n j
+  have hiB : ∀ j ∈ s, Integrable (ZB j) μ := fun j hj => (hmB j hj).integrable (by norm_num)
+  have hiT : ∀ j ∈ s, Integrable (ZT j) μ := fun j hj => (hmT j hj).integrable (by norm_num)
+  have hiP : ∀ j ∈ s, Integrable (ZP j) μ := fun j hj => (hmP j hj).integrable (by norm_num)
+  -- the three `L²` bounds
+  have hb1 : eLpNorm (centeredAvg L s D1) 2 μ ≤ ENNReal.ofReal (η / 3) := by
+    refine le_trans (eLpNorm_centeredAvg_le hLpos hbpos.le
+      (fun j hj => (hmB j hj).sub (hmT j hj)) (fun j hj => h1 j hj)) ?_
+    exact ENNReal.ofReal_le_ofReal hcard
+  have hb2 : eLpNorm (centeredAvg L s D2) 2 μ ≤ ENNReal.ofReal (η / 3) := by
+    refine le_trans (eLpNorm_centeredAvg_le hLpos hbpos.le
+      (fun j hj => (hmT j hj).sub (hmP j hj)) (fun j hj => h2 j hj)) ?_
+    exact ENNReal.ofReal_le_ofReal hcard
+  -- the decomposition
+  have hdec : centeredAvg L s ZB
+      = fun α => (centeredAvg L s D1 α + centeredAvg L s D2 α) + centeredAvg L s ZP α := by
+    funext α
+    have e1 := centeredAvg_sub (L := L) (s := s) hiB hiT α
+    have e2 := centeredAvg_sub (L := L) (s := s) hiT hiP α
+    rw [← hD1] at e1
+    rw [← hD2] at e2
+    linarith
+  have hm1 : AEStronglyMeasurable (centeredAvg L s D1) μ :=
+    aestronglyMeasurable_centeredAvg (fun j hj => ((hmB j hj).sub (hmT j hj)).1)
+  have hm2 : AEStronglyMeasurable (centeredAvg L s D2) μ :=
+    aestronglyMeasurable_centeredAvg (fun j hj => ((hmT j hj).sub (hmP j hj)).1)
+  have hm3 : AEStronglyMeasurable (centeredAvg L s ZP) μ :=
+    aestronglyMeasurable_centeredAvg (fun j hj => (hmP j hj).1)
+  rw [hdec]
+  have htri1 : eLpNorm (fun α => (centeredAvg L s D1 α + centeredAvg L s D2 α)
+        + centeredAvg L s ZP α) 2 μ
+      ≤ eLpNorm (fun α => centeredAvg L s D1 α + centeredAvg L s D2 α) 2 μ
+        + eLpNorm (centeredAvg L s ZP) 2 μ :=
+    eLpNorm_add_le (hm1.add hm2) hm3 (by norm_num)
+  have htri2 : eLpNorm (fun α => centeredAvg L s D1 α + centeredAvg L s D2 α) 2 μ
+      ≤ eLpNorm (centeredAvg L s D1) 2 μ + eLpNorm (centeredAvg L s D2) 2 μ :=
+    eLpNorm_add_le hm1 hm2 (by norm_num)
+  calc eLpNorm (fun α => (centeredAvg L s D1 α + centeredAvg L s D2 α)
+          + centeredAvg L s ZP α) 2 μ
+      ≤ (eLpNorm (centeredAvg L s D1) 2 μ + eLpNorm (centeredAvg L s D2) 2 μ)
+          + eLpNorm (centeredAvg L s ZP) 2 μ := le_trans htri1 (by gcongr)
+    _ ≤ (ENNReal.ofReal (η / 3) + ENNReal.ofReal (η / 3)) + ENNReal.ofReal (η / 3) := by
+        gcongr
+    _ = ENNReal.ofReal η := by
+        rw [← ENNReal.ofReal_add (by linarith) (by linarith),
+          ← ENNReal.ofReal_add (by linarith) (by linarith)]
+        congr 1
+        ring
+
+/-- **Proposition 6.4** (Bounded-remainder weak law), v5 lines 1295-1303,
+display (54):
+`(1/L) Σ_{j ∈ J_n} (-1)^j (B_j - E B_j) → 0` in probability.
+
+**Reading.**  "In probability" is with respect to Lebesgue `α` on
+`(0,1)`, the measure every §4-§6 estimate uses, and `E B_j` is
+`∫_0^1 B_j dα`.  The order of limits in the proof is `n → ∞`, then
+`M → ∞`, then `R → ∞` (v5 line 1462). -/
+theorem prop_6_4_bounded_remainder_weak_law :
+    ∀ ε > 0,
+      Tendsto
+        (fun n : ℕ => (volume.restrict (Ioo (0 : ℝ) 1)).real
+          {α : ℝ | ε ≤ |(1 / Lnorm n) *
+            ∑ j ∈ bulkJ n, (-1 : ℝ) ^ j *
+              (Bremainder α n j - ∫ β in Ioo (0 : ℝ) 1, Bremainder β n j)|})
+        atTop (𝓝 0) := by
+  intro ε hε
+  exact tendsto_measReal_of_eLpNorm
+    (f := fun n => centeredAvg (Lnorm n) (bulkJ n) (fun j α => Bremainder α n j))
+    (fun n => aestronglyMeasurable_centeredAvg (fun j _ => (memLp_Bremainder n j).1))
+    remainderAvg_eLpNorm_small hε
+
+/-! ## The window-symbol algebra
+
+Display (55) produces, through identity (31), a *complex* finite
+combination of the monomials (32).  The manuscript then says: "Adjoining
+the conjugate monomials shows that `Re P` is again a finite linear
+combination of monomials and is real-valued."  That step is carried out
+here.  It is a genuine step: it needs the index set
+`{(r,s) : |r|,|s| ≤ K}` to be symmetric under negation, which it is. -/
+
+/-- Reindexing `r ↦ -r` on the symmetric mode range of (32). -/
+theorem sum_Icc_neg {K : ℕ} (f : ℤ → ℂ) :
+    ∑ r ∈ Finset.Icc (-(K : ℤ)) (K : ℤ), f (-r)
+      = ∑ r ∈ Finset.Icc (-(K : ℤ)) (K : ℤ), f r := by
+  refine Finset.sum_nbij' (fun r => -r) (fun r => -r) ?_ ?_ ?_ ?_ ?_
+  · intro a ha
+    simp only [Finset.mem_Icc] at ha ⊢
+    omega
+  · intro a ha
+    simp only [Finset.mem_Icc] at ha ⊢
+    omega
+  · intro a _; exact neg_neg a
+  · intro a _; exact neg_neg a
+  · intro a _; rfl
+
+theorem torusChar_conj (t : ℝ) : (starRingEnd ℂ) (torusChar t) = torusChar (-t) := by
+  simp only [torusChar, ← Complex.exp_conj]
+  congr 1
+  simp only [map_mul, Complex.conj_I, Complex.conj_ofReal, map_ofNat]
+  push_cast
+  ring
+
+/-- The conjugate symbol: negate the modes and conjugate the coefficients. -/
+def symConj {R K : ℕ} (U : WindowSymbol R K) : WindowSymbol R K where
+  coeff w r s := (starRingEnd ℂ) (U.coeff w (-r) (-s))
+  words := U.words
+  coeff_support := by
+    intro w r s hw
+    rw [U.coeff_support w (-r) (-s) hw, map_zero]
+  mode_cap := by
+    intro w r s h
+    rw [U.mode_cap w (-r) (-s) (by simpa using h), map_zero]
+
+/-- The sum of two symbols of the same radius and cap. -/
+def symAdd {R K : ℕ} (U V : WindowSymbol R K) : WindowSymbol R K where
+  coeff w r s := U.coeff w r s + V.coeff w r s
+  words := U.words ∪ V.words
+  coeff_support := by
+    intro w r s hw
+    rw [U.coeff_support w r s (fun h => hw (Finset.mem_union_left _ h)),
+        V.coeff_support w r s (fun h => hw (Finset.mem_union_right _ h)), add_zero]
+  mode_cap := by
+    intro w r s h
+    rw [U.mode_cap w r s h, V.mode_cap w r s h, add_zero]
+
+/-- A scalar multiple of a symbol. -/
+def symSmul {R K : ℕ} (c : ℂ) (U : WindowSymbol R K) : WindowSymbol R K where
+  coeff w r s := c * U.coeff w r s
+  words := U.words
+  coeff_support := by
+    intro w r s hw
+    rw [U.coeff_support w r s hw, mul_zero]
+  mode_cap := by
+    intro w r s h
+    rw [U.mode_cap w r s h, mul_zero]
+
+@[simp] theorem symConj_coeff {R K : ℕ} (U : WindowSymbol R K)
+    (w : Fin (2 * R) → ℕ) (r s : ℤ) :
+    (symConj U).coeff w r s = (starRingEnd ℂ) (U.coeff w (-r) (-s)) := rfl
+
+@[simp] theorem symAdd_coeff {R K : ℕ} (U V : WindowSymbol R K)
+    (w : Fin (2 * R) → ℕ) (r s : ℤ) :
+    (symAdd U V).coeff w r s = U.coeff w r s + V.coeff w r s := rfl
+
+@[simp] theorem symSmul_coeff {R K : ℕ} (c : ℂ) (U : WindowSymbol R K)
+    (w : Fin (2 * R) → ℕ) (r s : ℤ) :
+    (symSmul c U).coeff w r s = c * U.coeff w r s := rfl
+
+theorem evalWindow_symAdd {R K : ℕ} (U V : WindowSymbol R K) (w : WindowSpace R) :
+    (symAdd U V).evalWindow w = U.evalWindow w + V.evalWindow w := by
+  simp only [WindowSymbol.evalWindow, symAdd_coeff, add_mul, Finset.sum_add_distrib]
+
+theorem evalWindow_symSmul {R K : ℕ} (c : ℂ) (U : WindowSymbol R K) (w : WindowSpace R) :
+    (symSmul c U).evalWindow w = c * U.evalWindow w := by
+  simp only [WindowSymbol.evalWindow, symSmul_coeff, mul_assoc, Finset.mul_sum]
+
+theorem evalWindow_symConj {R K : ℕ} (U : WindowSymbol R K) (w : WindowSpace R) :
+    (symConj U).evalWindow w = (starRingEnd ℂ) (U.evalWindow w) := by
+  have key : ∀ G : ℤ → ℤ → ℂ,
+      ∑ r ∈ Finset.Icc (-(K : ℤ)) (K : ℤ), ∑ s ∈ Finset.Icc (-(K : ℤ)) (K : ℤ), G r s
+        = ∑ r ∈ Finset.Icc (-(K : ℤ)) (K : ℤ),
+            ∑ s ∈ Finset.Icc (-(K : ℤ)) (K : ℤ), G (-r) (-s) := by
+    intro G
+    rw [← sum_Icc_neg (fun r => ∑ s ∈ Finset.Icc (-(K : ℤ)) (K : ℤ), G r s)]
+    exact Finset.sum_congr rfl fun r _ => (sum_Icc_neg (fun s => G (-r) s)).symm
+  have hstar : (starRingEnd ℂ) (U.evalWindow w)
+      = ∑ r ∈ Finset.Icc (-(K : ℤ)) (K : ℤ), ∑ s ∈ Finset.Icc (-(K : ℤ)) (K : ℤ),
+          (starRingEnd ℂ) (U.coeff (windowWordOf R w) r s) *
+            torusChar (-((r : ℝ) * wTh w (-1) + (s : ℝ) * wTh w 0)) := by
+    simp only [WindowSymbol.evalWindow, map_sum, map_mul, torusChar_conj]
+  rw [hstar, key (fun r s => (starRingEnd ℂ) (U.coeff (windowWordOf R w) r s) *
+      torusChar (-((r : ℝ) * wTh w (-1) + (s : ℝ) * wTh w 0)))]
+  refine Finset.sum_congr rfl fun r _ => Finset.sum_congr rfl fun s _ => ?_
+  simp only [symConj_coeff]
+  congr 2
+  push_cast
+  ring
+
+/-- The real part of a symbol, obtained by adjoining the conjugate
+monomials. -/
+def symRe {R K : ℕ} (U : WindowSymbol R K) : WindowSymbol R K :=
+  symSmul (1 / 2) (symAdd U (symConj U))
+
+theorem evalWindow_symRe {R K : ℕ} (U : WindowSymbol R K) (w : WindowSpace R) :
+    (symRe U).evalWindow w = ((U.evalWindow w).re : ℂ) := by
+  rw [symRe, evalWindow_symSmul, evalWindow_symAdd, evalWindow_symConj,
+    Complex.add_conj]
+  push_cast
+  ring
+
+theorem evalWindow_symRe_im {R K : ℕ} (U : WindowSymbol R K) (w : WindowSpace R) :
+    ((symRe U).evalWindow w).im = 0 := by
+  rw [evalWindow_symRe]
+  simp
+
+/-- The pointwise inequality behind "because `B^{(R)} ∘ π` is real-valued,
+`|B^{(R)} ∘ π - Re P| ≤ |B^{(R)} ∘ π - P|`". -/
+theorem norm_sub_re_le (b : ℝ) (z : ℂ) :
+    ‖(b : ℂ) - ((z.re : ℝ) : ℂ)‖ ≤ ‖(b : ℂ) - z‖ := by
+  have h1 : ((b : ℂ) - ((z.re : ℝ) : ℂ)) = ((b - z.re : ℝ) : ℂ) := by push_cast; ring
+  have h2 : b - z.re = ((b : ℂ) - z).re := by simp
+  rw [h1, h2, Complex.norm_real, Real.norm_eq_abs]
+  exact Complex.abs_re_le_norm _
+
+/-! ## The four steps of the corrected display (55)
+
+The chain of the revision note is `B^{(R)} → G → G_M → G_M 1_E → P_{R,M}`.
+The objects it passes through are named here. -/
+
+/-- The finite continued fraction `[0; a_0, …, a_{M-1}]`, the `M`-digit
+truncation of a real coordinate. -/
+def cfFinite (a : ℕ → ℕ) : ℕ → ℝ
+  | 0 => 0
+  | M + 1 => ((a 0 : ℝ) + cfFinite (fun k => a (k + 1)) M)⁻¹
+
+/-- `cfFinite` is nonnegative for *every* digit family, including the
+degenerate ones: each step is `(a + u)⁻¹` of a nonnegative quantity, and
+Lean's `0⁻¹ = 0` keeps even the empty corner at `0`. -/
+theorem cfFinite_nonneg : ∀ (M : ℕ) (a : ℕ → ℕ), 0 ≤ cfFinite a M
+  | 0, _ => by simp [cfFinite]
+  | M + 1, a => by
+      have h := cfFinite_nonneg M (fun k => a (k + 1))
+      simp only [cfFinite]
+      exact inv_nonneg.mpr (add_nonneg (Nat.cast_nonneg _) h)
+
+/-- If the digits actually read are all `≥ 1` — which
+`ae_orbitConsistent` guarantees almost surely, and which fails for an
+arbitrary point of `WindowSpace R` (a digit `0` at the top makes
+`cfFinite` an unbounded `u⁻¹`) — then `cfFinite a M ≤ 1`. -/
+theorem cfFinite_le_one : ∀ (M : ℕ) (a : ℕ → ℕ),
+    (∀ k, k < M → 1 ≤ a k) → cfFinite a M ≤ 1
+  | 0, _, _ => by simp [cfFinite]
+  | M + 1, a, ha => by
+      have h0 : (1:ℝ) ≤ (a 0 : ℝ) := by exact_mod_cast ha 0 (Nat.succ_pos M)
+      have hnn := cfFinite_nonneg M (fun k => a (k + 1))
+      simp only [cfFinite]
+      exact inv_le_one_of_one_le₀ (by linarith)
+
+/-- `cfFinite` reads only the first `M` digits. -/
+theorem cfFinite_congr : ∀ (M : ℕ) (a b : ℕ → ℕ), (∀ k, k < M → a k = b k) →
+    cfFinite a M = cfFinite b M
+  | 0, _, _, _ => rfl
+  | M + 1, a, b, h => by
+      simp only [cfFinite]
+      rw [h 0 (Nat.succ_pos M),
+        cfFinite_congr M (fun k => a (k + 1)) (fun k => b (k + 1))
+          (fun k hk => h (k + 1) (by omega))]
+
+/-- Shifting the digit family by one step is reading the digits of the
+Gauss image. -/
+theorem digit_succ_eq (x : ℝ) (k : ℕ) : digit x (k + 1) = digit (gaussMap x) k := by
+  unfold digit
+  rw [gaussIter_shift]
+
+/-- **The continued-fraction contraction, product form**: the `M`-digit
+truncation of an irrational `x ∈ (0,1)` approximates `x` to within the
+product of its first `M` Gauss iterates.  Each level is the `1`-Lipschitz
+map `u ↦ 1/(a+u)` whose contraction factor at the two arguments is
+`x_t · (a_t + v)⁻¹ ≤ x_t`; unwinding `M` levels telescopes the factors
+into `x_0 x_1 ⋯ x_{M-1}`. -/
+theorem abs_sub_cfFinite_le_consecProd (M : ℕ) :
+    ∀ {x : ℝ}, x ∈ Ioo (0 : ℝ) 1 → Irrational x →
+      |x - cfFinite (fun k => digit x k) M| ≤ consecProdD x 0 M := by
+  induction M with
+  | zero =>
+      intro x hx _
+      show |x - 0| ≤ consecProdD x 0 0
+      rw [sub_zero, abs_of_pos hx.1, consecProdD_zeroD]
+      exact hx.2.le
+  | succ M ih =>
+      intro x hx hirr
+      have hxg : gaussMap x ∈ Ioo (0 : ℝ) 1 := gaussMap_mem_Ioo hirr
+      have hirrg : Irrational (gaussMap x) := gaussMap_irrational hirr
+      have ihg := ih hxg hirrg
+      have ha1 : (1 : ℝ) ≤ (digit x 0 : ℝ) := by
+        exact_mod_cast one_le_digit hx hirr 0
+      have hv0 : 0 ≤ cfFinite (fun k => digit (gaussMap x) k) M := cfFinite_nonneg M _
+      have hxu : x = ((digit x 0 : ℝ) + gaussMap x)⁻¹ := by
+        rw [← inv_eq_digit_add_gaussMap hx, inv_inv]
+      have hshift : cfFinite (fun k => digit x (k + 1)) M
+          = cfFinite (fun k => digit (gaussMap x) k) M :=
+        cfFinite_congr M _ _ (fun k _ => digit_succ_eq x k)
+      have hcf : cfFinite (fun k => digit x k) (M + 1)
+          = ((digit x 0 : ℝ) + cfFinite (fun k => digit (gaussMap x) k) M)⁻¹ := by
+        simp only [cfFinite]
+        rw [hshift]
+      have hden1 : (0 : ℝ) < (digit x 0 : ℝ) + gaussMap x := by linarith [hxg.1]
+      have hden2 : (0 : ℝ) < (digit x 0 : ℝ) + cfFinite (fun k => digit (gaussMap x) k) M := by
+        linarith
+      have habs : ((digit x 0 : ℝ) + gaussMap x)⁻¹
+            - ((digit x 0 : ℝ) + cfFinite (fun k => digit (gaussMap x) k) M)⁻¹
+          = (cfFinite (fun k => digit (gaussMap x) k) M - gaussMap x)
+            * (((digit x 0 : ℝ) + gaussMap x)⁻¹
+              * ((digit x 0 : ℝ) + cfFinite (fun k => digit (gaussMap x) k) M)⁻¹) := by
+        field_simp
+        ring
+      rw [← hxu] at habs
+      have hprod : consecProdD x 0 (M + 1) = consecProdD (gaussMap x) 0 M * x := by
+        unfold consecProdD
+        rw [Finset.prod_range_succ']
+        congr 1
+      have h1 : |cfFinite (fun k => digit (gaussMap x) k) M - gaussMap x|
+          ≤ consecProdD (gaussMap x) 0 M := by
+        rw [abs_sub_comm]
+        exact ihg
+      have h2 : |x * ((digit x 0 : ℝ) + cfFinite (fun k => digit (gaussMap x) k) M)⁻¹|
+          ≤ x := by
+        rw [abs_of_nonneg (mul_nonneg hx.1.le (inv_pos.mpr hden2).le)]
+        calc x * ((digit x 0 : ℝ) + cfFinite (fun k => digit (gaussMap x) k) M)⁻¹
+            ≤ x * 1 :=
+              mul_le_mul_of_nonneg_left (inv_le_one_of_one_le₀ (by linarith)) hx.1.le
+          _ = x := mul_one x
+      calc |x - cfFinite (fun k => digit x k) (M + 1)|
+          = |cfFinite (fun k => digit (gaussMap x) k) M - gaussMap x|
+            * |x * ((digit x 0 : ℝ) + cfFinite (fun k => digit (gaussMap x) k) M)⁻¹| := by
+            rw [hcf, habs, abs_mul]
+        _ ≤ consecProdD (gaussMap x) 0 M * x :=
+            mul_le_mul h1 h2 (abs_nonneg _) (consecProdD_nonnegD (gaussMap x) hxg hirrg 0 M)
+        _ = consecProdD x 0 (M + 1) := hprod.symm
+
+/-- **The continued-fraction contraction**: `|x - [0; a_1, …, a_M]| ≤ 1/F_{M+1}`. -/
+theorem abs_sub_cfFinite_digit_le (M : ℕ) {x : ℝ} (hx : x ∈ Ioo (0 : ℝ) 1)
+    (hirr : Irrational x) :
+    |x - cfFinite (fun k => digit x k) M| ≤ ((Nat.fib (M + 1) : ℝ))⁻¹ :=
+  le_trans (abs_sub_cfFinite_le_consecProd M hx hirr)
+    (consecProdD_le_inv_fibD x hx hirr 0 M)
+
+/-- The reciprocal Fibonacci numbers go below any positive threshold. -/
+theorem exists_fib_inv_lt {δ : ℝ} (hδ : 0 < δ) :
+    ∃ M : ℕ, ((Nat.fib (M + 1) : ℝ))⁻¹ < δ := by
+  obtain ⟨N, hN⟩ := exists_pow_lt_of_lt_one (show (0 : ℝ) < 2 * δ / 3 by linarith)
+    (show (2 : ℝ) / 3 < 1 by norm_num)
+  refine ⟨N, lt_of_le_of_lt (inv_fib_le_geomD N) ?_⟩
+  have h := mul_lt_mul_of_pos_left hN (show (0 : ℝ) < 3 / 2 by norm_num)
+  calc (3 / 2 : ℝ) * ((2 : ℝ) / 3) ^ N < (3 / 2) * (2 * δ / 3) := h
+    _ = δ := by ring
+
+/-- The `M`-digit truncation `X_{R+M} → X_R`: keep the digit and torus
+coordinates of the radius-`R` sub-window, and replace the real coordinate
+at offset `t` by `[0; a_{j+t+1}, …, a_{j+t+M}]`, which is read off the
+digits at offsets `t, …, t + M - 1` of the radius-`R+M` window.  This is
+exactly why the approximant lives at radius `R + M`: the coordinate at
+`t = R` needs digits through offset `R + M - 1`. -/
+def digitTruncWindow (R M : ℕ) (w : WindowSpace (R + M)) : WindowSpace R :=
+  (fun i => wA w ((i : ℤ) - (R : ℤ)),
+   fun i => cfFinite (fun k => wA w ((i : ℤ) - (R : ℤ) + (k : ℤ))) M,
+   fun i => wTh w ((i : ℤ) - (R : ℤ) - 1))
+
+/-- **The dense algebra** of v5 lines 1318-1327: a finite sum
+`Σ_ℓ D_ℓ(a) g_ℓ(x) exp(2πi Σ_{t=-R-1}^{R} c_{ℓ,t} θ_t)` with `D_ℓ` a
+finite digit-cylinder function, `g_ℓ` continuous, and `c_ℓ` integral. -/
+structure DenseElt (R : ℕ) where
+  /-- The number of summands. -/
+  len : ℕ
+  /-- The digit-cylinder amplitudes. -/
+  D : Fin len → (Fin (2 * R + 1) → ℕ) → ℂ
+  /-- The finitely many words each amplitude is supported on. -/
+  Dwords : Fin len → Finset (Fin (2 * R + 1) → ℕ)
+  D_support : ∀ l w, w ∉ Dwords l → D l w = 0
+  /-- The continuous factors on the real block. -/
+  g : Fin len → (Fin (2 * R + 1) → ℝ) → ℂ
+  g_continuous : ∀ l, Continuous (g l)
+  /-- The torus characters, over the full v5 range `-R-1 ≤ t ≤ R`. -/
+  c : Fin len → Fin (2 * R + 2) → ℤ
+
+/-- The dense-algebra element as a function on `X_R`. -/
+def DenseElt.eval {R : ℕ} (G : DenseElt R) (w : WindowSpace R) : ℂ :=
+  ∑ l : Fin G.len, G.D l w.1 * G.g l w.2.1 *
+    torusChar (∑ t : Fin (2 * R + 2), (G.c l t : ℝ) * w.2.2 t)
+
+/-- **`E_{M,K}`** of v5 lines 1345-1352: every digit of the full symmetric
+radius-`R'` word is at most `K`. -/
+def digitCapEvent (R' K : ℕ) : Set (WindowSpace R') :=
+  {w | ∀ i : Fin (2 * R' + 1), w.1 i ≤ K}
+
+theorem measurableSet_digitCapEvent (R' K : ℕ) : MeasurableSet (digitCapEvent R' K) := by
+  have hrw : digitCapEvent R' K = ⋂ i : Fin (2 * R' + 1), {w : WindowSpace R' | w.1 i ≤ K} := by
+    ext w; simp [digitCapEvent]
+  rw [hrw]
+  refine MeasurableSet.iInter fun i => ?_
+  have hm : Measurable (fun w : WindowSpace R' => w.1 i) :=
+    (measurable_pi_apply i).comp measurable_fst
+  have hpre : {w : WindowSpace R' | w.1 i ≤ K}
+      = (fun w : WindowSpace R' => w.1 i) ⁻¹' {n : ℕ | n ≤ K} := rfl
+  rw [hpre]
+  exact hm MeasurableSet.of_discrete
+
+/-! ### `E_{M,K}` is closed but **not** compact
+
+`Kwon1002/Lemma63.lean` lines 585-589 record, as the obstruction to the
+Stone-Weierstrass step of Lemma 6.3, that "`WindowSpace R` is not compact
+(the digit block is `ℕ`-valued), so the argument has to run on each compact
+digit truncation".  The compact digit truncation the manuscript has in mind
+is `X_{R,K}`, and `digitCapEvent` is *not* it.
+
+Capping the digits is not enough.  In the reading fixed by
+`Section6Skeleton` (reading 3) the real and torus blocks of `X_R` are
+`[0,1]^{2R+1}` and `T^{2R+2}`, but the Lean type `WindowSpace R` carries
+them as full copies of `ℝ`, with the interval and the torus reduction
+imposed only where a statement needs them.  `digitCapEvent R' K`
+constrains the digit block alone, so it contains a whole affine copy of
+`ℝ^{2R'+1}` and is unbounded.  `not_isCompact_digitCapEvent` proves this,
+and `digitCapCube` supplies the set that *is* compact: the digit cap times
+the closed unit cube on the other two blocks. -/
+
+/-- `E_{M,K}` is closed: `{n | n ≤ K}` is clopen in the discrete space `ℕ`
+and each digit coordinate reader is continuous. -/
+theorem isClosed_digitCapEvent (R' K : ℕ) : IsClosed (digitCapEvent R' K) := by
+  have hrw : digitCapEvent R' K
+      = ⋂ i : Fin (2 * R' + 1), {w : WindowSpace R' | w.1 i ≤ K} := by
+    ext w; simp [digitCapEvent]
+  rw [hrw]
+  refine isClosed_iInter fun i => ?_
+  have hcont : Continuous fun w : WindowSpace R' => w.1 i :=
+    (continuous_apply i).comp continuous_fst
+  have hpre : {w : WindowSpace R' | w.1 i ≤ K}
+      = (fun w : WindowSpace R' => w.1 i) ⁻¹' {n : ℕ | n ≤ K} := rfl
+  rw [hpre]
+  exact IsClosed.preimage hcont (isClosed_discrete _)
+
+/-- **`E_{M,K}` is not compact.**  The digit cap says nothing about the real
+block, so the image of `digitCapEvent R' K` under the (continuous) reader of
+the first real coordinate is all of `ℝ`, which is not bounded above.  Hence
+`digitCapEvent` cannot serve as the compact exhaustion `X_{R,K}` asked for at
+`Kwon1002/Lemma63.lean` lines 585-589; use `digitCapCube` for that. -/
+theorem not_isCompact_digitCapEvent (R' K : ℕ) : ¬ IsCompact (digitCapEvent R' K) := by
+  intro hK
+  have hcont : Continuous fun w : WindowSpace R' => w.2.1 ⟨0, by omega⟩ :=
+    (continuous_apply _).comp (continuous_fst.comp continuous_snd)
+  obtain ⟨b, hb⟩ := (hK.image hcont).bddAbove
+  have hmem : (b + 1) ∈ (fun w : WindowSpace R' => w.2.1 ⟨0, by omega⟩) '' digitCapEvent R' K := by
+    refine ⟨(fun _ => 0, fun _ => b + 1, fun _ => 0), ?_, rfl⟩
+    intro i; simp
+  have := hb hmem
+  linarith
+
+/-- **The compact digit truncation `X_{R,K}`.**  The digit cap of
+`digitCapEvent` together with the interval constraint that reading 3 of
+`Section6Skeleton` places on the real and torus blocks of `X_R`.  This is
+the set the Stone-Weierstrass step of Lemma 6.3 has to run on. -/
+def digitCapCube (R' K : ℕ) : Set (WindowSpace R') :=
+  {w : Fin (2 * R' + 1) → ℕ | ∀ i, w i ≤ K} ×ˢ
+    ((Set.univ.pi fun _ : Fin (2 * R' + 1) => Icc (0 : ℝ) 1) ×ˢ
+      (Set.univ.pi fun _ : Fin (2 * R' + 2) => Icc (0 : ℝ) 1))
+
+theorem digitCapCube_subset (R' K : ℕ) : digitCapCube R' K ⊆ digitCapEvent R' K := by
+  rintro w ⟨hw, -⟩
+  exact hw
+
+/-- **`X_{R,K}` is compact**: a finite digit block times two closed cubes. -/
+theorem isCompact_digitCapCube (R' K : ℕ) : IsCompact (digitCapCube R' K) := by
+  refine IsCompact.prod ?_ (IsCompact.prod ?_ ?_)
+  · refine Set.Finite.isCompact ?_
+    have hrw : {w : Fin (2 * R' + 1) → ℕ | ∀ i, w i ≤ K}
+        = Set.univ.pi fun _ : Fin (2 * R' + 1) => Set.Iic K := by
+      ext w; simp [Pi.le_def]
+    rw [hrw]
+    exact Set.Finite.pi fun _ => Set.finite_Iic K
+  · exact isCompact_univ_pi fun _ => isCompact_Icc
+  · exact isCompact_univ_pi fun _ => isCompact_Icc
+
+theorem measurableSet_digitCapCube (R' K : ℕ) : MeasurableSet (digitCapCube R' K) := by
+  refine MeasurableSet.prod MeasurableSet.of_discrete
+    (MeasurableSet.prod ?_ ?_) <;>
+  exact MeasurableSet.univ_pi fun _ => measurableSet_Icc
+
+/-! ### Named inputs for display (55) -/
+
+/-- **Input (step 1, density bridge).**  v5 lines 1316-1330: the algebra
+of finite sums `Σ_ℓ D_ℓ g_ℓ e(Σ c_{ℓ,t} θ_t)` is dense in `L²(μ_R)`, and
+`B^{(R)}` is bounded and `μ_R`-almost-everywhere continuous, so it is
+approximated to any accuracy.
+
+Consumes `Section6Skeleton.Bwindow_bounded_and_ae_continuous`.
+**Obstruction, updated.**  (a) The named input is **false as stated**:
+its boundedness half `∀ w, |Bwindow R w| ≤ C` is refuted by
+`Kwon1002.bwindow_unbounded` (central digit `m → ∞` against
+`W(θ) = 1/8`).  Only the a.e. halves are true — `Bwindow` is measurable,
+`μ_R`-a.e. bounded (via `ae_orbitConsistent` and the bound
+`abs_BremainderTrunc_le`, which needs the torus block a.e. in `[0,1)`,
+not yet stated) and `μ_R`-a.e. continuous — and only those are needed
+here.  (b) The genuinely missing core is the density statement itself,
+the one v5 records "after Lemma 6.3": finite sums
+`Σ_ℓ D_ℓ g_ℓ e(Σ c_{ℓ,t} θ_t)` are dense in `L²(μ_R)`.  That needs
+Stone-Weierstrass on the compact exhaustion `digitCapCube` together with
+the regularity of `μ_R` (`IsProbabilityMeasure (windowLaw R)` is now an
+instance); the Fourier tooling of `CylinderCharDense.lean` §4 is the
+natural raw material.  Neither half has been formalised. -/
+theorem density_bridge (R : ℕ) (ε : ℝ) (hε : 0 < ε) :
+    ∃ G : DenseElt R,
+      eLpNorm (fun w : WindowSpace R => ((Bwindow R w : ℂ)) - G.eval w) 2 (windowLaw R)
+        < ENNReal.ofReal ε := by
+  sorry
+
+/-- The digit block of the truncation agrees with the digit block of the
+projection: both read the digits at offsets `-R ≤ t ≤ R`. -/
+theorem digitTruncWindow_fst_eq (R M : ℕ) (w : WindowSpace (R + M)) :
+    (digitTruncWindow R M w).1 = (windowProj (Nat.le_add_right R M) w).1 := by
+  funext i
+  have hi := i.isLt
+  have hc : 0 ≤ (i : ℤ) - (R : ℤ) + ((R + M : ℕ) : ℤ)
+      ∧ (i : ℤ) - (R : ℤ) + ((R + M : ℕ) : ℤ) < 2 * ((R + M : ℕ) : ℤ) + 1 :=
+    ⟨by omega, by omega⟩
+  simp only [digitTruncWindow, windowProj, wA, dif_pos hc]
+  have hidx : ((i : ℤ) - (R : ℤ) + ((R + M : ℕ) : ℤ)).toNat = (i : ℕ) + (R + M - R) := by
+    omega
+  simp only [hidx]
+
+/-- The torus block of the truncation agrees with the torus block of the
+projection. -/
+theorem digitTruncWindow_trd_eq (R M : ℕ) (w : WindowSpace (R + M)) :
+    (digitTruncWindow R M w).2.2 = (windowProj (Nat.le_add_right R M) w).2.2 := by
+  funext i
+  have hi := i.isLt
+  have hc : 0 ≤ (i : ℤ) - (R : ℤ) - 1 + ((R + M : ℕ) : ℤ) + 1
+      ∧ (i : ℤ) - (R : ℤ) - 1 + ((R + M : ℕ) : ℤ) + 1 < 2 * ((R + M : ℕ) : ℤ) + 2 :=
+    ⟨by omega, by omega⟩
+  simp only [digitTruncWindow, windowProj, wTh, dif_pos hc]
+  have hidx : ((i : ℤ) - (R : ℤ) - 1 + ((R + M : ℕ) : ℤ) + 1).toNat
+      = (i : ℕ) + (R + M - R) := by
+    omega
+  simp only [hidx]
+
+/-- The real block of the projection, read through `wX`. -/
+theorem windowProj_snd_fst_eq_wX (R M : ℕ) (w : WindowSpace (R + M))
+    (i : Fin (2 * R + 1)) :
+    (windowProj (Nat.le_add_right R M) w).2.1 i = wX w ((i : ℤ) - (R : ℤ)) := by
+  have hi := i.isLt
+  have hc : 0 ≤ (i : ℤ) - (R : ℤ) + ((R + M : ℕ) : ℤ)
+      ∧ (i : ℤ) - (R : ℤ) + ((R + M : ℕ) : ℤ) < 2 * ((R + M : ℕ) : ℤ) + 1 :=
+    ⟨by omega, by omega⟩
+  simp only [windowProj, wX, dif_pos hc]
+  have hidx : ((i : ℤ) - (R : ℤ) + ((R + M : ℕ) : ℤ)).toNat = (i : ℕ) + (R + M - R) := by
+    omega
+  simp only [hidx]
+
+/-- On an orbit-consistent window the real coordinates are a Gauss orbit:
+`x_{t+k} = T^k x_t` wherever the offsets stay in range. -/
+theorem orbitConsistent_gaussIter_wX {R' : ℕ} {w : WindowSpace R'}
+    (h : OrbitConsistent R' w) {t : ℤ} (h1 : -(R' : ℤ) ≤ t) (k : ℕ)
+    (hk : t + (k : ℤ) ≤ (R' : ℤ)) : gaussIter (wX w t) k = wX w (t + (k : ℤ)) := by
+  induction k with
+  | zero => simp
+  | succ k ih =>
+      have hk' : t + (k : ℤ) ≤ (R' : ℤ) := by push_cast at hk; omega
+      rw [gaussIter_succ, ih hk']
+      have hstep := h.2 (t + (k : ℤ)) (by omega) (by push_cast at hk; omega)
+      rw [← hstep]
+      congr 1
+      push_cast
+      ring
+
+/-- On an orbit-consistent window the digit at offset `t + k` is the
+`k`-th continued-fraction digit of the real coordinate at offset `t`. -/
+theorem orbitConsistent_wA_eq_digit {R' : ℕ} {w : WindowSpace R'}
+    (h : OrbitConsistent R' w) {t : ℤ} (h1 : -(R' : ℤ) ≤ t) (k : ℕ)
+    (hk : t + (k : ℤ) + 1 ≤ (R' : ℤ)) :
+    wA w (t + (k : ℤ)) = digit (wX w t) k := by
+  have hiter := orbitConsistent_gaussIter_wX h h1 k (by omega)
+  have hA := (h.1 (t + (k : ℤ)) (by omega) (by omega)).2.2
+  rw [hA, ← hiter]
+  rfl
+
+/-- **Input (step 2, finite-future replacement), v5 lines 1332-1343 —
+closed.**  Replacing `x_{j+t}` by `[0; a_{j+t+1}, …, a_{j+t+M}]` for
+`|t| ≤ R` moves each of the finitely many continuous factors `g_ℓ` by
+`o(1)` as `M → ∞`, uniformly.
+
+The statement is *not* pointwise true — at an arbitrary
+`w : WindowSpace (R + M)` the digit block and the real block are
+unrelated — and the proof runs on the law:
+
+1. `ae_orbitConsistent (R + M)` puts almost every window on an
+   irrational Gauss orbit, so the digit family that `digitTruncWindow`
+   reads at offset `t` is the digit family of `x_t`
+   (`OrbitConsistent.wA_eq_digit`), and both real blocks lie in the unit
+   cube.
+2. The contraction `abs_sub_cfFinite_digit_le` (proved above, avoiding
+   Mathlib's continued-fraction machinery: the `M`-fold composition of
+   `u ↦ 1/(a+u)` telescopes into the product `x_0 ⋯ x_{M-1} ≤ 1/F_{M+1}`
+   by display (6)) makes the two real blocks `1/F_{M+1}`-close in the
+   sup metric.
+3. Each `g_ℓ` is uniformly continuous on the compact unit cube
+   (Heine–Cantor); a single `δ` serves the finitely many `ℓ`, and `M` is
+   chosen with `1/F_{M+1} < δ`.  The difference of evaluations is then
+   almost everywhere below `ε/2`, and `μ_{R+M}` is a probability
+   measure. -/
+theorem digit_truncation (R : ℕ) (G : DenseElt R) (ε : ℝ) (hε : 0 < ε) :
+    ∃ M : ℕ,
+      eLpNorm (fun w : WindowSpace (R + M) =>
+          G.eval (windowProj (Nat.le_add_right R M) w) - G.eval (digitTruncWindow R M w))
+        2 (windowLaw (R + M)) < ENNReal.ofReal ε := by
+  classical
+  have hA0 : (0 : ℝ) ≤ ∑ l : Fin G.len, ∑ v ∈ G.Dwords l, ‖G.D l v‖ :=
+    Finset.sum_nonneg fun l _ => Finset.sum_nonneg fun v _ => norm_nonneg _
+  set A : ℝ := ∑ l : Fin G.len, ∑ v ∈ G.Dwords l, ‖G.D l v‖ with hAdef
+  have hA1 : (0 : ℝ) < A + 1 := by linarith
+  set ε' : ℝ := ε / (2 * (A + 1)) with hε'def
+  have hε'0 : 0 < ε' := div_pos hε (by linarith)
+  set K : Set (Fin (2 * R + 1) → ℝ) := Set.univ.pi fun _ => Icc (0 : ℝ) 1 with hK
+  obtain ⟨δ, hδ0, hδ⟩ : ∃ δ : ℝ, 0 < δ ∧ ∀ l : Fin G.len, ∀ x ∈ K, ∀ y ∈ K,
+      dist x y < δ → dist (G.g l x) (G.g l y) < ε' := by
+    have hunif : ∀ l : Fin G.len, ∃ δ : ℝ, 0 < δ ∧ ∀ x ∈ K, ∀ y ∈ K,
+        dist x y < δ → dist (G.g l x) (G.g l y) < ε' := by
+      intro l
+      have hcomp : IsCompact K := isCompact_univ_pi fun _ => isCompact_Icc
+      have huc : UniformContinuousOn (G.g l) K :=
+        hcomp.uniformContinuousOn_of_continuous (G.g_continuous l).continuousOn
+      rcases Metric.uniformContinuousOn_iff.mp huc ε' hε'0 with ⟨δ, hδ0, hδ⟩
+      exact ⟨δ, hδ0, fun x hx y hy hxy => hδ x hx y hy hxy⟩
+    choose δf hδf0 hδf using hunif
+    rcases isEmpty_or_nonempty (Fin G.len) with hE | hNE
+    · exact ⟨1, one_pos, fun l => (hE.false l).elim⟩
+    · refine ⟨Finset.univ.inf' Finset.univ_nonempty δf, ?_, ?_⟩
+      · rw [Finset.lt_inf'_iff]
+        exact fun l _ => hδf0 l
+      · intro l x hx y hy hxy
+        exact hδf l x hx y hy
+          (lt_of_lt_of_le hxy (Finset.inf'_le _ (Finset.mem_univ l)))
+  obtain ⟨M, hM⟩ := exists_fib_inv_lt hδ0
+  refine ⟨M, ?_⟩
+  have hae : ∀ᵐ w ∂(windowLaw (R + M)),
+      ‖G.eval (windowProj (Nat.le_add_right R M) w) - G.eval (digitTruncWindow R M w)‖
+        ≤ ε / 2 := by
+    filter_upwards [ae_orbitConsistent (R + M)] with w hw
+    have hfst := digitTruncWindow_fst_eq R M w
+    have htrd := digitTruncWindow_trd_eq R M w
+    have hdiff : G.eval (windowProj (Nat.le_add_right R M) w)
+        - G.eval (digitTruncWindow R M w)
+        = ∑ l : Fin G.len,
+            G.D l ((windowProj (Nat.le_add_right R M) w).1)
+              * (G.g l ((windowProj (Nat.le_add_right R M) w).2.1)
+                  - G.g l ((digitTruncWindow R M w).2.1))
+              * torusChar (∑ t : Fin (2 * R + 2),
+                  (G.c l t : ℝ) * (windowProj (Nat.le_add_right R M) w).2.2 t) := by
+      unfold DenseElt.eval
+      rw [← Finset.sum_sub_distrib]
+      refine Finset.sum_congr rfl fun l _ => ?_
+      rw [hfst, htrd]
+      ring
+    have hproj_mem : (windowProj (Nat.le_add_right R M) w).2.1 ∈ K := by
+      intro i _
+      rw [windowProj_snd_fst_eq_wX]
+      have hi := i.isLt
+      have hIoo := (hw.1 ((i : ℤ) - (R : ℤ)) (by push_cast; omega) (by push_cast; omega)).1
+      exact ⟨hIoo.1.le, hIoo.2.le⟩
+    have htrunc_mem : (digitTruncWindow R M w).2.1 ∈ K := by
+      intro i _
+      refine ⟨cfFinite_nonneg M _, cfFinite_le_one M _ fun k hk => ?_⟩
+      have hi := i.isLt
+      have h1 : -(((R + M) : ℕ) : ℤ) ≤ (i : ℤ) - (R : ℤ) + (k : ℤ) := by push_cast; omega
+      have h2 : (i : ℤ) - (R : ℤ) + (k : ℤ) ≤ (((R + M) : ℕ) : ℤ) := by push_cast; omega
+      obtain ⟨hIoo, hirr, hdig⟩ := hw.1 _ h1 h2
+      rw [hdig]
+      exact one_le_digit hIoo hirr 0
+    have hdist : dist ((windowProj (Nat.le_add_right R M) w).2.1)
+        ((digitTruncWindow R M w).2.1) < δ := by
+      rw [dist_pi_lt_iff hδ0]
+      intro i
+      have hi := i.isLt
+      have h1 : -(((R + M) : ℕ) : ℤ) ≤ (i : ℤ) - (R : ℤ) := by push_cast; omega
+      have h2' : (i : ℤ) - (R : ℤ) ≤ (((R + M) : ℕ) : ℤ) := by push_cast; omega
+      obtain ⟨hIoo, hirr, -⟩ := hw.1 ((i : ℤ) - (R : ℤ)) h1 h2'
+      have hcf : cfFinite (fun k => wA w ((i : ℤ) - (R : ℤ) + (k : ℤ))) M
+          = cfFinite (fun k => digit (wX w ((i : ℤ) - (R : ℤ))) k) M :=
+        cfFinite_congr M _ _ (fun k hk =>
+          orbitConsistent_wA_eq_digit hw h1 k (by push_cast; omega))
+      rw [Real.dist_eq, windowProj_snd_fst_eq_wX]
+      show |wX w ((i : ℤ) - (R : ℤ))
+          - cfFinite (fun k => wA w ((i : ℤ) - (R : ℤ) + (k : ℤ))) M| < δ
+      rw [hcf]
+      exact lt_of_le_of_lt (abs_sub_cfFinite_digit_le M hIoo hirr) hM
+    rw [hdiff]
+    refine le_trans (norm_sum_le _ _) (le_trans (Finset.sum_le_sum
+      (g := fun l => (∑ v ∈ G.Dwords l, ‖G.D l v‖) * ε') ?_) ?_)
+    · intro l _
+      rw [norm_mul, norm_mul, Prop42.norm_torusChar, mul_one]
+      have hDle : ‖G.D l ((windowProj (Nat.le_add_right R M) w).1)‖
+          ≤ ∑ v ∈ G.Dwords l, ‖G.D l v‖ := by
+        by_cases hu : (windowProj (Nat.le_add_right R M) w).1 ∈ G.Dwords l
+        · exact Finset.single_le_sum (fun v _ => norm_nonneg _) hu
+        · rw [G.D_support l _ hu, norm_zero]
+          exact Finset.sum_nonneg fun v _ => norm_nonneg _
+      have hgle : ‖G.g l ((windowProj (Nat.le_add_right R M) w).2.1)
+          - G.g l ((digitTruncWindow R M w).2.1)‖ ≤ ε' := by
+        have h := hδ l _ hproj_mem _ htrunc_mem hdist
+        rw [dist_eq_norm] at h
+        exact h.le
+      exact mul_le_mul hDle hgle (norm_nonneg _)
+        (Finset.sum_nonneg fun v _ => norm_nonneg _)
+    · rw [← Finset.sum_mul, ← hAdef]
+      have h2 : A * ε' ≤ ε / 2 := by
+        rw [hε'def, ← mul_div_assoc,
+          div_le_div_iff₀ (by linarith : (0 : ℝ) < 2 * (A + 1)) (by norm_num : (0 : ℝ) < 2)]
+        nlinarith
+      exact h2
+  calc eLpNorm (fun w : WindowSpace (R + M) =>
+          G.eval (windowProj (Nat.le_add_right R M) w) - G.eval (digitTruncWindow R M w))
+        2 (windowLaw (R + M))
+      ≤ (windowLaw (R + M)) Set.univ ^ (2 : ℝ≥0∞).toReal⁻¹ * ENNReal.ofReal (ε / 2) :=
+        eLpNorm_le_of_ae_bound hae
+    _ = ENNReal.ofReal (ε / 2) := by
+        rw [measure_univ, ENNReal.one_rpow, one_mul]
+    _ < ENNReal.ofReal ε := by
+        rw [ENNReal.ofReal_lt_ofReal_iff hε]
+        linarith
+
+/-- **A dense-algebra element is bounded wherever the real block lies in
+the unit cube.**  The digit amplitude is dominated by the sum of its
+finitely many nonzero values, the continuous factor by its supremum on the
+compact cube, and the character has modulus one.  On all of `X_R` the
+`g_ℓ` are unbounded — the cube hypothesis is where
+`ae_norm_digitTrunc_le` puts the truncated real block almost surely. -/
+theorem denseElt_bound {R : ℕ} (G : DenseElt R) :
+    ∃ B : ℝ, 0 ≤ B ∧ ∀ v : WindowSpace R,
+      (∀ i, v.2.1 i ∈ Icc (0:ℝ) 1) → ‖G.eval v‖ ≤ B := by
+  have hD : ∀ (l : Fin G.len) (u : Fin (2 * R + 1) → ℕ),
+      ‖G.D l u‖ ≤ ∑ v ∈ G.Dwords l, ‖G.D l v‖ := by
+    intro l u
+    by_cases hu : u ∈ G.Dwords l
+    · exact Finset.single_le_sum (fun v _ => norm_nonneg _) hu
+    · rw [G.D_support l u hu, norm_zero]
+      exact Finset.sum_nonneg fun v _ => norm_nonneg _
+  have hg : ∀ l : Fin G.len, ∃ C : ℝ, 0 ≤ C ∧
+      ∀ x ∈ Set.univ.pi fun _ : Fin (2 * R + 1) => Icc (0:ℝ) 1, ‖G.g l x‖ ≤ C := by
+    intro l
+    obtain ⟨C, hC⟩ := (isCompact_univ_pi fun _ : Fin (2 * R + 1) =>
+      isCompact_Icc (a := (0:ℝ)) (b := 1)).exists_bound_of_continuousOn
+      (G.g_continuous l).continuousOn
+    exact ⟨max C 0, le_max_right _ _, fun x hx => le_trans (hC x hx) (le_max_left _ _)⟩
+  choose Cg hCg0 hCg using hg
+  refine ⟨∑ l : Fin G.len, (∑ v ∈ G.Dwords l, ‖G.D l v‖) * Cg l, ?_, ?_⟩
+  · exact Finset.sum_nonneg fun l _ =>
+      mul_nonneg (Finset.sum_nonneg fun v _ => norm_nonneg _) (hCg0 l)
+  · intro v hv
+    refine le_trans (norm_sum_le _ _) (Finset.sum_le_sum fun l _ => ?_)
+    rw [norm_mul, norm_mul, Prop42.norm_torusChar, mul_one]
+    have hvc : v.2.1 ∈ Set.univ.pi fun _ : Fin (2 * R + 1) => Icc (0:ℝ) 1 :=
+      fun i _ => hv i
+    exact mul_le_mul (hD l v.1) (hCg l _ hvc) (norm_nonneg _)
+      (Finset.sum_nonneg fun u _ => norm_nonneg _)
+
+/-- **`G_M` is almost surely bounded.**  On the orbit-consistent
+full-measure event of `ae_orbitConsistent` every digit read by
+`digitTruncWindow` is a genuine Gauss digit of an irrational point of
+`(0,1)`, hence `≥ 1`, so the truncated real block `cfFinite` lands in
+`[0,1]^{2R+1}` (`cfFinite_le_one`), where `denseElt_bound` applies.  The
+bound is *not* pointwise: an arbitrary window may carry digit `0`, where
+`cfFinite` degenerates to an unbounded `u⁻¹`. -/
+theorem ae_norm_digitTrunc_le (R M : ℕ) (G : DenseElt R) :
+    ∃ B : ℝ, 0 ≤ B ∧
+      ∀ᵐ w ∂(windowLaw (R + M)), ‖G.eval (digitTruncWindow R M w)‖ ≤ B := by
+  obtain ⟨B, hB0, hB⟩ := denseElt_bound G
+  refine ⟨B, hB0, ?_⟩
+  filter_upwards [ae_orbitConsistent (R + M)] with w hw
+  refine hB _ fun i => ?_
+  refine ⟨cfFinite_nonneg M _, cfFinite_le_one M _ fun k hk => ?_⟩
+  have hi := i.isLt
+  have h1 : -(((R + M) : ℕ) : ℤ) ≤ (i:ℤ) - (R:ℤ) + (k:ℤ) := by push_cast; omega
+  have h2 : (i:ℤ) - (R:ℤ) + (k:ℤ) ≤ (((R + M) : ℕ) : ℤ) := by push_cast; omega
+  obtain ⟨hIoo, hirr, hdig⟩ := hw.1 _ h1 h2
+  rw [hdig]
+  exact one_le_digit hIoo hirr 0
+
+/-- **The union bound for the digit-cap complement**:
+`μ_{R'}(E_{M,K}^c) ≤ (2R'+1) · 2/(K+1)`.  Stationarity has already made
+every offset's tail equal to the `t = 0` Gauss tail
+(`Kwon1002.windowLaw_digitCoord_tail`, `Kwon1002/DigitLaw.lean`), so the
+manuscript's `O_R(M/K)` appears in the explicit form `(2R'+1) · 2/(K+1)`. -/
+theorem windowLaw_digitCapEvent_compl_le (R' K : ℕ) :
+    windowLaw R' ((digitCapEvent R' K)ᶜ)
+      ≤ ENNReal.ofReal ((2 * (R' : ℝ) + 1) * (2 / ((K : ℝ) + 1))) := by
+  have hcompl : (digitCapEvent R' K)ᶜ
+      = ⋃ i : Fin (2 * R' + 1), {w : WindowSpace R' | K + 1 ≤ w.1 i} := by
+    ext w
+    simp only [digitCapEvent, Set.mem_compl_iff, Set.mem_setOf_eq, not_forall, not_le,
+      Set.mem_iUnion]
+    exact exists_congr fun i => Nat.lt_iff_add_one_le
+  rw [hcompl]
+  refine le_trans (measure_iUnion_le _) ?_
+  rw [tsum_fintype]
+  refine le_trans (Finset.sum_le_sum fun i _ => windowLaw_digitCoord_tail R' i K) ?_
+  rw [Finset.sum_const, Finset.card_univ, Fintype.card_fin, nsmul_eq_mul,
+    ← ENNReal.ofReal_natCast, ← ENNReal.ofReal_mul (by positivity)]
+  refine ENNReal.ofReal_le_ofReal (le_of_eq ?_)
+  push_cast
+  ring
+
+/-- **Input (step 3, digit truncation)**, v5 lines 1345-1356 — **closed**.
+`μ_{R+M}(E_{M,K}^c) = O_R(M/K)` by Lemma 3.1(ii), stationarity and a union
+bound, and `G_M` is bounded, so
+`‖G_M - G_M 1_{E_{M,K}}‖²_{L²} ≤ ‖G_M‖_∞² μ_{R+M}(E_{M,K}^c)`.
+
+The two halves the earlier obstruction note asked for are now in the tree,
+and this proof only assembles them.
+
+1. *The digit-block marginal.*  Stationarity of `μ̂₀` under the cocycle in
+   **both** time directions (`Lemma62.hatS_measurePreserving` and the new
+   `Kwon1002.hatSinv_measurePreserving`) makes all `2R'+1` union-bound
+   terms equal to the `t = 0` term, and the `t = 0` term is the
+   future-coordinate marginal of `ν̂`
+   (`NatExtMeasure.hatNu_fst_marginal`) fed through the one-level Gauss
+   tail: `μ_{R'}{a_t ≥ K+1} ≤ 2/(K+1)` at every offset
+   (`Kwon1002.windowLaw_digitCoord_tail`).  The union bound is
+   `windowLaw_digitCapEvent_compl_le` above.
+2. *Boundedness of `G_M`.*  Not pointwise — the `g_ℓ` are unbounded on
+   the real block — but almost sure, via `ae_orbitConsistent` and
+   `cfFinite_le_one` (`ae_norm_digitTrunc_le` above).
+
+With an a.e. bound `B` and the measure bound, the difference is dominated
+by `(B+1) 1_{E^c}`, whose `L²` norm is `(B+1) μ(E^c)^{1/2}`; any
+`K > 2(2R'+1)(B+1)²/ε²` then wins. -/
+theorem event_truncation (R M : ℕ) (G : DenseElt R) (ε : ℝ) (hε : 0 < ε) :
+    ∃ K : ℕ,
+      eLpNorm (fun w : WindowSpace (R + M) =>
+          G.eval (digitTruncWindow R M w)
+            - (digitCapEvent (R + M) K).indicator
+                (fun v => G.eval (digitTruncWindow R M v)) w)
+        2 (windowLaw (R + M)) < ENNReal.ofReal ε := by
+  obtain ⟨B, hB0, hBae⟩ := ae_norm_digitTrunc_le R M G
+  have hB1 : (0:ℝ) < B + 1 := by linarith
+  set δ : ℝ := ε / (B + 1) with hδdef
+  have hδ : 0 < δ := div_pos hε hB1
+  have hδ2 : (0:ℝ) < δ ^ 2 := by positivity
+  obtain ⟨K, hKgt⟩ := exists_nat_gt ((2 * (((R + M) : ℕ) : ℝ) + 1) * 2 / δ ^ 2)
+  have hK1 : (0:ℝ) < (K:ℝ) + 1 := by positivity
+  have hKbound : (2 * (((R + M) : ℕ) : ℝ) + 1) * (2 / ((K:ℝ) + 1)) < δ ^ 2 := by
+    rw [div_lt_iff₀ hδ2] at hKgt
+    rw [← mul_div_assoc, div_lt_iff₀ hK1]
+    nlinarith
+  refine ⟨K, ?_⟩
+  -- the difference vanishes on `E` and is the a.e.-bounded `G_M` off it:
+  -- dominate it by the constant `B + 1` cut to the complement
+  have hdom : ∀ᵐ w ∂(windowLaw (R + M)),
+      ‖G.eval (digitTruncWindow R M w)
+          - (digitCapEvent (R + M) K).indicator
+              (fun v => G.eval (digitTruncWindow R M v)) w‖
+        ≤ ‖((digitCapEvent (R + M) K)ᶜ).indicator (fun _ => B + 1) w‖ := by
+    filter_upwards [hBae] with w hw
+    by_cases hwE : w ∈ digitCapEvent (R + M) K
+    · rw [Set.indicator_of_mem hwE, sub_self, norm_zero,
+        Set.indicator_of_notMem (by simpa using hwE)]
+      simp
+    · rw [Set.indicator_of_notMem hwE, sub_zero,
+        Set.indicator_of_mem (by simpa using hwE), Real.norm_of_nonneg (by linarith)]
+      linarith
+  refine lt_of_le_of_lt (eLpNorm_mono_ae hdom) ?_
+  rw [eLpNorm_indicator_const (measurableSet_digitCapEvent (R + M) K).compl
+    (by norm_num) (by norm_num)]
+  have htwo : (1 : ℝ) / (2 : ℝ≥0∞).toReal = (1 / 2 : ℝ) := by norm_num
+  rw [htwo, Real.enorm_eq_ofReal (by linarith : (0:ℝ) ≤ B + 1)]
+  -- the measure factor is strictly below `δ`, and `(B+1)δ = ε`
+  have hmeaslt : windowLaw (R + M) ((digitCapEvent (R + M) K)ᶜ)
+      < ENNReal.ofReal (δ ^ 2) :=
+    lt_of_le_of_lt (windowLaw_digitCapEvent_compl_le (R + M) K)
+      ((ENNReal.ofReal_lt_ofReal_iff hδ2).mpr hKbound)
+  have hrpow : (ENNReal.ofReal (δ ^ 2)) ^ ((1 : ℝ) / 2) = ENNReal.ofReal δ := by
+    rw [ENNReal.ofReal_pow hδ.le, ← ENNReal.rpow_natCast (ENNReal.ofReal δ) 2,
+      ← ENNReal.rpow_mul]
+    norm_num
+  have hne0 : ENNReal.ofReal (B + 1) ≠ 0 := by
+    simp [ENNReal.ofReal_eq_zero, not_le, hB1]
+  calc ENNReal.ofReal (B + 1)
+        * windowLaw (R + M) ((digitCapEvent (R + M) K)ᶜ) ^ ((1:ℝ) / 2)
+      < ENNReal.ofReal (B + 1) * ENNReal.ofReal δ := by
+        refine ENNReal.mul_lt_mul_right hne0 ENNReal.ofReal_ne_top ?_
+        rw [← hrpow]
+        exact ENNReal.rpow_lt_rpow hmeaslt (by norm_num)
+    _ = ENNReal.ofReal ε := by
+        rw [← ENNReal.ofReal_mul (by linarith)]
+        congr 1
+        rw [hδdef]
+        field_simp
+
+/-- **Input (step 4, identity (31)).**  v5 lines 1357-1372: on `E_{M,K}`
+only finitely many full digit words survive, and on each of them identity
+(31) collapses `Σ_{t=-R-1}^{R} c_{ℓ,t} θ_{j+t}` to `A_{ℓ,w} θ_j +
+B_{ℓ,w} θ_{j-1}` modulo 1.  Hence `G_M 1_{E_{M,K}}` is *exactly* a finite
+linear combination of the monomials (32) at radius `R + M`, with central
+modes `(r,s) = (B_{ℓ,w}, A_{ℓ,w})`.
+
+Consumes `Kwon1002.V5Identity31.window_character_reduction_v5` (proved, at
+the full v5 range `t = -R-1, …, R`).
+**Obstruction.**  Identity (31) is available along an actual orbit; the
+present statement needs its window-space form, i.e. the same reduction
+performed on the coordinates of a point of `X_{R+M}` rather than on
+`theta α n (j+t)`.  That is a transcription of the same recursion, but it
+is a transcription that has not been carried out. -/
+theorem identity_31_monomial_form (R M K : ℕ) (G : DenseElt R) :
+    ∃ K' : ℕ, ∃ P : WindowSymbol (R + M) K',
+      ∀ w : WindowSpace (R + M),
+        (digitCapEvent (R + M) K).indicator
+            (fun v => G.eval (digitTruncWindow R M v)) w
+          = P.evalWindow w := by
+  sorry
+
+/-! ### Measurability on the window space
+
+The digit block `Fin (2R+1) → ℕ` of `X_R` is a finite product of countable
+discrete spaces, so it carries the discrete measurable structure and *every*
+function out of it is measurable.  That is what makes the digit-cylinder
+amplitudes `D_ℓ` of `DenseElt` and the word coefficients of a
+`WindowSymbol` measurable without any hypothesis on them.  The rest is the
+window coordinate readers of `WindowLaws.lean` (`measurable_wA`,
+`measurable_wX`, `measurable_wTh`), continuity of `torusChar`, and finite
+sums. -/
+
+/-- The full digit word of a window is a measurable function of the window,
+into the discrete space `Fin (2R) → ℕ`. -/
+theorem measurable_windowWordOf (R : ℕ) : Measurable (windowWordOf R) :=
+  measurable_pi_lambda _ fun _ => measurable_wA R _
+
+/-- A finite continued fraction of measurably varying digits is a
+measurable function.  The induction is on the depth `M`, with the digit
+family generalised because each step shifts it. -/
+theorem measurable_cfFinite {X : Type*} [MeasurableSpace X] :
+    ∀ (M : ℕ) (a : X → ℕ → ℕ), (∀ k, Measurable fun x => a x k) →
+      Measurable fun x => cfFinite (a x) M
+  | 0, _, _ => by
+      simpa only [cfFinite] using (measurable_const : Measurable fun _ : X => (0 : ℝ))
+  | M + 1, a, ha => by
+      have h0 : Measurable fun x : X => ((a x 0 : ℕ) : ℝ) :=
+        (measurable_from_top (f := fun m : ℕ => (m : ℝ))).comp (ha 0)
+      have h1 : Measurable fun x : X => cfFinite (fun k => a x (k + 1)) M :=
+        measurable_cfFinite M (fun x k => a x (k + 1)) fun k => ha (k + 1)
+      simpa only [cfFinite] using (h0.add h1).inv
+
+/-- **Input (measurability).**  A dense-algebra element is measurable: the
+digit factor is a function on a countable discrete block, the `g_ℓ` are
+continuous, and the character is continuous. -/
+theorem measurable_denseElt {R : ℕ} (G : DenseElt R) : Measurable G.eval := by
+  unfold DenseElt.eval
+  refine Finset.measurable_sum _ fun l _ => Measurable.mul (Measurable.mul ?_ ?_) ?_
+  · exact (Measurable.of_discrete (f := G.D l)).comp measurable_fst
+  · exact ((G.g_continuous l).measurable).comp (measurable_fst.comp measurable_snd)
+  · refine Prop42.continuous_torusChar.measurable.comp ?_
+    exact Finset.measurable_sum _ fun t _ =>
+      ((measurable_pi_apply t).comp (measurable_snd.comp measurable_snd)).const_mul _
+
+/-- **Input (measurability).**  The `M`-digit truncation map is
+measurable: the digit and torus blocks are coordinate readers, and the
+real block is the finite continued fraction `cfFinite` of finitely many
+digit coordinates. -/
+theorem measurable_digitTruncWindow (R M : ℕ) : Measurable (digitTruncWindow R M) := by
+  unfold digitTruncWindow
+  refine Measurable.prodMk ?_ (Measurable.prodMk ?_ ?_)
+  · exact measurable_pi_lambda _ fun _ => measurable_wA _ _
+  · exact measurable_pi_lambda _ fun _ =>
+      measurable_cfFinite M _ fun _ => measurable_wA _ _
+  · exact measurable_pi_lambda _ fun _ => measurable_wTh _ _
+
+/-- **Input (measurability).**  A window symbol is measurable on its own
+window space: the coefficient reads the (discrete) window word and the
+monomial is a continuous character in the two central torus
+coordinates. -/
+theorem measurable_evalWindow {R K : ℕ} (P : WindowSymbol R K) :
+    Measurable P.evalWindow := by
+  unfold WindowSymbol.evalWindow
+  refine Finset.measurable_sum _ fun r _ => Finset.measurable_sum _ fun s _ =>
+    Measurable.mul ?_ ?_
+  · exact (Measurable.of_discrete (f := fun v : Fin (2 * R) → ℕ => P.coeff v r s)).comp
+      (measurable_windowWordOf R)
+  · exact Prop42.continuous_torusChar.measurable.comp
+      (((measurable_wTh R (-1)).const_mul _).add ((measurable_wTh R 0).const_mul _))
+
+/-! ### The change of variables along `π_{R+M,R}` -/
+
+/-- Lifting to the larger radius does not change the `L²` norm: this is
+`(π_{R',R})_* μ_{R'} = μ_R`, v5 line 1165, which the skeleton proves. -/
+theorem eLpNorm_comp_windowProj {R M : ℕ} (f : WindowSpace R → ℂ) (hf : Measurable f) :
+    eLpNorm (fun w : WindowSpace (R + M) => f (windowProj (Nat.le_add_right R M) w)) 2
+        (windowLaw (R + M))
+      = eLpNorm f 2 (windowLaw R) := by
+  rw [← windowProj_map_windowLaw (Nat.le_add_right R M)]
+  exact (eLpNorm_map_measure hf.aestronglyMeasurable
+    (measurable_windowProj (Nat.le_add_right R M)).aemeasurable).symm
+
+/-! ### Display (55) -/
+
+/-- **Display (55), corrected** (v5 lines 1307-1408, and the revision
+note `manuscript/proposition_6_4_revision_note.pdf`).
+
+For every `R` and every `ε > 0` there are `M, K` and a *real-valued*
+finite linear combination `P_{R,M}` of the monomials (32) **at radius
+`R + M`** with
+`‖B^{(R)} ∘ π_{R+M,R} - P_{R,M}‖_{L²(μ_{R+M})} < ε`. -/
+theorem display_55_monomial_approximation (R : ℕ) :
+    ∀ ε > 0, ∃ M K : ℕ, ∃ P : WindowSymbol (R + M) K,
+      (∀ w : WindowSpace (R + M), (P.evalWindow w).im = 0) ∧
+      eLpNorm
+          (fun w : WindowSpace (R + M) =>
+            ((Bwindow R (windowProj (Nat.le_add_right R M) w) : ℂ) - P.evalWindow w))
+          2 (windowLaw (R + M))
+        < ENNReal.ofReal ε := by
+  intro ε hε
+  obtain ⟨CB, _hCB, hBmeas, _hBcont⟩ := Bwindow_bounded_and_ae_continuous R
+  obtain ⟨G, hG⟩ := density_bridge R (ε / 4) (by linarith)
+  obtain ⟨M, hM⟩ := digit_truncation R G (ε / 4) (by linarith)
+  obtain ⟨K, hK⟩ := event_truncation R M G (ε / 4) (by linarith)
+  obtain ⟨K', P, hP⟩ := identity_31_monomial_form R M K G
+  refine ⟨M, K', (symRe P), fun w => evalWindow_symRe_im P w, ?_⟩
+  set ν : Measure (WindowSpace (R + M)) := windowLaw (R + M) with hν
+  set π := windowProj (Nat.le_add_right R M) with hπ
+  set F0 : WindowSpace (R + M) → ℂ := fun w => ((Bwindow R (π w) : ℂ)) with hF0
+  set F1 : WindowSpace (R + M) → ℂ := fun w => G.eval (π w) with hF1
+  set F2 : WindowSpace (R + M) → ℂ := fun w => G.eval (digitTruncWindow R M w) with hF2
+  set F3 : WindowSpace (R + M) → ℂ :=
+    (digitCapEvent (R + M) K).indicator (fun v => G.eval (digitTruncWindow R M v)) with hF3
+  -- measurability of the five functions in play
+  have hmF0 : Measurable F0 :=
+    Complex.measurable_ofReal.comp (hBmeas.comp (measurable_windowProj _))
+  have hmF1 : Measurable F1 := (measurable_denseElt G).comp (measurable_windowProj _)
+  have hmF2 : Measurable F2 := (measurable_denseElt G).comp (measurable_digitTruncWindow R M)
+  have hmF3 : Measurable F3 :=
+    Measurable.indicator hmF2 (measurableSet_digitCapEvent (R + M) K)
+  -- the real-part reduction
+  have hre : eLpNorm (fun w => F0 w - (symRe P).evalWindow w) 2 ν
+      ≤ eLpNorm (fun w => F0 w - P.evalWindow w) 2 ν := by
+    refine eLpNorm_mono fun w => ?_
+    rw [evalWindow_symRe]
+    exact norm_sub_re_le _ _
+  -- the chain `B^{(R)} → G → G_M → G_M 1_E → P`
+  have hsplit : (fun w => F0 w - P.evalWindow w)
+      = fun w => ((F0 w - F1 w) + (F1 w - F2 w)) + (F2 w - F3 w) := by
+    funext w
+    rw [← hP w]
+    ring
+  have htri1 : eLpNorm (fun w => ((F0 w - F1 w) + (F1 w - F2 w)) + (F2 w - F3 w)) 2 ν
+      ≤ eLpNorm (fun w => (F0 w - F1 w) + (F1 w - F2 w)) 2 ν
+        + eLpNorm (fun w => F2 w - F3 w) 2 ν :=
+    eLpNorm_add_le ((hmF0.sub hmF1).aestronglyMeasurable.add
+      (hmF1.sub hmF2).aestronglyMeasurable) (hmF2.sub hmF3).aestronglyMeasurable (by norm_num)
+  have htri2 : eLpNorm (fun w => (F0 w - F1 w) + (F1 w - F2 w)) 2 ν
+      ≤ eLpNorm (fun w => F0 w - F1 w) 2 ν + eLpNorm (fun w => F1 w - F2 w) 2 ν :=
+    eLpNorm_add_le (hmF0.sub hmF1).aestronglyMeasurable
+      (hmF1.sub hmF2).aestronglyMeasurable (by norm_num)
+  -- the first error is the density-bridge error, transported by `π_{R+M,R}`
+  have hlift : eLpNorm (fun w => F0 w - F1 w) 2 ν
+      = eLpNorm (fun w : WindowSpace R => ((Bwindow R w : ℂ)) - G.eval w) 2 (windowLaw R) :=
+    eLpNorm_comp_windowProj (M := M)
+      (fun w => ((Bwindow R w : ℂ)) - G.eval w)
+      (Complex.measurable_ofReal.comp hBmeas |>.sub (measurable_denseElt G))
+  have h1 : eLpNorm (fun w => F0 w - F1 w) 2 ν < ENNReal.ofReal (ε / 4) := by
+    rw [hlift]; exact hG
+  calc eLpNorm (fun w => F0 w - (symRe P).evalWindow w) 2 ν
+      ≤ eLpNorm (fun w => F0 w - P.evalWindow w) 2 ν := hre
+    _ = eLpNorm (fun w => ((F0 w - F1 w) + (F1 w - F2 w)) + (F2 w - F3 w)) 2 ν := by
+        rw [hsplit]
+    _ ≤ (eLpNorm (fun w => F0 w - F1 w) 2 ν + eLpNorm (fun w => F1 w - F2 w) 2 ν)
+          + eLpNorm (fun w => F2 w - F3 w) 2 ν := le_trans htri1 (by gcongr)
+    _ ≤ (ENNReal.ofReal (ε / 4) + ENNReal.ofReal (ε / 4)) + ENNReal.ofReal (ε / 4) := by
+        gcongr <;>
+          first
+            | exact h1.le
+            | exact hM.le
+            | exact hK.le
+    _ = ENNReal.ofReal (3 * ε / 4) := by
+        rw [← ENNReal.ofReal_add (by linarith) (by linarith),
+          ← ENNReal.ofReal_add (by linarith) (by linarith)]
+        congr 1
+        ring
+    _ < ENNReal.ofReal ε := (ENNReal.ofReal_lt_ofReal_iff hε).mpr (by linarith)
+
+/-! ## Statement identity against `Section6Skeleton`
+
+`display_55_monomial_approximation` and `prop_6_4_bounded_remainder_weak_law`
+are reproduced in this file token for token from
+`Kwon1002/Section6Skeleton.lean` and are proved here.  They cannot be merged
+into the skeleton by delegation, because this file *imports* the skeleton;
+the two `example`s below are the drift guard instead.  Each elaborates the
+skeleton's declaration and this file's declaration at the same type, so a
+change to either statement breaks the build. -/
+
+/-- Statement identity, type check only. -/
+example : @_root_.Kwon1002.display_55_monomial_approximation
+    = @display_55_monomial_approximation := rfl
+
+/-- Statement identity, type check only. -/
+example : @_root_.Kwon1002.prop_6_4_bounded_remainder_weak_law
+    = @prop_6_4_bounded_remainder_weak_law := rfl
+
+end
+
+end Prop64
+
+end Kwon1002

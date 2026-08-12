@@ -1,0 +1,36 @@
+name: axiom-gate
+on: [push, pull_request]
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install elan
+        run: |
+          curl -sSf https://elan.lean-lang.org/elan-init.sh | sh -s -- -y --default-toolchain none
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+      - name: Build
+        run: lake exe cache get && lake build
+      - name: Escape scan (no sorry / native_decide / axiom in our sources)
+        run: |
+          ! grep -rnE --include='*.lean' 'native_decide|ofReduceBool|trustCompiler' Kwon1002/
+      - name: Axiom gate (every theorem exactly the three standard axioms)
+        run: |
+          cat > /tmp/gate.lean << 'LEAN'
+          import Kwon1002
+          open Lean Elab Command
+          run_cmd do
+            let env ← getEnv
+            let allowed : List Name := [``propext, ``Classical.choice, ``Quot.sound]
+            let mut bad := 0; let mut clean := 0
+            for (n, ci) in env.constants.toList do
+              unless (`Kwon1002).isPrefixOf n do continue
+              unless ci matches .thmInfo _ do continue
+              if n.isInternalDetail then continue
+              let axs ← collectAxioms n
+              if axs.all (fun a => allowed.contains a) then clean := clean + 1
+              else if !(axs.contains ``sorryAx) then bad := bad + 1
+            logInfo m!"axiom-clean: {clean}   NON-STANDARD AXIOMS: {bad}"
+            if bad > 0 then throwError "gate FAIL: {bad} theorems use a non-standard axiom"
+          LEAN
+          lake env lean /tmp/gate.lean
