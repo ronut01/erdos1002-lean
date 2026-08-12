@@ -418,7 +418,10 @@ Re-auditing every input of Kwon's cases 2 and 3 against the current tree:
   `BVMixing.lemma_3_2_BV`.
 * **Display (20), the Lévy large-deviation bound for the continuants** -
   `e^{λj−δH} ≤ q_j ≤ e^{λj+δH}` outside a set of mass `O(e^{−c√L})` -
-  **absent**.
+  **now proved**: `LargeDeviation.display20_of_pos` (`Kwon1002/LDMain.lean`)
+  supplies an instance of the predicate below at every window constant
+  `δ > 0`, from the self-contained display (16) of
+  `LargeDeviation.continuant_large_deviation`.
 
 **Finding (obstruction, corrected).**  Display (20) is the one analytic input
 of cases 2 and 3 that this development does not contain in any form.  A grep
@@ -434,9 +437,12 @@ source of the first summand of the error bracket of (34).  Removing the other
 gaps therefore does not shorten the path: (20) is load-bearing and has to be
 formalised before either phase bound can be attempted.
 
-`Display20` below records it as a predicate, so the missing input is at least
-machine-readable and can be quoted verbatim by a later pass.  It is a `def`,
-not a sorried theorem: nothing is assumed here. -/
+`Display20` below records it as a predicate, so the input is
+machine-readable and can be quoted verbatim.  It is a `def`, not a sorried
+theorem: nothing is assumed here.  (The obstruction paragraph above is the
+historical finding of the pass that identified the gap; the gap is now
+closed by the `LD*` modules, and both consuming paths are discharged in
+`Kwon1002/LDMain.lean`.) -/
 
 /-- **Display (20)** of the manuscript, as a predicate: outside a set of
 Lebesgue measure `C e^{−c√L}`, every bulk continuant obeys the two-sided Lévy
