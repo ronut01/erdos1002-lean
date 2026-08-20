@@ -80,3 +80,4 @@ import Kwon1002.LDBlocks
 import Kwon1002.LDDeviation
 import Kwon1002.LDDisplay20
 import Kwon1002.LDMain
+import Kwon1002.StationaryReplace
