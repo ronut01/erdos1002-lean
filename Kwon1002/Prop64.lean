@@ -3,6 +3,7 @@ import Kwon1002.WindowLaws
 import Kwon1002.WindowMarginal
 import Kwon1002.DigitLaw
 import Kwon1002.CarryGraph
+import Kwon1002.StationaryIdentity31
 
 /-!
 # Proposition 6.4 of v5: the bounded-remainder weak law, reduced to named inputs
@@ -1026,20 +1027,21 @@ def DenseElt.eval {R : ℕ} (G : DenseElt R) (w : WindowSpace R) : ℂ :=
   ∑ l : Fin G.len, G.D l w.1 * G.g l w.2.1 *
     torusChar (∑ t : Fin (2 * R + 2), (G.c l t : ℝ) * w.2.2 t)
 
-/-- **`E_{M,K}`** of v5 lines 1345-1352: every digit of the full symmetric
-radius-`R'` word is at most `K`. -/
+/-- **`E_{M,K}`** of v5 lines 1345-1352: every digit in the word
+`a_{j-R'+1}, …, a_{j+R'}` is at most `K`. -/
 def digitCapEvent (R' K : ℕ) : Set (WindowSpace R') :=
-  {w | ∀ i : Fin (2 * R' + 1), w.1 i ≤ K}
+  {w | ∀ i : Fin (2 * R'), w.1 (⟨i, by omega⟩ : Fin (2 * R' + 1)) ≤ K}
 
 theorem measurableSet_digitCapEvent (R' K : ℕ) : MeasurableSet (digitCapEvent R' K) := by
-  have hrw : digitCapEvent R' K = ⋂ i : Fin (2 * R' + 1), {w : WindowSpace R' | w.1 i ≤ K} := by
+  have hrw : digitCapEvent R' K =
+      ⋂ i : Fin (2 * R'), {w : WindowSpace R' | w.1 (⟨i, by omega⟩ : Fin (2 * R' + 1)) ≤ K} := by
     ext w; simp [digitCapEvent]
   rw [hrw]
   refine MeasurableSet.iInter fun i => ?_
-  have hm : Measurable (fun w : WindowSpace R' => w.1 i) :=
-    (measurable_pi_apply i).comp measurable_fst
-  have hpre : {w : WindowSpace R' | w.1 i ≤ K}
-      = (fun w : WindowSpace R' => w.1 i) ⁻¹' {n : ℕ | n ≤ K} := rfl
+  have hm : Measurable (fun w : WindowSpace R' => w.1 (⟨i, by omega⟩ : Fin (2 * R' + 1))) :=
+    (measurable_pi_apply (⟨i, by omega⟩ : Fin (2 * R' + 1))).comp measurable_fst
+  have hpre : {w : WindowSpace R' | w.1 (⟨i, by omega⟩ : Fin (2 * R' + 1)) ≤ K}
+      = (fun w : WindowSpace R' => w.1 (⟨i, by omega⟩ : Fin (2 * R' + 1))) ⁻¹' {n : ℕ | n ≤ K} := rfl
   rw [hpre]
   exact hm MeasurableSet.of_discrete
 
@@ -1065,14 +1067,14 @@ the closed unit cube on the other two blocks. -/
 and each digit coordinate reader is continuous. -/
 theorem isClosed_digitCapEvent (R' K : ℕ) : IsClosed (digitCapEvent R' K) := by
   have hrw : digitCapEvent R' K
-      = ⋂ i : Fin (2 * R' + 1), {w : WindowSpace R' | w.1 i ≤ K} := by
+      = ⋂ i : Fin (2 * R'), {w : WindowSpace R' | w.1 (⟨i, by omega⟩ : Fin (2 * R' + 1)) ≤ K} := by
     ext w; simp [digitCapEvent]
   rw [hrw]
   refine isClosed_iInter fun i => ?_
-  have hcont : Continuous fun w : WindowSpace R' => w.1 i :=
-    (continuous_apply i).comp continuous_fst
-  have hpre : {w : WindowSpace R' | w.1 i ≤ K}
-      = (fun w : WindowSpace R' => w.1 i) ⁻¹' {n : ℕ | n ≤ K} := rfl
+  have hcont : Continuous fun w : WindowSpace R' => w.1 (⟨i, by omega⟩ : Fin (2 * R' + 1)) :=
+    (continuous_apply (⟨i, by omega⟩ : Fin (2 * R' + 1))).comp continuous_fst
+  have hpre : {w : WindowSpace R' | w.1 (⟨i, by omega⟩ : Fin (2 * R' + 1)) ≤ K}
+      = (fun w : WindowSpace R' => w.1 (⟨i, by omega⟩ : Fin (2 * R' + 1))) ⁻¹' {n : ℕ | n ≤ K} := rfl
   rw [hpre]
   exact IsClosed.preimage hcont (isClosed_discrete _)
 
@@ -1103,7 +1105,7 @@ def digitCapCube (R' K : ℕ) : Set (WindowSpace R') :=
 
 theorem digitCapCube_subset (R' K : ℕ) : digitCapCube R' K ⊆ digitCapEvent R' K := by
   rintro w ⟨hw, -⟩
-  exact hw
+  exact fun i => hw (⟨i, by omega⟩ : Fin (2 * R' + 1))
 
 /-- **`X_{R,K}` is compact**: a finite digit block times two closed cubes. -/
 theorem isCompact_digitCapCube (R' K : ℕ) : IsCompact (digitCapCube R' K) := by
@@ -1122,6 +1124,63 @@ theorem measurableSet_digitCapCube (R' K : ℕ) : MeasurableSet (digitCapCube R'
     (MeasurableSet.prod ?_ ?_) <;>
   exact MeasurableSet.univ_pi fun _ => measurableSet_Icc
 
+/-- **`Bwindow` is Borel measurable.**  This is the measurable-regularity half
+needed by the v9 bounded-representative density bridge. -/
+theorem measurable_Bwindow (R : ℕ) : Measurable (Bwindow R) := by
+  have hW : Measurable fun w : WindowSpace R => W (wTh w 0) :=
+    measurable_W.comp (measurable_wTh R 0)
+  have hA : Measurable fun w : WindowSpace R => ((windowCarry R w R : ℤ) : ℝ) :=
+    (measurable_from_top (f := fun m : ℤ => (m : ℝ))).comp (measurable_windowCarry R R)
+  have hcarryU : Measurable fun w : WindowSpace R =>
+      carryU (wX w 0) (wTh w (-1)) (wTh w 0) (windowCarry R w R) := by
+    have harg : Measurable fun w : WindowSpace R =>
+        wTh w 0 - wX w 0 * (((windowCarry R w R : ℤ) : ℝ) + wTh w (-1)) :=
+      (measurable_wTh R 0).sub
+        ((measurable_wX R 0).mul (hA.add (measurable_wTh R (-1))))
+    exact harg.fract
+  have hPhi : Measurable fun w : WindowSpace R =>
+      Phi (wX w 0) (carryU (wX w 0) (wTh w (-1)) (wTh w 0) (windowCarry R w R)) := by
+    unfold Phi
+    exact ((hcarryU.mul (measurable_const.sub hcarryU)).div (measurable_const.mul (measurable_wX R 0))).sub
+      (hcarryU.div measurable_const)
+  have hAreal : Measurable fun w : WindowSpace R => ((wA w 0 : ℕ) : ℝ) :=
+    (measurable_from_top (f := fun m : ℕ => (m : ℝ))).comp (measurable_wA R 0)
+  have hmark : Measurable fun w : WindowSpace R => ((wA w 0 : ℝ) * W (wTh w 0)) :=
+    hAreal.mul hW
+  simpa only [Bwindow] using hPhi.sub hmark
+
+/-- `BwindowRep` is Borel measurable. -/
+theorem measurable_BwindowRep (R : ℕ) : Measurable (BwindowRep R) := by
+  unfold BwindowRep
+  exact measurable_const.max (measurable_const.min (measurable_Bwindow R))
+
+/-- `BwindowRep` has global bound `|BwindowRep R w| ≤ 45/8`. -/
+theorem abs_BwindowRep_le (R : ℕ) (w : WindowSpace R) : |BwindowRep R w| ≤ 45 / 8 := by
+  have hlow : -(45 / 8 : ℝ) ≤ BwindowRep R w := by
+    simpa [BwindowRep] using le_max_left (-(45 / 8 : ℝ)) (min (45 / 8 : ℝ) (Bwindow R w))
+  have hupp : BwindowRep R w ≤ 45 / 8 := by
+    have hmin : min (45 / 8 : ℝ) (Bwindow R w) ≤ (45 / 8 : ℝ) := min_le_left _ _
+    have hmax : max (-(45 / 8 : ℝ)) (min (45 / 8 : ℝ) (Bwindow R w)) ≤ 45 / 8 :=
+      max_le (by norm_num) hmin
+    simpa [BwindowRep] using hmax
+  exact abs_le.mpr ⟨hlow, hupp⟩
+
+/-- On actual windows, bounded representative agrees with the truncation:
+    using `Bwindow_actualWindow` and `abs_BremainderTrunc_le`. -/
+theorem BwindowRep_actualWindow (R : ℕ) (α : ℝ) (n j : ℕ) (hj : R + 1 ≤ j)
+    (hα : α ∈ Ioo (0 : ℝ) 1) (hirr : Irrational α) :
+    BwindowRep R (actualWindow R α n j) = BremainderTrunc α n R j := by
+  rw [BwindowRep, Bwindow_actualWindow R α n j hj]
+  have hbound := abs_BremainderTrunc_le hα hirr n R j
+  have hlow : -(45 / 8 : ℝ) ≤ BremainderTrunc α n R j := (abs_le.mp hbound).1
+  have hupp : BremainderTrunc α n R j ≤ 45 / 8 := (abs_le.mp hbound).2
+  calc
+    max (-(45 / 8 : ℝ)) (min (45 / 8 : ℝ) (BremainderTrunc α n R j))
+        = max (-(45 / 8 : ℝ)) (BremainderTrunc α n R j) := by
+          simp [min_eq_right hupp]
+    _ = BremainderTrunc α n R j := by
+          exact max_eq_right hlow
+
 /-! ### Named inputs for display (55) -/
 
 /-- **Input (step 1, density bridge).**  v5 lines 1316-1330: the algebra
@@ -1129,24 +1188,22 @@ of finite sums `Σ_ℓ D_ℓ g_ℓ e(Σ c_{ℓ,t} θ_t)` is dense in `L²(μ_R)`
 `B^{(R)}` is bounded and `μ_R`-almost-everywhere continuous, so it is
 approximated to any accuracy.
 
-Consumes `Section6Skeleton.Bwindow_bounded_and_ae_continuous`.
-**Obstruction, updated.**  (a) The named input is **false as stated**:
-its boundedness half `∀ w, |Bwindow R w| ≤ C` is refuted by
-`Kwon1002.bwindow_unbounded` (central digit `m → ∞` against
-`W(θ) = 1/8`).  Only the a.e. halves are true — `Bwindow` is measurable,
-`μ_R`-a.e. bounded (via `ae_orbitConsistent` and the bound
-`abs_BremainderTrunc_le`, which needs the torus block a.e. in `[0,1)`,
-not yet stated) and `μ_R`-a.e. continuous — and only those are needed
-here.  (b) The genuinely missing core is the density statement itself,
-the one v5 records "after Lemma 6.3": finite sums
+Consumes `Section6Skeleton.BwindowRep_ae_continuous` and
+`Prop64.abs_BwindowRep_le`.
+The raw formula `Bwindow` is not globally bounded (`bwindow_unbounded`),
+so the canonical contract now uses `BwindowRep`: its measurability and
+global `45/8` bound are proved above, and it agrees with
+`BremainderTrunc` on every actual irrational window.  The remaining inputs
+are its `windowLaw`-a.e. continuity and the density statement itself,
+the one v9 records after Lemma 6.3: finite sums
 `Σ_ℓ D_ℓ g_ℓ e(Σ c_{ℓ,t} θ_t)` are dense in `L²(μ_R)`.  That needs
 Stone-Weierstrass on the compact exhaustion `digitCapCube` together with
 the regularity of `μ_R` (`IsProbabilityMeasure (windowLaw R)` is now an
 instance); the Fourier tooling of `CylinderCharDense.lean` §4 is the
-natural raw material.  Neither half has been formalised. -/
+natural raw material. -/
 theorem density_bridge (R : ℕ) (ε : ℝ) (hε : 0 < ε) :
     ∃ G : DenseElt R,
-      eLpNorm (fun w : WindowSpace R => ((Bwindow R w : ℂ)) - G.eval w) 2 (windowLaw R)
+      eLpNorm (fun w : WindowSpace R => ((BwindowRep R w : ℂ)) - G.eval w) 2 (windowLaw R)
         < ENNReal.ofReal ε := by
   sorry
 
@@ -1245,6 +1302,7 @@ unrelated — and the proof runs on the law:
    measure. -/
 theorem digit_truncation (R : ℕ) (G : DenseElt R) (ε : ℝ) (hε : 0 < ε) :
     ∃ M : ℕ,
+      1 ≤ M ∧
       eLpNorm (fun w : WindowSpace (R + M) =>
           G.eval (windowProj (Nat.le_add_right R M) w) - G.eval (digitTruncWindow R M w))
         2 (windowLaw (R + M)) < ENNReal.ofReal ε := by
@@ -1275,8 +1333,19 @@ theorem digit_truncation (R : ℕ) (G : DenseElt R) (ε : ℝ) (hε : 0 < ε) :
       · intro l x hx y hy hxy
         exact hδf l x hx y hy
           (lt_of_lt_of_le hxy (Finset.inf'_le _ (Finset.mem_univ l)))
-  obtain ⟨M, hM⟩ := exists_fib_inv_lt hδ0
-  refine ⟨M, ?_⟩
+  obtain ⟨M₀, hM₀⟩ := exists_fib_inv_lt hδ0
+  let M := M₀ + 1
+  have hMpos : 1 ≤ M := by simp [M]
+  have hfib₀ : (0 : ℝ) < Nat.fib (M₀ + 1) := by
+    exact_mod_cast (Nat.fib_pos.mpr (by omega : 0 < M₀ + 1))
+  have hfib₁ : (0 : ℝ) < Nat.fib (M₀ + 2) := by
+    exact_mod_cast (Nat.fib_pos.mpr (by omega : 0 < M₀ + 2))
+  have hfible : ((Nat.fib (M₀ + 1) : ℕ) : ℝ) ≤ (Nat.fib (M₀ + 2) : ℝ) := by
+    exact_mod_cast (Nat.fib_le_fib_succ (n := M₀ + 1))
+  have hM : ((Nat.fib (M + 1) : ℝ))⁻¹ < δ := by
+    rw [show M + 1 = M₀ + 2 by simp [M]]
+    exact lt_of_le_of_lt ((inv_le_inv₀ hfib₁ hfib₀).2 hfible) hM₀
+  refine ⟨M, hMpos, ?_⟩
   have hae : ∀ᵐ w ∂(windowLaw (R + M)),
       ‖G.eval (windowProj (Nat.le_add_right R M) w) - G.eval (digitTruncWindow R M w)‖
         ≤ ε / 2 := by
@@ -1304,6 +1373,7 @@ theorem digit_truncation (R : ℕ) (G : DenseElt R) (ε : ℝ) (hε : 0 < ε) :
       exact ⟨hIoo.1.le, hIoo.2.le⟩
     have htrunc_mem : (digitTruncWindow R M w).2.1 ∈ K := by
       intro i _
+      change cfFinite (fun k => wA w ((i : ℤ) - (R : ℤ) + (k : ℤ))) M ∈ Icc (0 : ℝ) 1
       refine ⟨cfFinite_nonneg M _, cfFinite_le_one M _ fun k hk => ?_⟩
       have hi := i.isLt
       have h1 : -(((R + M) : ℕ) : ℤ) ≤ (i : ℤ) - (R : ℤ) + (k : ℤ) := by push_cast; omega
@@ -1421,15 +1491,15 @@ theorem ae_norm_digitTrunc_le (R M : ℕ) (G : DenseElt R) :
   exact one_le_digit hIoo hirr 0
 
 /-- **The union bound for the digit-cap complement**:
-`μ_{R'}(E_{M,K}^c) ≤ (2R'+1) · 2/(K+1)`.  Stationarity has already made
+`μ_{R'}(E_{M,K}^c) ≤ (2R') · 2/(K+1)`.  Stationarity has already made
 every offset's tail equal to the `t = 0` Gauss tail
 (`Kwon1002.windowLaw_digitCoord_tail`, `Kwon1002/DigitLaw.lean`), so the
-manuscript's `O_R(M/K)` appears in the explicit form `(2R'+1) · 2/(K+1)`. -/
+manuscript's `O_R(M/K)` appears in the explicit form `(2R') · 2/(K+1)`. -/
 theorem windowLaw_digitCapEvent_compl_le (R' K : ℕ) :
     windowLaw R' ((digitCapEvent R' K)ᶜ)
-      ≤ ENNReal.ofReal ((2 * (R' : ℝ) + 1) * (2 / ((K : ℝ) + 1))) := by
+      ≤ ENNReal.ofReal ((2 * (R' : ℝ)) * (2 / ((K : ℝ) + 1))) := by
   have hcompl : (digitCapEvent R' K)ᶜ
-      = ⋃ i : Fin (2 * R' + 1), {w : WindowSpace R' | K + 1 ≤ w.1 i} := by
+      = ⋃ i : Fin (2 * R'), {w : WindowSpace R' | K + 1 ≤ w.1 (⟨i, by omega⟩ : Fin (2 * R' + 1))} := by
     ext w
     simp only [digitCapEvent, Set.mem_compl_iff, Set.mem_setOf_eq, not_forall, not_le,
       Set.mem_iUnion]
@@ -1437,7 +1507,8 @@ theorem windowLaw_digitCapEvent_compl_le (R' K : ℕ) :
   rw [hcompl]
   refine le_trans (measure_iUnion_le _) ?_
   rw [tsum_fintype]
-  refine le_trans (Finset.sum_le_sum fun i _ => windowLaw_digitCoord_tail R' i K) ?_
+  refine le_trans (Finset.sum_le_sum
+      (fun i _ => windowLaw_digitCoord_tail R' (⟨i, by omega⟩ : Fin (2 * R' + 1)) K)) ?_
   rw [Finset.sum_const, Finset.card_univ, Fintype.card_fin, nsmul_eq_mul,
     ← ENNReal.ofReal_natCast, ← ENNReal.ofReal_mul (by positivity)]
   refine ENNReal.ofReal_le_ofReal (le_of_eq ?_)
@@ -1454,7 +1525,7 @@ and this proof only assembles them.
 
 1. *The digit-block marginal.*  Stationarity of `μ̂₀` under the cocycle in
    **both** time directions (`Lemma62.hatS_measurePreserving` and the new
-   `Kwon1002.hatSinv_measurePreserving`) makes all `2R'+1` union-bound
+   `Kwon1002.hatSinv_measurePreserving`) makes all `2R'` union-bound
    terms equal to the `t = 0` term, and the `t = 0` term is the
    future-coordinate marginal of `ν̂`
    (`NatExtMeasure.hatNu_fst_marginal`) fed through the one-level Gauss
@@ -1467,7 +1538,7 @@ and this proof only assembles them.
 
 With an a.e. bound `B` and the measure bound, the difference is dominated
 by `(B+1) 1_{E^c}`, whose `L²` norm is `(B+1) μ(E^c)^{1/2}`; any
-`K > 2(2R'+1)(B+1)²/ε²` then wins. -/
+`K > 2(2R')(B+1)²/ε²` then wins. -/
 theorem event_truncation (R M : ℕ) (G : DenseElt R) (ε : ℝ) (hε : 0 < ε) :
     ∃ K : ℕ,
       eLpNorm (fun w : WindowSpace (R + M) =>
@@ -1480,9 +1551,9 @@ theorem event_truncation (R M : ℕ) (G : DenseElt R) (ε : ℝ) (hε : 0 < ε) 
   set δ : ℝ := ε / (B + 1) with hδdef
   have hδ : 0 < δ := div_pos hε hB1
   have hδ2 : (0:ℝ) < δ ^ 2 := by positivity
-  obtain ⟨K, hKgt⟩ := exists_nat_gt ((2 * (((R + M) : ℕ) : ℝ) + 1) * 2 / δ ^ 2)
+  obtain ⟨K, hKgt⟩ := exists_nat_gt ((2 * ((R + M : ℕ) : ℝ)) * 2 / δ ^ 2)
   have hK1 : (0:ℝ) < (K:ℝ) + 1 := by positivity
-  have hKbound : (2 * (((R + M) : ℕ) : ℝ) + 1) * (2 / ((K:ℝ) + 1)) < δ ^ 2 := by
+  have hKbound : (2 * ((R + M : ℕ) : ℝ)) * (2 / ((K:ℝ) + 1)) < δ ^ 2 := by
     rw [div_lt_iff₀ hδ2] at hKgt
     rw [← mul_div_assoc, div_lt_iff₀ hK1]
     nlinarith
@@ -1539,18 +1610,297 @@ modes `(r,s) = (B_{ℓ,w}, A_{ℓ,w})`.
 
 Consumes `Kwon1002.V5Identity31.window_character_reduction_v5` (proved, at
 the full v5 range `t = -R-1, …, R`).
-**Obstruction.**  Identity (31) is available along an actual orbit; the
-present statement needs its window-space form, i.e. the same reduction
-performed on the coordinates of a point of `X_{R+M}` rather than on
-`theta α n (j+t)`.  That is a transcription of the same recursion, but it
-is a transcription that has not been carried out. -/
-theorem identity_31_monomial_form (R M K : ℕ) (G : DenseElt R) :
+The equality is asserted `windowLaw (R+M)`-almost everywhere, exactly as the
+manuscript uses it on the orbit-consistent stationary support.  It is false
+on arbitrary points of the ambient product `WindowSpace`, whose noncentral
+torus coordinates are independent. -/
+theorem identity_31_monomial_form (R M K : ℕ) (G : DenseElt R) (hMpos : 1 ≤ M) :
     ∃ K' : ℕ, ∃ P : WindowSymbol (R + M) K',
-      ∀ w : WindowSpace (R + M),
+      ∀ᵐ w ∂(windowLaw (R + M)),
         (digitCapEvent (R + M) K).indicator
             (fun v => G.eval (digitTruncWindow R M v)) w
           = P.evalWindow w := by
-  sorry
+  let R' := R + M
+  let words : Finset (Fin (2 * R') → ℕ) :=
+    Fintype.piFinset (fun _ : Fin (2 * R') => Finset.range (K + 1))
+  let coreWord (w : Fin (2 * R') → ℕ) : Fin (2 * R) → ℕ :=
+    fun i => w ⟨M + (i : ℕ), by have := i.isLt; dsimp [R']; omega⟩
+  let denseDigits (w : Fin (2 * R') → ℕ) : Fin (2 * R + 1) → ℕ :=
+    fun i => w ⟨M + (i : ℕ), by have := i.isLt; dsimp [R']; omega⟩
+  let truncReals (w : Fin (2 * R') → ℕ) : Fin (2 * R + 1) → ℝ :=
+    fun i => cfFinite (fun k => if hk : k < M then
+      w ⟨M + (i : ℕ) + k,
+        by have := i.isLt; dsimp [R']; omega⟩ else 0) M
+  let A (l : Fin G.len) (w : Fin (2 * R') → ℕ) : ℤ :=
+    V5Identity31.winA1 R (G.c l) (coreWord w)
+  let B (l : Fin G.len) (w : Fin (2 * R') → ℕ) : ℤ :=
+    V5Identity31.winB1 R (G.c l) (coreWord w)
+  let amp (l : Fin G.len) (w : Fin (2 * R') → ℕ) : ℂ :=
+    G.D l (denseDigits w) * G.g l (truncReals w)
+  let pairs : Finset (Fin G.len × (Fin (2 * R') → ℕ)) := Finset.univ ×ˢ words
+  let K' : ℕ := pairs.sup (fun p => (B p.1 p.2).natAbs + (A p.1 p.2).natAbs)
+  let P : WindowSymbol R' K' :=
+    { coeff := fun w r s =>
+        if w ∈ words then
+          ∑ l : Fin G.len, if r = B l w ∧ s = A l w then amp l w else 0
+        else 0
+      words := words
+      coeff_support := by
+        intro w r s hw
+        simp [hw]
+      mode_cap := by
+        intro w r s hrs
+        by_cases hw : w ∈ words
+        · simp only [hw, if_true]
+          refine Finset.sum_eq_zero fun l _ => ?_
+          by_cases hm : r = B l w ∧ s = A l w
+          · have hp : (l, w) ∈ pairs := by simp [pairs, hw]
+            have hle : (B l w).natAbs + (A l w).natAbs ≤ K' :=
+              Finset.le_sup (f := fun p => (B p.1 p.2).natAbs + (A p.1 p.2).natAbs) hp
+            rw [if_pos hm]
+            exfalso
+            rw [hm.1, hm.2] at hrs
+            omega
+          · rw [if_neg hm]
+        · simp [hw] }
+  refine ⟨K', P, ?_⟩
+  have hGmeas : Measurable G.eval := by
+    unfold DenseElt.eval
+    refine Finset.measurable_sum _ fun l _ => Measurable.mul (Measurable.mul ?_ ?_) ?_
+    · exact (Measurable.of_discrete (f := G.D l)).comp measurable_fst
+    · exact ((G.g_continuous l).measurable).comp (measurable_fst.comp measurable_snd)
+    · refine Prop42.continuous_torusChar.measurable.comp ?_
+      exact Finset.measurable_sum _ fun t _ =>
+        ((measurable_pi_apply t).comp (measurable_snd.comp measurable_snd)).const_mul _
+  have hCFmeas : ∀ (m : ℕ) (a : WindowSpace R' → ℕ → ℕ),
+      (∀ k, Measurable fun w => a w k) → Measurable fun w => cfFinite (a w) m := by
+    intro m
+    induction m with
+    | zero =>
+        intro a _
+        simpa only [cfFinite] using (measurable_const : Measurable fun _ : WindowSpace R' => (0 : ℝ))
+    | succ m ih =>
+        intro a ha
+        have h0 : Measurable fun w : WindowSpace R' => ((a w 0 : ℕ) : ℝ) :=
+          (measurable_from_top (f := fun q : ℕ => (q : ℝ))).comp (ha 0)
+        have h1 : Measurable fun w : WindowSpace R' => cfFinite (fun k => a w (k + 1)) m :=
+          ih (fun w k => a w (k + 1)) fun k => ha (k + 1)
+        simpa only [cfFinite] using (h0.add h1).inv
+  have hTruncMeas : Measurable (digitTruncWindow R M) := by
+    unfold digitTruncWindow
+    refine Measurable.prodMk (measurable_pi_lambda _ fun _ => measurable_wA _ _)
+      (Measurable.prodMk ?_ (measurable_pi_lambda _ fun _ => measurable_wTh _ _))
+    exact measurable_pi_lambda _ fun _ =>
+      hCFmeas M _ fun _ => measurable_wA _ _
+  have hLmeas : Measurable fun w : WindowSpace R' =>
+      (digitCapEvent R' K).indicator (fun v => G.eval (digitTruncWindow R M v)) w :=
+    Measurable.indicator (hGmeas.comp hTruncMeas) (measurableSet_digitCapEvent R' K)
+  have hWordMeas : Measurable (windowWordOf R') :=
+    measurable_pi_lambda _ fun _ => measurable_wA R' _
+  have hPmeas : Measurable P.evalWindow := by
+    unfold WindowSymbol.evalWindow
+    refine Finset.measurable_sum _ fun r _ => Finset.measurable_sum _ fun s _ =>
+      Measurable.mul ?_ ?_
+    · exact (Measurable.of_discrete (f := fun v : Fin (2 * R') → ℕ => P.coeff v r s)).comp
+        hWordMeas
+    · exact Prop42.continuous_torusChar.measurable.comp
+        (((measurable_wTh R' (-1)).const_mul _).add ((measurable_wTh R' 0).const_mul _))
+  have hEqMeas : MeasurableSet {w : WindowSpace R' |
+      (digitCapEvent R' K).indicator (fun v => G.eval (digitTruncWindow R M v)) w
+        = P.evalWindow w} := measurableSet_eq_fun hLmeas hPmeas
+  rw [windowLaw, ae_map_iff (measurable_stationaryWindow R').aemeasurable hEqMeas]
+  filter_upwards [CarryGraph.hatMu0_ae_goodT] with z hz
+  have hword : windowWordOf R' (stationaryWindow R' z) = natExtWord R' z.1 := by
+    funext i
+    rw [windowWordOf, wA_stationaryWindow R' z (by omega) (by omega)]
+    exact (StationaryIdentity31.wordFn_natExtWord hz R' (i : ℕ) i.isLt).symm.trans (by
+      simp [wordFn])
+  have hprefix : ∀ i : Fin (2 * R'),
+      (stationaryWindow R' z).1 ⟨(i : ℕ), by have := i.isLt; omega⟩ = natExtWord R' z.1 i := by
+    intro i
+    have hi := congrFun hword i
+    have hc : 0 ≤ (i : ℤ) - (R' : ℤ) + (R' : ℤ) ∧
+        (i : ℤ) - (R' : ℤ) + (R' : ℤ) < 2 * (R' : ℤ) + 1 := by omega
+    have hidx : (⟨((i : ℤ) - (R' : ℤ) + (R' : ℤ)).toNat, by omega⟩ : Fin (2 * R' + 1))
+        = ⟨(i : ℕ), by have := i.isLt; omega⟩ := by
+      apply Fin.ext
+      simp only [Fin.val_mk]
+      omega
+    simpa only [windowWordOf, wA, dif_pos hc, hidx] using hi
+  have hmem : stationaryWindow R' z ∈ digitCapEvent R' K ↔ natExtWord R' z.1 ∈ words := by
+    rw [Fintype.mem_piFinset]
+    simp only [digitCapEvent, Set.mem_setOf_eq, Finset.mem_range]
+    constructor
+    · intro h i
+      have hi := h i
+      rw [hprefix i] at hi
+      exact Nat.lt_succ_of_le hi
+    · intro h i
+      have hi := h i
+      rw [hprefix i]
+      exact Nat.le_of_lt_succ hi
+  by_cases hw : natExtWord R' z.1 ∈ words
+  · rw [Set.indicator_of_mem (hmem.mpr hw)]
+    have hcore : coreWord (natExtWord R' z.1) = natExtWord R z.1 := by
+      funext i
+      have hbig := StationaryIdentity31.wordFn_natExtWord hz R' (M + (i : ℕ)) (by
+        have := i.isLt
+        dsimp [R']
+        omega)
+      have hsmall := StationaryIdentity31.wordFn_natExtWord hz R (i : ℕ) i.isLt
+      have hbnd : M + (i : ℕ) < 2 * R' := by have := i.isLt; dsimp [R']; omega
+      have hbig' : natExtWord R' z.1 ⟨M + (i : ℕ), hbnd⟩
+          = digit (hatSzpow (((M + (i : ℕ) : ℕ) : ℤ) - (R' : ℤ)) z).1.1 0 := by
+        simpa [wordFn, hbnd] using hbig
+      have hsmall' : natExtWord R z.1 i
+          = digit (hatSzpow ((i : ℤ) - (R : ℤ)) z).1.1 0 := by
+        simpa [wordFn, i.isLt] using hsmall
+      simp only [coreWord]
+      calc
+        natExtWord R' z.1 ⟨M + (i : ℕ), _⟩
+            = digit (hatSzpow (((M + (i : ℕ) : ℕ) : ℤ) - (R' : ℤ)) z).1.1 0 := hbig'
+        _ = digit (hatSzpow ((i : ℤ) - (R : ℤ)) z).1.1 0 := by
+          have hoff : (((M + (i : ℕ) : ℕ) : ℤ) - (R' : ℤ))
+              = (i : ℤ) - (R : ℤ) := by
+            dsimp [R']
+            omega
+          rw [hoff]
+        _ = natExtWord R z.1 i := hsmall'.symm
+    have hdense : (digitTruncWindow R M (stationaryWindow R' z)).1
+        = denseDigits (natExtWord R' z.1) := by
+      funext i
+      simp only [digitTruncWindow, denseDigits]
+      rw [wA_stationaryWindow R' z (by dsimp [R']; omega) (by dsimp [R']; omega)]
+      have hbig := StationaryIdentity31.wordFn_natExtWord hz R' (M + (i : ℕ)) (by
+        have := i.isLt
+        dsimp [R']
+        omega)
+      have hbnd : M + (i : ℕ) < 2 * R' := by have := i.isLt; dsimp [R']; omega
+      have hbig' : natExtWord R' z.1 ⟨M + (i : ℕ), hbnd⟩
+          = digit (hatSzpow (((M + (i : ℕ) : ℕ) : ℤ) - (R' : ℤ)) z).1.1 0 := by
+        simpa [wordFn, hbnd] using hbig
+      calc
+        digit (hatSzpow ((i : ℤ) - (R : ℤ)) z).1.1 0
+            = digit (hatSzpow (((M + (i : ℕ) : ℕ) : ℤ) - (R' : ℤ)) z).1.1 0 := by
+              have hoff : ((i : ℤ) - (R : ℤ))
+                  = (((M + (i : ℕ) : ℕ) : ℤ) - (R' : ℤ)) := by
+                dsimp [R']
+                omega
+              rw [hoff]
+        _ = natExtWord R' z.1 ⟨M + (i : ℕ), _⟩ := hbig'.symm
+    have htrunc : (digitTruncWindow R M (stationaryWindow R' z)).2.1
+        = truncReals (natExtWord R' z.1) := by
+      funext i
+      simp only [digitTruncWindow, truncReals]
+      apply cfFinite_congr
+      intro k hk
+      rw [dif_pos hk, wA_stationaryWindow R' z (by dsimp [R']; omega)
+        (by have := i.isLt; dsimp [R']; omega)]
+      have hbig := StationaryIdentity31.wordFn_natExtWord hz R'
+        (M + (i : ℕ) + k) (by have := i.isLt; dsimp [R']; omega)
+      have hbnd : M + (i : ℕ) + k < 2 * R' := by have := i.isLt; dsimp [R']; omega
+      have hbig' : natExtWord R' z.1 ⟨M + (i : ℕ) + k, hbnd⟩
+          = digit (hatSzpow (((M + (i : ℕ) + k : ℕ) : ℤ) - (R' : ℤ)) z).1.1 0 := by
+        simpa [wordFn, hbnd] using hbig
+      calc
+        digit (hatSzpow ((i : ℤ) - (R : ℤ) + (k : ℤ)) z).1.1 0
+            = digit (hatSzpow (((M + (i : ℕ) + k : ℕ) : ℤ) - (R' : ℤ)) z).1.1 0 := by
+              have hoff : ((i : ℤ) - (R : ℤ) + (k : ℤ))
+                  = (((M + (i : ℕ) + k : ℕ) : ℤ) - (R' : ℤ)) := by
+                dsimp [R']
+                omega
+              rw [hoff]
+        _ = natExtWord R' z.1 ⟨M + (i : ℕ) + k, _⟩ := hbig'.symm
+    have hchar : ∀ l : Fin G.len,
+        torusChar (∑ t : Fin (2 * R + 2), (G.c l t : ℝ) *
+            (digitTruncWindow R M (stationaryWindow R' z)).2.2 t)
+          = torusChar ((B l (natExtWord R' z.1) : ℝ) *
+              wTh (stationaryWindow R' z) (-1)
+            + (A l (natExtWord R' z.1) : ℝ) * wTh (stationaryWindow R' z) 0) := by
+      intro l
+      have hc := StationaryIdentity31.stationary_character_reduction R (G.c l) hz
+      simp only [A, B, hcore]
+      rw [wTh_stationaryWindow R' z (by dsimp [R']; omega) (by omega),
+        wTh_stationaryWindow R' z (by dsimp [R']; omega) (by omega)]
+      calc
+        torusChar (∑ t : Fin (2 * R + 2), (G.c l t : ℝ) *
+            (digitTruncWindow R M (stationaryWindow R' z)).2.2 t)
+            = torusChar (∑ t : Fin (2 * R + 2), (G.c l t : ℝ) *
+                (hatSzpow ((t : ℤ) - (R : ℤ) - 1) z).2.2) := by
+              congr 2
+              funext t
+              simp only [digitTruncWindow]
+              rw [wTh_stationaryWindow R' z (by have := t.isLt; dsimp [R']; omega)
+                (by have := t.isLt; dsimp [R']; omega)]
+        _ = _ := hc
+        _ = _ := by simp [hatSzpow]
+    have hmode : ∀ l : Fin G.len,
+        B l (natExtWord R' z.1) ∈ Finset.Icc (-(K' : ℤ)) (K' : ℤ) ∧
+        A l (natExtWord R' z.1) ∈ Finset.Icc (-(K' : ℤ)) (K' : ℤ) := by
+      intro l
+      have hp : (l, natExtWord R' z.1) ∈ pairs := by simp [pairs, hw]
+      have hle : (B l (natExtWord R' z.1)).natAbs +
+          (A l (natExtWord R' z.1)).natAbs ≤ K' :=
+        Finset.le_sup (f := fun p => (B p.1 p.2).natAbs + (A p.1 p.2).natAbs) hp
+      have hBabs : |B l (natExtWord R' z.1)| ≤ (K' : ℤ) := by
+        rw [Int.abs_eq_natAbs]
+        exact_mod_cast (le_trans (Nat.le_add_right _ _) hle)
+      have hAabs : |A l (natExtWord R' z.1)| ≤ (K' : ℤ) := by
+        rw [Int.abs_eq_natAbs]
+        exact_mod_cast (le_trans (Nat.le_add_left _ _) hle)
+      exact ⟨Finset.mem_Icc.mpr (abs_le.mp hBabs), Finset.mem_Icc.mpr (abs_le.mp hAabs)⟩
+    unfold DenseElt.eval WindowSymbol.evalWindow
+    simp only [P, hw, if_true, hword]
+    rw [hdense, htrunc]
+    simp only [amp]
+    simp_rw [hchar]
+    symm
+    simp_rw [Finset.sum_mul]
+    calc
+      (∑ r ∈ Finset.Icc (-(K' : ℤ)) (K' : ℤ),
+          ∑ s ∈ Finset.Icc (-(K' : ℤ)) (K' : ℤ),
+            ∑ l : Fin G.len, (if r = B l (natExtWord R' z.1) ∧
+                s = A l (natExtWord R' z.1) then amp l (natExtWord R' z.1) else 0) *
+              torusChar ((r : ℝ) * wTh (stationaryWindow R' z) (-1) +
+                (s : ℝ) * wTh (stationaryWindow R' z) 0))
+          = ∑ l : Fin G.len, ∑ r ∈ Finset.Icc (-(K' : ℤ)) (K' : ℤ),
+              ∑ s ∈ Finset.Icc (-(K' : ℤ)) (K' : ℤ),
+                (if r = B l (natExtWord R' z.1) ∧ s = A l (natExtWord R' z.1)
+                  then amp l (natExtWord R' z.1) else 0) *
+                torusChar ((r : ℝ) * wTh (stationaryWindow R' z) (-1) +
+                  (s : ℝ) * wTh (stationaryWindow R' z) 0) := by
+            calc
+              _ = ∑ r ∈ Finset.Icc (-(K' : ℤ)) (K' : ℤ), ∑ l : Fin G.len,
+                    ∑ s ∈ Finset.Icc (-(K' : ℤ)) (K' : ℤ),
+                      (if r = B l (natExtWord R' z.1) ∧ s = A l (natExtWord R' z.1)
+                        then amp l (natExtWord R' z.1) else 0) *
+                      torusChar ((r : ℝ) * wTh (stationaryWindow R' z) (-1) +
+                        (s : ℝ) * wTh (stationaryWindow R' z) 0) := by
+                          refine Finset.sum_congr rfl fun r _ => ?_
+                          rw [Finset.sum_comm]
+              _ = _ := by rw [Finset.sum_comm]
+      _ = ∑ l : Fin G.len, amp l (natExtWord R' z.1) *
+            torusChar ((B l (natExtWord R' z.1) : ℝ) * wTh (stationaryWindow R' z) (-1) +
+              (A l (natExtWord R' z.1) : ℝ) * wTh (stationaryWindow R' z) 0) := by
+        refine Finset.sum_congr rfl fun l _ => ?_
+        rw [Finset.sum_eq_single (B l (natExtWord R' z.1))]
+        · rw [Finset.sum_eq_single (A l (natExtWord R' z.1))]
+          · simp
+          · intro s _ hs
+            rw [if_neg (by rintro ⟨_, hsl⟩; exact hs hsl)]
+            simp
+          · intro h
+            exact (h (hmode l).2).elim
+        · intro r _ hr
+          refine Finset.sum_eq_zero fun s _ => ?_
+          rw [if_neg (by rintro ⟨hrl, _⟩; exact hr hrl)]
+          simp
+        · intro h
+          exact (h (hmode l).1).elim
+      _ = _ := rfl
+  · rw [Set.indicator_of_notMem (fun h => hw (hmem.mp h))]
+    unfold WindowSymbol.evalWindow
+    simp [P, hword, hw]
 
 /-! ### Measurability on the window space
 
@@ -1647,19 +1997,19 @@ theorem display_55_monomial_approximation (R : ℕ) :
       (∀ w : WindowSpace (R + M), (P.evalWindow w).im = 0) ∧
       eLpNorm
           (fun w : WindowSpace (R + M) =>
-            ((Bwindow R (windowProj (Nat.le_add_right R M) w) : ℂ) - P.evalWindow w))
+            ((BwindowRep R (windowProj (Nat.le_add_right R M) w) : ℂ) - P.evalWindow w))
           2 (windowLaw (R + M))
         < ENNReal.ofReal ε := by
   intro ε hε
-  obtain ⟨CB, _hCB, hBmeas, _hBcont⟩ := Bwindow_bounded_and_ae_continuous R
+  have hBmeas : Measurable (BwindowRep R) := measurable_BwindowRep R
   obtain ⟨G, hG⟩ := density_bridge R (ε / 4) (by linarith)
-  obtain ⟨M, hM⟩ := digit_truncation R G (ε / 4) (by linarith)
+  obtain ⟨M, hMpos, hM⟩ := digit_truncation R G (ε / 4) (by linarith)
   obtain ⟨K, hK⟩ := event_truncation R M G (ε / 4) (by linarith)
-  obtain ⟨K', P, hP⟩ := identity_31_monomial_form R M K G
+  obtain ⟨K', P, hP⟩ := identity_31_monomial_form R M K G hMpos
   refine ⟨M, K', (symRe P), fun w => evalWindow_symRe_im P w, ?_⟩
   set ν : Measure (WindowSpace (R + M)) := windowLaw (R + M) with hν
   set π := windowProj (Nat.le_add_right R M) with hπ
-  set F0 : WindowSpace (R + M) → ℂ := fun w => ((Bwindow R (π w) : ℂ)) with hF0
+  set F0 : WindowSpace (R + M) → ℂ := fun w => ((BwindowRep R (π w) : ℂ)) with hF0
   set F1 : WindowSpace (R + M) → ℂ := fun w => G.eval (π w) with hF1
   set F2 : WindowSpace (R + M) → ℂ := fun w => G.eval (digitTruncWindow R M w) with hF2
   set F3 : WindowSpace (R + M) → ℂ :=
@@ -1678,10 +2028,12 @@ theorem display_55_monomial_approximation (R : ℕ) :
     rw [evalWindow_symRe]
     exact norm_sub_re_le _ _
   -- the chain `B^{(R)} → G → G_M → G_M 1_E → P`
-  have hsplit : (fun w => F0 w - P.evalWindow w)
-      = fun w => ((F0 w - F1 w) + (F1 w - F2 w)) + (F2 w - F3 w) := by
-    funext w
-    rw [← hP w]
+  have hPν : ∀ᵐ w ∂ν, F3 w = P.evalWindow w := by
+    simpa only [hν, hF3] using hP
+  have hsplit : (fun w => F0 w - P.evalWindow w) =ᵐ[ν]
+      fun w => ((F0 w - F1 w) + (F1 w - F2 w)) + (F2 w - F3 w) := by
+    filter_upwards [hPν] with w hw
+    rw [← hw]
     ring
   have htri1 : eLpNorm (fun w => ((F0 w - F1 w) + (F1 w - F2 w)) + (F2 w - F3 w)) 2 ν
       ≤ eLpNorm (fun w => (F0 w - F1 w) + (F1 w - F2 w)) 2 ν
@@ -1694,16 +2046,16 @@ theorem display_55_monomial_approximation (R : ℕ) :
       (hmF1.sub hmF2).aestronglyMeasurable (by norm_num)
   -- the first error is the density-bridge error, transported by `π_{R+M,R}`
   have hlift : eLpNorm (fun w => F0 w - F1 w) 2 ν
-      = eLpNorm (fun w : WindowSpace R => ((Bwindow R w : ℂ)) - G.eval w) 2 (windowLaw R) :=
+      = eLpNorm (fun w : WindowSpace R => ((BwindowRep R w : ℂ)) - G.eval w) 2 (windowLaw R) :=
     eLpNorm_comp_windowProj (M := M)
-      (fun w => ((Bwindow R w : ℂ)) - G.eval w)
+      (fun w => ((BwindowRep R w : ℂ)) - G.eval w)
       (Complex.measurable_ofReal.comp hBmeas |>.sub (measurable_denseElt G))
   have h1 : eLpNorm (fun w => F0 w - F1 w) 2 ν < ENNReal.ofReal (ε / 4) := by
     rw [hlift]; exact hG
   calc eLpNorm (fun w => F0 w - (symRe P).evalWindow w) 2 ν
       ≤ eLpNorm (fun w => F0 w - P.evalWindow w) 2 ν := hre
-    _ = eLpNorm (fun w => ((F0 w - F1 w) + (F1 w - F2 w)) + (F2 w - F3 w)) 2 ν := by
-        rw [hsplit]
+    _ = eLpNorm (fun w => ((F0 w - F1 w) + (F1 w - F2 w)) + (F2 w - F3 w)) 2 ν :=
+        eLpNorm_congr_ae hsplit
     _ ≤ (eLpNorm (fun w => F0 w - F1 w) 2 ν + eLpNorm (fun w => F1 w - F2 w) 2 ν)
           + eLpNorm (fun w => F2 w - F3 w) 2 ν := le_trans htri1 (by gcongr)
     _ ≤ (ENNReal.ofReal (ε / 4) + ENNReal.ofReal (ε / 4)) + ENNReal.ofReal (ε / 4) := by

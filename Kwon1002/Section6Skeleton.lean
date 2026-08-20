@@ -692,6 +692,13 @@ def Bwindow (R : ℕ) (w : WindowSpace R) : ℝ :=
   Phi (wX w 0) (carryU (wX w 0) (wTh w (-1)) (wTh w 0) (windowCarry R w R))
     - (wA w 0 : ℝ) * W (wTh w 0)
 
+/-- `BwindowRep` is a concrete bounded Borel representative compatible with
+the v9 manuscript's existential choice (lines 1417-1425): the clamp of the
+raw `Bwindow` to `[-45/8, 45/8]`, used in downstream
+`display_55_monomial_approximation` and `actual_L2_transfer`. -/
+def BwindowRep (R : ℕ) (w : WindowSpace R) : ℝ :=
+  max (-(45 / 8 : ℝ)) (min (45 / 8 : ℝ) (Bwindow R w))
+
 /-- The digit reader on an actual window: `wA` at offset `t` reads
 `digit α (j + t)`, whenever the offset is in range and `j ≥ R` keeps the
 truncated subtraction honest. -/
@@ -787,9 +794,9 @@ type does not couple it to the real block, so the term
 `a_{j+1} W(θ_j)` grows without bound along windows whose central digit is
 large while `W(θ_j) = 1/8` stays put; nothing in `Φ` can compensate,
 because the real coordinate is pinned at `1` where `Φ` is bounded.  This
-refutes the boundedness half of `Bwindow_bounded_and_ae_continuous`
-below, for every `R`; see the docstring there for the corrected
-reading. -/
+refutes global boundedness of the raw `Bwindow` for every `R`; the
+downstream argument instead uses the bounded-representative contract
+`BwindowRep_ae_continuous` below. -/
 theorem bwindow_unbounded (R : ℕ) :
     ¬ ∃ C : ℝ, ∀ w : WindowSpace R, |Bwindow R w| ≤ C := by
   rintro ⟨C, hC⟩
@@ -836,40 +843,15 @@ theorem bwindow_unbounded (R : ℕ) :
     linarith
   linarith
 
-/-- `B^{(R)}` is bounded and `μ_R`-almost-everywhere continuous (v5 lines
-1302-1305).
+/-- `display_55_monomial_approximation` now uses `BwindowRep`, so this file
+only requires the a.e.-continuity half from the bounded representative.
 
-**FALSE AS STATED — machine-refuted.**  The boundedness half
-`∀ w, |Bwindow R w| ≤ C` fails for every `C` and every `R`:
-`bwindow_unbounded` above exhibits windows with central digit `m → ∞`,
-real block `1` and torus block `1/2`, along which
-`Bwindow = Φ(1, u) - m/8 → -∞`.  The manuscript is *not* refuted: v5
-asserts only that *some* bounded Borel function on `X_R` restricts to
-`B_j^{(R)}` on the orbit-consistent support, whereas this file's
-`Bwindow` wrote out the naive formula on all of `WindowSpace R`, where
-the type does not couple the digit block to the real block (compare the
-docstrings of `Prop64.digit_truncation` and `ae_orbitConsistent`).  What
-is true of this `Bwindow`:
-
-* it is measurable (the ingredients are `measurable_wX`,
-  `measurable_wTh`, `measurable_wA`, `measurable_windowCarry` in
-  `WindowLaws.lean`);
-* it is bounded `μ_R`-almost everywhere (on orbit-consistent windows the
-  digit is the Gauss digit of the real coordinate, and the
-  `BremainderTrunc` bound `Prop64.abs_BremainderTrunc_le` transfers);
-* its discontinuity set is `μ_R`-null.
-
-Repair options: clamp `Bwindow` into `[-C, C]` (changing the statements
-of `display_55_monomial_approximation` and `actual_L2_transfer`, which
-consume `Bwindow` verbatim), or weaken this statement and
-`lemma_6_3_full_state_transfer`'s hypothesis to an a.e. bound.  Both
-ripple into Lemma 6.3-gated statements, so the choice is left open;
-until then this statement stays sorried and **must not be consumed for
-its boundedness half**. -/
-theorem Bwindow_bounded_and_ae_continuous (R : ℕ) :
-    ∃ C : ℝ, (∀ w, |Bwindow R w| ≤ C) ∧
-      Measurable (Bwindow R) ∧
-      windowLaw R {w | ¬ ContinuousAt (Bwindow R) w} = 0 := by
+**Corrected bounded-representative contract (v9 lines 1417-1425).**
+`BwindowRep` is bounded globally by construction, with the bound and
+measurability proved downstream in `Prop64`.  What remains here is continuity:
+`windowLaw R`-a.e. continuous at `BwindowRep`. -/
+theorem BwindowRep_ae_continuous (R : ℕ) :
+    windowLaw R {w | ¬ ContinuousAt (BwindowRep R) w} = 0 := by
   sorry
 
 /-! ### The corrected display (55) -/
@@ -892,7 +874,27 @@ actual window: `U_j(α) = U(W^{(R')}_{n,j})`. -/
 theorem WindowSymbol.evalWindow_actualWindow {R' K : ℕ} (U : WindowSymbol R' K)
     (α : ℝ) (n j : ℕ) (hj : R' + 1 ≤ j) :
     U.evalWindow (actualWindow R' α n j) = U.at α n j := by
-  sorry
+  have hword : windowWordOf R' (actualWindow R' α n j) = windowWord R' α j := by
+    funext i
+    change wA (actualWindow R' α n j) ((i : ℤ) - (R' : ℤ)) = digit α (j + (i : ℕ) - R')
+    rw [wA_actualWindow (R := R') (α := α) (n := n) (j := j) (t := (i : ℤ) - (R' : ℤ))
+      (by omega) (by omega) (by omega)]
+    have hnat : ((j : ℤ) + ((i : ℤ) - (R' : ℤ))).toNat = j + (i : ℕ) - R' := by
+      omega
+    simpa [hnat]
+  have hT0 : wTh (actualWindow R' α n j) 0 = theta α n j := by
+    rw [wTh_actualWindow R' α n j hj (by omega) (by omega)]
+    have hnat : ((j : ℤ) + 0).toNat = j := by omega
+    simpa [hnat]
+  have hTm : wTh (actualWindow R' α n j) (-1) = thetaPred α n j := by
+    rw [wTh_actualWindow R' α n j hj (by omega) (by omega)]
+    have hpred : thetaPred α n j = theta α n (j - 1) := by
+      obtain ⟨m, hm⟩ : ∃ m, j = m + 1 := ⟨j - 1, by omega⟩
+      rw [hm]
+      rfl
+    rw [show ((j : ℤ) + (-1)).toNat = j - 1 by omega, ← hpred]
+  unfold WindowSymbol.evalWindow WindowSymbol.at
+  simp [hword, hTm, hT0]
 
 /-- **Display (55), corrected** (v5 lines 1307-1408, and the revision
 note `manuscript/proposition_6_4_revision_note.pdf`).
@@ -912,13 +914,15 @@ pushforward identity; uniform continuity of the finitely many
 continuous factors against the continued-fraction contraction
 `O_R(F_M^{-2})`; and `μ_{R+M}(E_{M,K}^c) = O_R(M/K)` from Lemma 3.1(ii)),
 after which (31) turns the surviving finite word/character data into
-monomials with central Fourier modes `(r,s) = (B_{ℓ,w}, A_{ℓ,w})`. -/
+monomials with central Fourier modes `(r,s) = (B_{ℓ,w}, A_{ℓ,w})`
+on the orbit-consistent stationary support, hence `windowLaw`-almost
+everywhere. -/
 theorem display_55_monomial_approximation (R : ℕ) :
     ∀ ε > 0, ∃ M K : ℕ, ∃ P : WindowSymbol (R + M) K,
       (∀ w : WindowSpace (R + M), (P.evalWindow w).im = 0) ∧
       eLpNorm
           (fun w : WindowSpace (R + M) =>
-            ((Bwindow R (windowProj (Nat.le_add_right R M) w) : ℂ) - P.evalWindow w))
+            ((BwindowRep R (windowProj (Nat.le_add_right R M) w) : ℂ) - P.evalWindow w))
           2 (windowLaw (R + M))
         < ENNReal.ofReal ε := by
   sorry
@@ -928,9 +932,10 @@ theorem display_55_monomial_approximation (R : ℕ) :
 bounded, `μ_{R+M}`-almost-everywhere continuous function
 `|B^{(R)} ∘ π_{R+M,R} - P_{R,M}|²`. -/
 theorem actual_L2_transfer (R M K : ℕ) (P : WindowSymbol (R + M) K) (δRM : ℝ)
+    (hδnonneg : 0 ≤ δRM)
     (hδ : eLpNorm
         (fun w : WindowSpace (R + M) =>
-          ((Bwindow R (windowProj (Nat.le_add_right R M) w) : ℂ) - P.evalWindow w))
+          ((BwindowRep R (windowProj (Nat.le_add_right R M) w) : ℂ) - P.evalWindow w))
         2 (windowLaw (R + M)) = ENNReal.ofReal δRM) :
     ∀ ε > 0, ∀ᶠ n : ℕ in atTop, ∀ j ∈ bulkJ n,
       |(∫ α in Ioo (0 : ℝ) 1,
