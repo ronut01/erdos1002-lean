@@ -86,6 +86,7 @@ import Kwon1002.Prop41Unconditional
 import Kwon1002.P42Super
 import Kwon1002.Prop42Unconditional
 import Kwon1002.DigitLocalLaw
+import Kwon1002.Fejer
 import Kwon1002.JacksonGate
 import Kwon1002.IntervalClass
 import Kwon1002.OneLevelLaw
