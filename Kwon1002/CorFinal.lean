@@ -446,9 +446,19 @@ lemma sum_offdiagAbs_eq (c ε : ℝ) (n : ℕ) :
 *sharpened* bad set: outside a set of pairs of cardinality
 `κ·L²/(1+log(2+L))³` the absolute covariances sum to at most `ε/2`.
 
-**Obstruction.**  Proposition 4.1 is only stated in this development
-(`Kwon1002.prop_4_1_marked_factorization`, display (30), and
-`Kwon1002.Prop41.prop_4_1_error_shape`).  The manuscript's route: cut each
+**Obstruction, restated.**  Proposition 4.1 is **no longer** merely stated:
+`Kwon1002.prop_4_1_marked_factorization` and
+`Kwon1002.Prop41.prop_4_1_error_shape` are both proved outright in
+`Kwon1002/Prop41Unconditional.lean` (`#print axioms` clean).  What blocks a
+discharge *here* is (i) the import direction — `Prop41Unconditional` and
+`CorFinal` are incomparable in the module DAG, so this residual can only be
+discharged in a module importing both, with a `rfl` guard against this name —
+and (ii) the one estimate that is still open, the `L¹` band-mass hypothesis of
+`CovarianceChain.truncatedMark_sub_lipTrunc_L1_of_band` (finding (F7)), which
+the hard truncation forces in place of the manuscript's Jackson step.  The
+third item that used to be on this list, the stopping-time factor of
+`CovarianceChain` §1, is now proved: `Kwon1002/StoppingWindow.lean` gives
+`τ_n = m_n + O(H)` off a set of measure `O(e^{−c√L})`.  The manuscript's route: cut each
 digit at `A_L = L^D` with `D > 2`, Jackson-approximate the Lipschitz
 truncation, and apply Proposition 4.1 with `A` so large that
 `L²·O_A(L^{-A}) = o(1)`.

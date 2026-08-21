@@ -98,8 +98,11 @@ and the second is a function of `T^{j}α` only through `a_{j+1}`, the argument
 from the definitions rather than from a docstring, the (F3) finding of
 `Kwon1002/OffDiagFinal.lean`.  Two-block mixing enters §4 only as the
 `v = 0` branch of Proposition 4.1 (`ErrorShape.zero_mode_factorization`,
-proved), and the branch that is still open is `v ≠ 0`
-(`ErrorShape.nonzero_mode_small`).
+proved).  **Update.**  The `v ≠ 0` branch, recorded here as the open one, is
+no longer open: `NonzeroMode.nonzero_mode_small_unconditional` proves it from
+display (20), and with it `Kwon1002.Prop41.prop_4_1_error_shape` and the
+canonical `Kwon1002.prop_4_1_marked_factorization` are proved outright
+(`Kwon1002/Prop41Unconditional.lean`, `#print axioms` clean).
 
 **(F6)  The residual really is the last §5 step, and it is a §4 statement.**
 With §1 in hand, `farWindow_sum_small` for a pair `(j,k)` is display (27) of
@@ -253,10 +256,13 @@ that statement bounds each far-pair covariance individually by `δ/L²`, and
 
 **What a discharge must supply**, beyond what is proved in this file:
 
-* `Kwon1002.Prop41.prop_4_1_error_shape` at `r = 2`, and inside it the
-  `vₛ ≠ 0` branch `Kwon1002.ErrorShape.nonzero_mode_small`, still the one
-  open statement of §4 (`Kwon1002/Prop41Final.lean` reduces (30) to exactly
-  it);
+* `Kwon1002.Prop41.prop_4_1_error_shape` at `r = 2`.  **This is now proved**
+  (`Kwon1002/Prop41Unconditional.lean`; the `vₛ ≠ 0` branch is
+  `NonzeroMode.nonzero_mode_small_unconditional`, from the proved display
+  (20)).  It is not, however, *reachable from this file*: `Prop41Unconditional`
+  does not import `CovarianceChain` and `CovarianceChain` does not import it,
+  so a discharge has to be written in a module importing both, with the usual
+  `rfl` guard against the name declared here;
 * the digit cut at `A_L = L^D` (`D > 2`) and, since
   `Kwon1002.truncatedMark` is the *hard* truncation, an `L¹` approximation of
   `z ↦ z·1{z ≤ εL}` in place of the manuscript's Jackson step, the symbol
@@ -270,7 +276,20 @@ that statement bounds each far-pair covariance individually by `δ/L²`, and
   finding (F7) shows is *not* derivable from the display-(15) tails;
 * the removal of the stopping-time factor isolated in §1, which display (27)
   knows nothing about and which the manuscript never meets, its (41) being
-  stated over the deterministic `J_n` of (19). -/
+  stated over the deterministic `J_n` of (19).  **This is now available**:
+  `Kwon1002/StoppingWindow.lean` proves `m_n − A_n < τ_n ≤ m_n + A_n` with
+  `A_n = H + O(1)` off a set of measure `O(e^{−c√L})`
+  (`StopWin.stopBad_measure_le`), hence
+  `1{j ∈ bulkIndices c α n} = 1{j ∈ bulkJ n}` for every `j` outside the
+  deterministic `O(H)` window `StopWin.diffWindow c n`
+  (`StopWin.mem_bulkIndices_iff`).  That is exactly the §7 Lemma 7.1 this item
+  asks for; `Kwon1002.bulk_window_bridge_oneLevel` is the one-level statement
+  it already discharges.
+
+So of the three items only the second — the `L¹` band-mass estimate isolated
+as the hypothesis of `truncatedMark_sub_lipTrunc_L1_of_band`, finding (F7) —
+remains genuinely open; the other two are proved and await wiring in a module
+that can see both sides. -/
 theorem farWindow_sum_small (c : ℝ) :
     ∃ κ : ℝ, 0 < κ ∧ ∀ ε : ℝ, 0 < ε → ε < 1 → ∀ δ : ℝ, 0 < δ →
       ∃ N : ℕ, ∀ n : ℕ, N ≤ n →
