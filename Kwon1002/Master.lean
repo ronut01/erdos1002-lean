@@ -1,5 +1,6 @@
 import Kwon1002.PoissonLimit
 import Kwon1002.Section6Skeleton
+import Kwon1002.CorFinal
 
 /-!
 # §7: stopping, centering, and the master assembly
@@ -13,10 +14,18 @@ hypotheses.
 `erdos1002Conclusion_of (c : ℝ)` takes these and nothing else:
 
 1. `PrincipalCauchyLaw c` — Corollary 5.3, display (43).  Definitionally the
-   statement of `Kwon1002.principal_cauchy_law` (guard at the foot of this
-   file).  Still sorried in `Kwon1002/PoissonLimit.lean`; `Kwon1002/Finale.lean`
-   reduces it to two inputs, `Finale.bulkTerm_covariance_bound` and
-   `Finale.largeJump_weak_limit_compoundPoisson`.
+   statement of `Kwon1002.principal_cauchy_law` (guards at the foot of this
+   file, against both that name and `CorFinal.principal_cauchy_law_F`).
+
+   The canonical name `Kwon1002.principal_cauchy_law` is a bare `sorry` in
+   `Kwon1002/PoissonLimit.lean`, and `PoissonLimit` sits *below* every module
+   able to prove it (`CauchyLaw`, `Assembly5`, `CompoundCauchy`, `Finale`,
+   `CorFinal` all import it), so that name can never shed `sorryAx` by
+   mathematics alone.  This module therefore discharges hypothesis 1 from
+   `Kwon1002.CorFinal.principal_cauchy_law_F`, the same `Prop` proved in the
+   module that can actually reduce it; `CorFinal` reduces it to exactly two
+   residuals, `CorFinal.largeSum_charFun_limit` and
+   `CorFinal.bulk_offdiagonal_abs_far_sharp`.
 2. `Prop64Statement` — Proposition 6.4, the bounded-remainder weak law.
    Definitionally the statement of
    `Kwon1002.prop_6_4_bounded_remainder_weak_law` (guard at the foot of this
@@ -655,7 +664,9 @@ lemma vol_nonIrrational_zero : volume {x : ℝ | ¬ Irrational x} = 0 := by
 distribution functions of `S_N(α)/log N` under Lebesgue measure on `(0,1)` to
 the Cauchy distribution function of scale `1/(2π)` — follows from
 
-1. `PrincipalCauchyLaw c`, Corollary 5.3 (`Kwon1002.principal_cauchy_law`);
+1. `PrincipalCauchyLaw c`, Corollary 5.3 (`Kwon1002.principal_cauchy_law`,
+   discharged in `erdos1002Conclusion_of_section7` from the definitionally
+   equal `Kwon1002.CorFinal.principal_cauchy_law_F`);
 2. `Prop64Statement`, Proposition 6.4
    (`Kwon1002.prop_6_4_bounded_remainder_weak_law`);
 3. `Section7EndTerms c`, §7's Lemma 7.1 together with the §7/§4 index-set
@@ -726,13 +737,21 @@ master assembly leaves `Section7EndTerms c` as the *only* statement between the
 development and Kwon's Theorem 1.1 that is not already a named target
 elsewhere in `Kwon1002/`.
 
-This declaration is sorry-tainted, through `Kwon1002.principal_cauchy_law` and
+This declaration is sorry-tainted, through
+`Kwon1002.CorFinal.principal_cauchy_law_F` and
 `Kwon1002.prop_6_4_bounded_remainder_weak_law` and through nothing else; it is
 recorded because it is the shape of the endgame, not because it proves
-anything. -/
+anything.
+
+Hypothesis 1 is fed from `CorFinal`, not from the canonical
+`Kwon1002.principal_cauchy_law`: the two are the same `Prop` (the guard below
+checks it by `rfl`), but the canonical name is a bare `sorry` declared *below*
+every module that could prove it, whereas the `CorFinal` form carries only the
+two §5 residuals of that file.  Discharging those two residuals therefore
+discharges hypothesis 1 here, which is not true of the canonical name. -/
 theorem erdos1002Conclusion_of_section7 (c : ℝ) (hstop : Section7EndTerms c) :
     Erdos1002Conclusion :=
-  erdos1002Conclusion_of c (principal_cauchy_law c)
+  erdos1002Conclusion_of c (CorFinal.principal_cauchy_law_F c)
     prop_6_4_bounded_remainder_weak_law hstop
 
 /-- The official (existential) form Erdős asked for, from the same three
@@ -753,6 +772,11 @@ end Kwon1002
 be the *same statement* as the canonical one in the tree.  They mention sorried
 declarations, so they are anonymous and nothing proved above depends on them. -/
 example : ∀ c : ℝ, Kwon1002.Master.PrincipalCauchyLaw c := @Kwon1002.principal_cauchy_law
+
+example : ∀ c : ℝ, Kwon1002.Master.PrincipalCauchyLaw c :=
+  @Kwon1002.CorFinal.principal_cauchy_law_F
+
+example : @Kwon1002.principal_cauchy_law = @Kwon1002.CorFinal.principal_cauchy_law_F := rfl
 
 example : Kwon1002.Master.Prop64Statement :=
   Kwon1002.prop_6_4_bounded_remainder_weak_law
