@@ -54,16 +54,23 @@ hypotheses.
    `Kwon1002/DigitTail.lean` read at one level; the Gauss-to-Lebesgue transport
    and the level shift are inside that proof already.
 
-   **State of the second half.**  This is now the whole of `Section7EndTerms`:
-   Part I names it `Section7Bridge c` and proves
+   **The second half is PROVED**, in `Kwon1002/Section7Bridge.lean`, which sits
+   above this module.  Part I here names it `Section7Bridge c` and proves
    `Section7EndTerms c` from it (`section7EndTerms_of_bridge`), so
-   `erdos1002Conclusion_of_bridge` takes the bridge in place of hypothesis 3.
-   It needs `τ_n = L/λ + O_ℙ(H)`,
-   i.e. display (20)'s large deviation applied at the two deterministic
-   thresholds `q_j ≤ n/(2(E*+1))` and `q_j > n` that bracket the stopping time.
-   The deterministic side of that bracketing is available
-   (`L2Estimate.stoppingTime_le_log`, the Lamé bound), the probabilistic side
-   is not.
+   `erdos1002Conclusion_of_bridge` takes the bridge in place of hypothesis 3;
+   `Section7.section7Bridge_holds` then discharges it outright and
+   `Section7.section7EndTerms_holds` discharges the whole of hypothesis 3.
+   The content is `τ_n = L/λ + O_ℙ(H)`: display (20)'s large deviation
+   (`LargeDeviation.display20_of_pos`, proved) applied at the two deterministic
+   thresholds `q_j < n/(2E*)` and `q_j > n` that bracket the stopping time,
+   through the height identity `N_j = nβ_{j−1} − E_j` of (2) and (7) and the
+   classical sandwich `1/(2q_j) ≤ β_{j−1} ≤ 1/q_j`.  Only Proposition 2.2's
+   uniform cap `|B_j| ≤ C₀` is then needed on the `O(H)` levels the two index
+   sets disagree about.
+
+   **Consequence.**  After `Kwon1002/Section7Bridge.lean` the master theorem
+   carries only hypotheses 1 and 2:
+   `Section7.erdos1002Conclusion_of_principal_and_prop64`.
 
 The trimming constant `c` is free: the theorem holds for every `c`.
 
