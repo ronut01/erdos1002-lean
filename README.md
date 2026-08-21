@@ -118,8 +118,17 @@ display (56) exists with the absolute bound `D = 9`. Lemma 6.1, the window
 laws, the resonance obstruction (50), and the event-truncation step of
 Proposition 6.4 are proved. The corrected Lemma 6.3 selection and the
 §4 retained-cylinder cut are now unconditional consequences of the proved
-display (20); the remaining open goals of sections 4, 6 and 7 sit
-downstream of the phase bounds and are no longer gated by (16)/(20).
+display (20).
+
+**Section 4 is complete.** Proposition 4.1 (display (27)) and
+Proposition 4.2 (display (34)) are both proved unconditionally and
+axiom-clean, each pinned to the manuscript's own statement by a
+machine-checked identity guard. The last two steps to fall were the
+Lebesgue-conditional stationary-mean replacement, which turns on the
+observation that the Gauss density ratio is Lipschitz and so constant to
+the order of a retained cylinder's diameter, and the super-resonance
+branch of case 3. The remaining open goals of sections 6 and 7 sit
+downstream of these and are no longer gated by (16)/(20).
 
 `wang_substrate/` contains Shouqiao Wang's MIT-licensed infrastructure,
 vendored verbatim at commit `d28713ac8245` with a provenance header added to
