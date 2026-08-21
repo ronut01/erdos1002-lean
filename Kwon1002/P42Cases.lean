@@ -385,10 +385,16 @@ lemma badPairs_mono {R : ℕ} {w w' : Fin (2 * R) → ℕ} {m m' : ℤ × ℤ} {
 /-! ## 4. The remaining two cases: what is actually missing
 
 `MonomialCore.laterMode_phase_bound` and `MonomialCore.earlierMode_phase_bound`
-are consumed unchanged.  Their obstruction is, however, **not** the one
-`MonomialCore.lean`'s docstring records, that docstring predates
-`Display22.lean` and `BVMixing.lean`, and it is not display (33) either.
-Re-auditing every input of Kwon's cases 2 and 3 against the current tree:
+are consumed unchanged *here*.  **Both are now proved**, above this file: the
+authoritative statement of where Proposition 4.2 stands is the module
+docstring of `Kwon1002/Prop42Unconditional.lean`.  Case 2 is
+`P42Later.laterMode_phase_bound''`; case 3 is `P42Unc.earlierMode_phase_bound'`,
+merged from `P42Later.earlierMode_subResonance_bound` (`k < t₀ − 100H`) and
+`P42Super.earlierMode_superResonance_bound'` (`k > t₀ + 100H`).  The audit
+below is the input-by-input ledger of the two cases; it is what identified
+the one input that was missing at the time, display (20), and it is kept for
+that ledger, not as a live obstruction.  Re-auditing every input of Kwon's
+cases 2 and 3 against the tree:
 
 * (31), the window-character reduction, **proved**,
   `CharacterReduction.window_character_reduction`.
@@ -423,26 +429,29 @@ Re-auditing every input of Kwon's cases 2 and 3 against the current tree:
   `δ > 0`, from the self-contained display (16) of
   `LargeDeviation.continuant_large_deviation`.
 
-**Finding (obstruction, corrected).**  Display (20) is the one analytic input
-of cases 2 and 3 that this development does not contain in any form.  A grep
-for a bound of the shape `exp (lyapunov * j ± δ * H)` on `denom` returns
-nothing in `Kwon1002/`, and the 35-module Wang substrate has no continuant
-large-deviation estimate either (`Erdos1002.LevyContinuity` is the
-characteristic-function continuity theorem, unrelated).  Yet (20) is used
+**Finding of that pass (obstruction, since closed).**  Display (20) was then
+the one analytic input of cases 2 and 3 that the development did not contain
+in any form: a grep for a bound of the shape `exp (lyapunov * j ± δ * H)` on
+`denom` returned nothing in `Kwon1002/`, and the 35-module Wang substrate has
+no continuant large-deviation estimate either (`Erdos1002.LevyContinuity` is
+the characteristic-function continuity theorem, unrelated).  Yet (20) is used
 *four times* in the two cases: it supplies the hypotheses `hqt` and `hqk` of
 `Prop42.retained_descendant_exponent` in both the `t₋` branches; it supplies
 the lower bound `q_{t₊} ≥ e^{λt₊−δH}` of the `t₊` branch; and it is what makes
 each "discarded union has mass `O(e^{−cL^{1/2}})`" true, i.e. it is the sole
-source of the first summand of the error bracket of (34).  Removing the other
-gaps therefore does not shorten the path: (20) is load-bearing and has to be
-formalised before either phase bound can be attempted.
+source of the first summand of the error bracket of (34).  That is why it was
+load-bearing, and why closing it was the prerequisite for either phase bound.
 
-`Display20` below records it as a predicate, so the input is
-machine-readable and can be quoted verbatim.  It is a `def`, not a sorried
-theorem: nothing is assumed here.  (The obstruction paragraph above is the
-historical finding of the pass that identified the gap; the gap is now
-closed by the `LD*` modules, and both consuming paths are discharged in
-`Kwon1002/LDMain.lean`.) -/
+**It is closed.**  `LargeDeviation.display20_holds` and
+`LargeDeviation.display20_of_pos` (`Kwon1002/LDMain.lean`) prove (20)
+outright, and every consuming path is now discharged: case 2 and the
+sub-resonance branch of case 3 in `Kwon1002/P42Later.lean`, the
+super-resonance branch of case 3 in `Kwon1002/P42Super.lean`, and the
+assembly in `Kwon1002/Prop42Unconditional.lean`.
+
+`Display20` below records the predicate, so the input is machine-readable and
+can be quoted verbatim.  It is a `def`, not a sorried theorem: nothing is
+assumed here. -/
 
 /-- **Display (20)** of the manuscript, as a predicate: outside a set of
 Lebesgue measure `C e^{−c√L}`, every bulk continuant obeys the two-sided Lévy

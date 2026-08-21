@@ -1,4 +1,4 @@
-import Kwon1002.P42Later
+import Kwon1002.P42Super
 
 /-!
 # Proposition 4.2, assembled above the modules that discharge its cases
@@ -22,12 +22,22 @@ assembly with the proved inputs.
   canonical `Kwon1002.prop_4_2_two_block_factorization` of
   `Kwon1002/Section4.lean`.
 
+* **Case 3 is consumed, proved.**  Its `k < t₀ − 100H` branch is
+  `P42Later.earlierMode_subResonance_bound` and its `k > t₀ + 100H` branch is
+  `P42Super.earlierMode_superResonance_bound'`; `earlierMode_phase_bound'`
+  merges them.
+
 ## Residuals
 
-Exactly one: `earlierMode_superResonance_bound`, the `k > t₀ + 100H` branch
-of case 3.  Case 1 is proved in `Kwon1002/PhaseBounds.lean`, case 2 and the
-`k < t₀ − 100H` branch of case 3 in `Kwon1002/P42Later.lean`, and everything
-else on the route from the cases to display (34) is proved outright.
+**None.**  `prop_4_2_two_block_factorization''` is proved outright, and is
+`rfl`-checked below to be the canonical
+`Kwon1002.prop_4_2_two_block_factorization` of `Kwon1002/Section4.lean`.
+Case 1 is proved in `Kwon1002/PhaseBounds.lean`, case 2 and the
+`k < t₀ − 100H` branch of case 3 in `Kwon1002/P42Later.lean`, the
+`k > t₀ + 100H` branch of case 3 in `Kwon1002/P42Super.lean`, and everything
+else on the route from the cases to display (34) is proved outright.  With
+Proposition 4.1 (`Kwon1002/Prop41Final.lean`) already closed, this completes
+section 4.
 -/
 
 open MeasureTheory Set Filter
@@ -54,22 +64,21 @@ theorem laterMode_phase_bound' (R K : ℕ) (Wu Wv : Finset (Fin (2 * R) → ℕ)
                   + Real.exp (-c * Hscale n) + ρ ^ (c * Hscale n)) :=
   P42Later.laterMode_phase_bound'' R K Wu Wv
 
-/-- **The super-resonance branch of case 3**, "If `k > t₀ + 100H`", the sole
-residual of Proposition 4.2 in this development.
+/-- **The super-resonance branch of case 3**, "If `k > t₀ + 100H`",
+**proved** in `Kwon1002/P42Super.lean`.
 
-The sub-resonance branch `k < t₀ − 100H` is proved
-(`P42Later.earlierMode_subResonance_bound`), and case 3 is assembled from the
-two branches below.  What this branch asks for, and what the tree does not yet
-put together, is the manuscript's extra step: on each retained depth-`t₊`
-cylinder freeze the earlier phase (`NonzeroMode.phase_freeze_on_cylinder`,
-with the margin supplied by `PhaseBounds.ascended_descendant_bound_at_cut`),
-replace the later zero-mode block by its stationary Gauss mean
-(`StationaryReplace.leb_halfOpen_multiblock_mixing_complex`, at a gap of
-`c_mix H` past `t₊`, which `P42Cases.mixingGap_eventually` provides), then
-restore the discarded depth-`t₊` cylinders as in `NonzeroMode`, and only then
-apply display (22) at prefix depth `j + R` with descendant depth `t₋`.  Every
-one of those inputs is proved; it is their assembly on the *pair* geometry of
-`bulkPairs` that is missing. -/
+The sub-resonance branch `k < t₀ − 100H` is `P42Later.earlierMode_subResonance_bound`,
+and case 3 is assembled from the two branches below.  This branch carries out
+the manuscript's extra step: on each retained depth-`t₊` cylinder the earlier
+phase is frozen (`NonzeroMode.phase_freeze_on_cylinder`, at the margin
+supplied by `PhaseBounds.ascended_descendant_bound_at_cut`), the later
+zero-mode block is replaced by its stationary Gauss mean
+(`StationaryReplace.leb_halfOpen_multiblock_mixing`, at a gap of `H` past
+`t₊`, which `P42Cases.mixingGap_ground` provides), the discarded depth-`t₊`
+cylinders are restored, and what is left — the earlier monomial alone — is
+killed by display (22) at prefix depth `j + R` with descendant depth `t₋`
+(`P42Super.oscillatory_single_bound`, the `P42Later` engine at the degenerate
+pair `(j, j)`). -/
 theorem earlierMode_superResonance_bound (R K : ℕ)
     (Wu Wv : Finset (Fin (2 * R) → ℕ)) :
     ∃ C c ρ : ℝ, 0 < C ∧ 0 < c ∧ 0 < ρ ∧ ρ < 1 ∧ ∀ᶠ n : ℕ in atTop,
@@ -79,14 +88,14 @@ theorem earlierMode_superResonance_bound (R K : ℕ)
         ‖(∫ α in Ioo (0 : ℝ) 1,
               Prop42.monoAt R w m.1 m.2 α n p.1 * Prop42.monoAt R w' 0 0 α n p.2)‖
           ≤ C * (Real.exp (-c * Real.sqrt (Lnorm n))
-                  + Real.exp (-c * Hscale n) + ρ ^ (c * Hscale n)) := by
-  sorry
+                  + Real.exp (-c * Hscale n) + ρ ^ (c * Hscale n)) :=
+  P42Super.earlierMode_superResonance_bound' R K Wu Wv
 
 /-- **Case 3 of the proof of 4.2**, "the earlier mode is nonzero and the later
 mode is zero", token-identical to
 `Kwon1002.MonomialCore.earlierMode_phase_bound`, assembled from its two
-branches: the sub-resonance branch is proved, the super-resonance branch is
-the residual above. -/
+branches, both proved: the sub-resonance branch in `Kwon1002/P42Later.lean`,
+the super-resonance branch in `Kwon1002/P42Super.lean`. -/
 theorem earlierMode_phase_bound' (R K : ℕ) (Wu Wv : Finset (Fin (2 * R) → ℕ)) :
     ∃ C c ρ : ℝ, 0 < C ∧ 0 < c ∧ 0 < ρ ∧ ρ < 1 ∧ ∀ᶠ n : ℕ in atTop,
       ∀ w ∈ Wu, ∀ m ∈ Prop42.modeBox K, m ≠ (0, 0) → ∀ w' ∈ Wv,

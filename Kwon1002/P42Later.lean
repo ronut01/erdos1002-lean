@@ -32,7 +32,10 @@ every eventual fact supplied as a hypothesis, §4 the two `∀ᶠ n` consumers.
 §3's `oscillatory_prefix_bound` is stated with the anti-concentration depth
 `a`, the mode `(r_A,s_A)` it is applied to, and the resulting lower bound on
 the *combined* frequency (`hdom`) left as parameters, because that is exactly
-where cases 2 and 3 differ.  Both consumers are then §4:
+where cases 2 and 3 differ.  Its depth hypothesis is `j ≤ k`, not `j < k`:
+the degenerate pair `j = k` is what `P42Super.oscillatory_single_bound` uses
+to read a *single* monomial as a pair against the zero mode at its own depth.
+Both consumers here are §4:
 
 * `laterMode_phase_bound''`, case 2, token-identical to
   `MonomialCore.laterMode_phase_bound`: `a = k`, `(r_A,s_A)` the later mode,
@@ -41,9 +44,9 @@ where cases 2 and 3 differ.  Both consumers are then §4:
   `a = j`, `(r_A,s_A)` the earlier mode, and `hdom` holds because the later
   mode is zero, so `Q_k(0,0) = 0` and the combined frequency *is* `±Q_j`.
 
-The remaining `k > t₀ + 100H` branch of case 3 is not here; see
-`Kwon1002/Prop42Unconditional.lean` for its statement and the exact list of
-proved inputs its assembly still has to combine.
+The remaining `k > t₀ + 100H` branch of case 3 is not here: it needs the
+stationary-mean replacement of the later block first, and is proved in
+`Kwon1002/P42Super.lean` on top of this file's engine.
 -/
 
 open MeasureTheory Set Filter
@@ -187,7 +190,7 @@ sufficiently large `n`" is a hypothesis here; §4 supplies them. -/
 theorem oscillatory_prefix_bound
     {n : ℕ} (hn1 : 1 ≤ n) {R : ℕ}
     {j k a : ℕ} (hab : a ∈ bulkJ n)
-    (hj1 : 1 ≤ j) (hRj : R ≤ j) (hjk : j < k) (had : a ≤ k + R)
+    (hj1 : 1 ≤ j) (hRj : R ≤ j) (hjk : j ≤ k) (had : a ≤ k + R)
     (w w' : Fin (2 * R) → ℕ) {r₁ s₁ r₂ s₂ rA sA : ℤ}
     (hdt : k + R < (Prop41.kMinus n a).toNat)
     (hdom : ∀ u : List ℕ, u.length = (Prop41.kMinus n a).toNat → (∀ x ∈ u, 0 < x) →
@@ -215,7 +218,7 @@ theorem oscillatory_prefix_bound
   have hη0 : (0 : ℝ) < η := Real.exp_pos _
   set d : ℕ := k + R with hddef
   set t : ℕ := (Prop41.kMinus n a).toNat with htdef
-  have hRk : R ≤ k := le_trans hRj hjk.le
+  have hRk : R ≤ k := le_trans hRj hjk
   have hk1 : 1 ≤ k := by omega
   have hd0 : 0 < d := by omega
   have hdt' : d < t := hdt
@@ -738,7 +741,7 @@ theorem laterMode_phase_bound'' (R K : ℕ) (Wu Wv : Finset (Fin (2 * R) → ℕ
       ring_nf
     rw [hcast]
     exact hd
-  have hmain := oscillatory_prefix_bound hn1 hkb hj1 hRj hjk (Nat.le_add_right _ _)
+  have hmain := oscillatory_prefix_bound hn1 hkb hj1 hRj hjk.le (Nat.le_add_right _ _)
     w w' hdt hdom (C₀ := C20) (c₀ := c20) h20n
     (Cac := C3 * (Real.exp (-H) + Real.exp (-c3 * (p.2 : ℝ)))) hacn
   refine le_trans hmain ?_
@@ -862,7 +865,7 @@ theorem earlierMode_subResonance_bound (R K : ℕ) (Wu Wv : Finset (Fin (2 * R) 
     have hq0 : (0 : ℝ) ≤ (denom α p.1 : ℝ) := Nat.cast_nonneg _
     have hexp : (0 : ℝ) < Real.exp (-Hscale n) := Real.exp_pos _
     nlinarith
-  have hmain := oscillatory_prefix_bound hn1 hjb hj1 hRj hjk
+  have hmain := oscillatory_prefix_bound hn1 hjb hj1 hRj hjk.le
     (le_trans hjk.le (Nat.le_add_right _ _)) w w' hdt hdom
     (C₀ := C20) (c₀ := c20) h20n
     (Cac := C3 * (Real.exp (-H) + Real.exp (-c3 * (p.1 : ℝ)))) hacn

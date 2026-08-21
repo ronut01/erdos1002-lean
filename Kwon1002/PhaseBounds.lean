@@ -1109,11 +1109,13 @@ lemma kPlus_toNat_le_two_mIndex_of_bulk {n j : ℕ} (hj : j ∈ bulkJ n) :
 /-! ## 7. Toward the two phase bounds: the pair oscillatory form and the
 exponent identities of cases 2 and 3
 
-`MonomialCore.laterMode_phase_bound` and `earlierMode_phase_bound` remain
-open, and `P42Cases` §4's finding stands: display (20) (`P42Cases.Display20`)
-has no proved instance anywhere in the tree, so any complete treatment of
-cases 2 and 3 is conditional on it.  This section proves, outright, the
-named sub-steps of those cases that do **not** pass through (20):
+`MonomialCore.laterMode_phase_bound` and `earlierMode_phase_bound` are both
+**proved**, above this file — see the module docstring of
+`Kwon1002/Prop42Unconditional.lean` for the authoritative state of
+Proposition 4.2.  Display (20) is proved too
+(`LargeDeviation.display20_holds`), so nothing on this route is conditional
+any more.  This section proves, outright, the named sub-steps of cases 2 and
+3 that do **not** pass through (20):
 
 * `Qpair` / `monoAt_mul_oscillatory`: display (33) *for a monomial pair* —
   the two-block integrand is the indicator of the two-window intersection
@@ -1138,21 +1140,23 @@ named sub-steps of those cases that do **not** pass through (20):
   depths that §6's range lemmas (`kMinus_toNat_le_two_mIndex_of_bulk`,
   `kPlus_toNat_le_two_mIndex_of_bulk`) place inside (20)'s quantifier.
 
-**Exact residual for the case lemmas** (recorded, not assumed): with the
-above, `descendant_cylinder_estimate` (22), `shrinking_anti_concentration`
+**Where the case lemmas were finished** (recorded, so the reader of this file
+knows where its outputs are consumed): with the above, plus
+`descendant_cylinder_estimate` (22), `shrinking_anti_concentration`
 (Lemma 3.3), `later_frequency_dominates`, `lebesgue_two_block` (§1) and
-`MixingBV.lem_3_2_conditional_multiblock_mixing'` all proved, what separates
-a `Display20`-conditional `laterMode_phase_bound` from this file is the
+`MixingBV.lem_3_2_conditional_multiblock_mixing'`, what remained was the
 *cylinder summation glue*: partitioning `(0,1)` into complete depth-`(k+R)`
 prefix cylinders, selecting the retained words by (20) + Lemma 3.3 (union
 bound over the ≤ 3 bad sets), transporting the window indicators to
 per-cylinder constants (the `List`-word analogue of `cylObs_windowWord`),
-and summing (22) by prefix-cylinder mass — the pair analogue of the §9
-bookkeeping `ZeroMode.lean` built for `modeTerm`, which is `GoodTuple`-shaped
-and does not directly apply to a `bulkPairs` pair.  The `k > t₀ + 100H`
-branch of case 3 additionally needs the stationary-mean replacement on each
-retained depth-`t₊` cylinder (Lemma 3.2 conditioned on a cylinder, under the
-*Lebesgue* measure) and the v8 restore step, which consumes (20) once more.
+and summing (22) by prefix-cylinder mass.  That glue is
+`Kwon1002/CylinderSum.lean`, and the two cases are assembled on top of it:
+case 2 and the `k < t₀ − 100H` branch of case 3 in `Kwon1002/P42Later.lean`.
+The `k > t₀ + 100H` branch of case 3 additionally needs the stationary-mean
+replacement on each retained depth-`t₊` cylinder (Lemma 3.2 conditioned on a
+cylinder, under the *Lebesgue* measure) and the v8 restore step, which
+consumes (20) once more; it is `Kwon1002/P42Super.lean`, and it uses
+`ascended_descendant_bound_at_cut` below for its freeze margin.
 -/
 
 /-- **The combined frequency of a monomial pair**: `(−1)^j Q_j(r₁,s₁) +
