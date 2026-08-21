@@ -81,3 +81,5 @@ import Kwon1002.LDDeviation
 import Kwon1002.LDDisplay20
 import Kwon1002.LDMain
 import Kwon1002.StationaryReplace
+import Kwon1002.NonzeroMode
+import Kwon1002.Prop41Unconditional

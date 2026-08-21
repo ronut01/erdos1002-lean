@@ -276,9 +276,28 @@ the weak limit from this statement, and
 weak limit (via the proved substrate continuity
 `Erdos1002.continuous_charFun_probabilityMeasure`).  So the gate is
 Proposition 4.1's tuple form for the complex symbol
-`x ↦ (e^{itx}−1)·1{|x|>ε}`, whose nonzero-mode branch is display-(20)-gated
-(`P42Cases.Display20`, no proved instance anywhere in the tree); nothing
-weaker discharges it. -/
+`x ↦ (e^{itx}−1)·1{|x|>ε}`; nothing weaker discharges it.
+
+**Gate note corrected.**  An earlier version of this paragraph recorded the
+nonzero-mode branch as display-(20)-gated, "no proved instance anywhere in
+the tree".  That is no longer the state: display (20) is proved
+(`LargeDeviation.display20_holds`, and `display20_of_pos` at every window
+constant), the `v_s ≠ 0` branch is proved from it
+(`NonzeroMode.nonzero_mode_small_unconditional`) and Proposition 4.1 itself
+is proved (`Kwon1002.prop_4_1_marked_factorization_unconditional`, whose
+statement is machine-checked equal to the canonical one).  The symbol class
+`IsInPD` of display (24) carries **complex** coefficients, so the complex
+symbol above is inside the class as it stands; no widening of Proposition
+4.1 is needed for it.
+
+What separates this statement from Proposition 4.1 is therefore *not* §4
+and not the vague topology: it is the tuple-sum bookkeeping of
+`Kwon1002/TupleFinal.lean`, whose reduction of the tuple limit leaves three
+residuals, and the two that are not Proposition 4.1
+(`bulk_window_bridge_tuple`, needing the §7 stopping-time analysis, and
+`FiveFinal.deterministic_oneLevel_intensity`, display (35), needing the
+asymptotic Gauss digit tail and the equidistribution of `θ_j`) remain open.
+Those two are where this debt now sits. -/
 theorem largeSum_charFun_limit (c ε : ℝ) (_hε0 : 0 < ε) (_hε1 : ε < 1) (t : ℝ) :
     Tendsto (fun n : ℕ => ∫ α in Ioo (0 : ℝ) 1,
         Complex.exp ((t : ℂ) * (largeSum c ε α n : ℂ) * Complex.I)) atTop
