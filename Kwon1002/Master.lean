@@ -54,7 +54,10 @@ hypotheses.
    `Kwon1002/DigitTail.lean` read at one level; the Gauss-to-Lebesgue transport
    and the level shift are inside that proof already.
 
-   **State of the second half.**  This is now the whole of `Section7EndTerms`.
+   **State of the second half.**  This is now the whole of `Section7EndTerms`:
+   Part I names it `Section7Bridge c` and proves
+   `Section7EndTerms c` from it (`section7EndTerms_of_bridge`), so
+   `erdos1002Conclusion_of_bridge` takes the bridge in place of hypothesis 3.
    It needs `τ_n = L/λ + O_ℙ(H)`,
    i.e. display (20)'s large deviation applied at the two deterministic
    thresholds `q_j ≤ n/(2(E*+1))` and `q_j > n` that bracket the stopping time.
@@ -1400,6 +1403,67 @@ theorem tendsto_endTerms_prob (c : ℝ) (hc : 0 ≤ c) {ε : ℝ} (hε : 0 < ε)
   refine le_trans (measure_mono hsub) ?_
   refine le_trans (measure_union_le _ _) ?_
   rw [vol_nonIrrational_zero, add_zero]
+
+
+/-! ## Part I, `Section7EndTerms` reduced to the index-set bridge
+
+Part H proved the first of the two halves, so the third hypothesis of the master
+theorem is now exactly its second half, and `erdos1002Conclusion_of_bridge`
+records that. -/
+
+/-- **The §7/§4 index-set bridge**, the second half of `Section7EndTerms`:
+`(1/L)·[∑_{j ∈ Marks.bulkIndices c α n} − ∑_{j ∈ Section4.bulkJ n}] (−1)^j B_j → 0`
+in probability. -/
+def Section7Bridge (c : ℝ) : Prop :=
+  ∀ ε > 0, Tendsto (fun n : ℕ => (volume {α : ℝ | α ∈ Ioo (0 : ℝ) 1 ∧
+      ε ≤ |randRemainderSum c α n - detRemainderSum α n|}).toReal) atTop (𝓝 0)
+
+/-- **`Section7EndTerms` is exactly the bridge now.**  Its `O(H)` trimming half
+is proved (`tendsto_endTerms_prob`), so the whole hypothesis follows from the
+index-set bridge alone. -/
+theorem section7EndTerms_of_bridge (c : ℝ) (hc : 0 ≤ c) (hbridge : Section7Bridge c) :
+    Section7EndTerms c := by
+  intro ε hε
+  have hε2 : (0 : ℝ) < ε / 2 := by linarith
+  have h1 := tendsto_endTerms_prob c hc hε2
+  have h2 := hbridge (ε / 2) hε2
+  have hmaj : Tendsto (fun n : ℕ =>
+      (volume {α : ℝ | α ∈ Ioo (0 : ℝ) 1 ∧ ε / 2 ≤ |endTerms c α n|}).toReal
+        + (volume {α : ℝ | α ∈ Ioo (0 : ℝ) 1 ∧
+            ε / 2 ≤ |randRemainderSum c α n - detRemainderSum α n|}).toReal)
+      atTop (𝓝 0) := by simpa using h1.add h2
+  refine squeeze_zero' (Eventually.of_forall fun n => ENNReal.toReal_nonneg) ?_ hmaj
+  refine Eventually.of_forall fun n => ?_
+  set A : Set ℝ := {α : ℝ | α ∈ Ioo (0 : ℝ) 1 ∧ ε / 2 ≤ |endTerms c α n|} with hAdef
+  set B : Set ℝ := {α : ℝ | α ∈ Ioo (0 : ℝ) 1 ∧
+      ε / 2 ≤ |randRemainderSum c α n - detRemainderSum α n|} with hBdef
+  have hsub : s7Set c n ε ⊆ A ∪ B := by
+    rintro α ⟨hα, hle⟩
+    have htri : |endTerms c α n + (randRemainderSum c α n - detRemainderSum α n)|
+        ≤ |endTerms c α n| + |randRemainderSum c α n - detRemainderSum α n| :=
+      abs_add_le _ _
+    by_cases h : ε / 2 ≤ |endTerms c α n|
+    · exact Or.inl ⟨hα, h⟩
+    · exact Or.inr ⟨hα, by push_neg at h; linarith⟩
+  have hAfin : volume A ≠ ⊤ := by
+    refine ne_top_of_le_ne_top ?_ (measure_mono (fun x hx => hx.1))
+    rw [Real.volume_Ioo]; exact ENNReal.ofReal_ne_top
+  have hBfin : volume B ≠ ⊤ := by
+    refine ne_top_of_le_ne_top ?_ (measure_mono (fun x hx => hx.1))
+    rw [Real.volume_Ioo]; exact ENNReal.ofReal_ne_top
+  calc (volume (s7Set c n ε)).toReal
+      ≤ (volume A + volume B).toReal :=
+        ENNReal.toReal_mono (ENNReal.add_ne_top.mpr ⟨hAfin, hBfin⟩)
+          (le_trans (measure_mono hsub) (measure_union_le _ _))
+    _ = (volume A).toReal + (volume B).toReal := ENNReal.toReal_add hAfin hBfin
+
+/-- **The master theorem from the bridge.**  Kwon's Theorem 1.1 from Corollary
+5.3, Proposition 6.4 and the §7/§4 index-set bridge; §7's `O(H)` trimming is no
+longer a hypothesis. -/
+theorem erdos1002Conclusion_of_bridge (c : ℝ) (hc : 0 ≤ c)
+    (hprincipal : PrincipalCauchyLaw c) (hprop64 : Prop64Statement)
+    (hbridge : Section7Bridge c) : Erdos1002Conclusion :=
+  erdos1002Conclusion_of c hprincipal hprop64 (section7EndTerms_of_bridge c hc hbridge)
 
 end
 
