@@ -1,6 +1,7 @@
 import Kwon1002.PoissonLimit
 import Kwon1002.Section6Skeleton
 import Kwon1002.CorFinal
+import Mathlib.NumberTheory.Harmonic.Bounds
 
 /-!
 # §7: stopping, centering, and the master assembly
@@ -39,20 +40,22 @@ hypotheses.
    `erdos1002Conclusion_of_section7` records that fact by discharging the
    other two against the in-tree targets.
 
-   **State of the first half** (Part G below).  Display (46), the pointwise cap
-   `|Φ(x,u)| ≤ 1/(8x) + 1/2`, is proved (`abs_Phi_le`) and read on the Gauss
-   orbit as `|Φ(x_j,u_j)| ≤ a_{j+1}/8 + 5/8` (`abs_Phi_orbit_le`); the trim is
-   proved to carry `O(H)` positions (`card_trimIndices_le`); and
+   **The first half is PROVED** (Parts G and H below).  Display (46), the
+   pointwise cap `|Φ(x,u)| ≤ 1/(8x) + 1/2`, is proved (`abs_Phi_le`) and read on
+   the Gauss orbit as `|Φ(x_j,u_j)| ≤ a_{j+1}/8 + 5/8` (`abs_Phi_orbit_le`); the
+   trim is proved to carry `O(H)` positions (`card_trimIndices_le`); and
    `abs_endTerms_le` combines them into
    `|end terms| ≤ (1/L)[(1/8)Σ_{j<c·H} a_{j+1} + (5/8)(c·H+1)]`.  The second
-   summand is proved to vanish (`tendsto_trim_deterministic`, `H/L = L^{-1/4}`).
-   What is left is exactly the digit sum, and the one input it needs is the
-   uniform tail `P(a_{j+1} > t) ≤ C/t` under **Lebesgue** measure on `(0,1)`
-   and at **every** digit index; the tree currently has it only under the Gauss
-   measure and only at the first digit
-   (`DigitTail.gaussMeasure_firstDigit_ge_le`).
+   summand is proved to vanish (`tendsto_trim_deterministic`, `H/L = L^{-1/4}`)
+   and the digit sum to vanish in probability (`tendsto_window_digitSum`), so
+   `tendsto_endTerms_prob` gives display (44) outright, for every `c ≥ 0`.  The
+   uniform tail `P(a_{j+1} ≥ t) ≤ C/t` it needs — under **Lebesgue** measure on
+   `(0,1)` and at **every** digit index — is `Kwon1002.digit_tail_product` of
+   `Kwon1002/DigitTail.lean` read at one level; the Gauss-to-Lebesgue transport
+   and the level shift are inside that proof already.
 
-   **State of the second half.**  Untouched.  It needs `τ_n = L/λ + O_ℙ(H)`,
+   **State of the second half.**  This is now the whole of `Section7EndTerms`.
+   It needs `τ_n = L/λ + O_ℙ(H)`,
    i.e. display (20)'s large deviation applied at the two deterministic
    thresholds `q_j ≤ n/(2(E*+1))` and `q_j > n` that bracket the stopping time.
    The deterministic side of that bracketing is available
@@ -854,19 +857,9 @@ The second summand is deterministic and is `O(H/L) = O(L^{-1/4}) → 0`.  The
 first is the whole remaining content of this half of `Section7EndTerms`: it is
 a sum of `O(H)` continued-fraction digits, each with infinite mean, so it does
 not converge pointwise and the passage to `o(L)` is genuinely probabilistic.
-The manuscript's route is the uniform tail `P(a_{j+1} > t) ≤ C/t` of
-Lemma 2.3(ii) (which in this tree is available only under the Gauss measure and
-only at the first digit, `DigitTail.gaussMeasure_firstDigit_ge_le`): truncate
-at `εL`, so that the expected truncated sum is `O(H log L)`, and apply Markov
-after dividing by `L`, `O(H log L/L) = o(1)`; the untruncated event has
-probability `O(H/L) = o(1)`.
-
-**The residual, exactly.**  Transport of that tail from the Gauss measure at
-the first digit to Lebesgue measure on `(0,1)` at every digit, uniformly in
-`j` — the two measures are mutually absolutely continuous with density between
-`1/(2 log 2)` and `1/log 2`, and `DigitTail.gaussMeasure_preimage` is the
-invariance that makes the digit index immaterial, so the transport is the
-missing step and not the tail itself. -/
+It is proved in Part H below (`tendsto_window_digitSum`), from the uniform
+Lebesgue tail `P(a_{j+1} ≥ t) ≤ C/t` that `Kwon1002.digit_tail_product`
+already supplies at every level.  `tendsto_endTerms_prob` is the conclusion. -/
 theorem abs_endTerms_le {α : ℝ} (hα : α ∈ Ioo (0 : ℝ) 1) (hirr : Irrational α)
     (c : ℝ) (n : ℕ) (hL : 0 < Lnorm n) (hc : 0 ≤ c * Hscale n) :
     |endTerms c α n|
@@ -924,6 +917,489 @@ theorem tendsto_trim_deterministic (c : ℝ) :
   refine hsum.congr' ?_
   filter_upwards [hLtop.eventually_gt_atTop 0] with n hn
   field_simp
+
+
+/-! ## Part H, the digit sum of the trim, and Lemma 7.1's first half
+
+`abs_endTerms_le` leaves exactly one thing between Part G and display (44): the
+digit sum `(1/L)·Σ_{j ∈ trimIndices} a_{j+1}`.  It is a sum of `O(H)`
+continued-fraction digits, each with infinite mean under Lebesgue measure, so it
+does not converge pointwise and the passage to `o(1)` is genuinely
+probabilistic.  It is carried out here, and `tendsto_endTerms_prob` closes the
+first of the two halves of `Section7EndTerms`.
+
+The input is `Kwon1002.digit_tail_product` of `Kwon1002/DigitTail.lean`, Lemma
+3.1(ii) in the unconditional form (15).  Read at one level it is exactly the
+uniform tail `P(a_{j+1} ≥ t) ≤ C/t` under **Lebesgue** measure on `(0,1)` and at
+**every** level `j`: the Gauss-to-Lebesgue transport (the two measures have
+density between `1/(2 log 2)` and `1/log 2`) and the level shift (Gauss
+invariance) are both already inside its proof, so neither is a residual here.
+
+The route is the manuscript's.  Cap the digits at `T = ⌈L²⌉₊`.  The capped
+first moment of one digit is `Σ_{k<T} P(a ≥ k+1) ≤ C·(1 + log T)` by layer cake
+and the harmonic bound, so Markov gives `O(H·log L/L)` for the capped sum, and
+the uncapped event costs `O(H/L²)` by the tail again; both are
+`O(log L / L^{1/4}) = o(1)`. -/
+
+/-! ### 1. The uniform Lebesgue digit tail, at every level -/
+
+/-- The constant of `Kwon1002.digit_tail_product`, fixed once. -/
+def digitTailConst : ℝ := Classical.choose Kwon1002.digit_tail_product
+
+lemma digitTailConst_pos : 0 < digitTailConst :=
+  (Classical.choose_spec Kwon1002.digit_tail_product).1
+
+lemma measurable_digit_nat (j : ℕ) : Measurable (fun x : ℝ => digit x j) := by
+  have h1 : Measurable (fun x : ℝ => gaussIter x j) :=
+    Erdos1002.measurable_gaussMap.iterate j
+  have h2 : Measurable (fun x : ℝ => ⌊(gaussIter x j)⁻¹⌋) := h1.inv.floor
+  exact (measurable_of_countable (fun n : ℤ => n.toNat)).comp h2
+
+lemma measurableSet_digit_ge (j : ℕ) (t : ℝ) :
+    MeasurableSet {α : ℝ | t ≤ (digit α j : ℝ)} :=
+  measurableSet_le measurable_const (Kwon1002.measurable_digit_real j)
+
+/-- **The uniform Lebesgue digit tail.**  `P(a_{j+1} ≥ t) ≤ C/t` under Lebesgue
+measure on `(0,1)`, at **every** level `j`, with a constant independent of `j`. -/
+lemma volume_digit_ge_le (j : ℕ) {t : ℝ} (ht : 1 ≤ t) :
+    (volume {α : ℝ | α ∈ Ioo (0 : ℝ) 1 ∧ t ≤ (digit α j : ℝ)}).toReal
+      ≤ digitTailConst / t := by
+  have h := (Classical.choose_spec Kwon1002.digit_tail_product).2
+      1 (fun _ => j) (fun _ => t) (fun a b _ => Subsingleton.elim a b) (fun _ => ht)
+  have hset : {α : ℝ | α ∈ Set.Ioo (0 : ℝ) 1 ∧
+      ∀ i : Fin 1, ((fun _ => t) i) ≤ ((digit α ((fun _ => j) i) : ℕ) : ℝ)}
+      = {α : ℝ | α ∈ Ioo (0 : ℝ) 1 ∧ t ≤ ((digit α j : ℕ) : ℝ)} := by
+    ext α; simp
+  rw [hset] at h
+  simpa [digitTailConst, pow_one, Fin.prod_univ_one, div_eq_mul_inv] using h
+
+lemma volume_digit_ge_le' (j : ℕ) {t : ℝ} (ht : 1 ≤ t) :
+    volume {α : ℝ | α ∈ Ioo (0 : ℝ) 1 ∧ t ≤ (digit α j : ℝ)}
+      ≤ ENNReal.ofReal (digitTailConst / t) := by
+  have hfin : volume {α : ℝ | α ∈ Ioo (0 : ℝ) 1 ∧ t ≤ (digit α j : ℝ)} ≠ ⊤ := by
+    refine ne_top_of_le_ne_top ?_ (measure_mono (fun x hx => hx.1))
+    rw [Real.volume_Ioo]
+    exact ENNReal.ofReal_ne_top
+  rw [← ENNReal.ofReal_toReal hfin]
+  exact ENNReal.ofReal_le_ofReal (volume_digit_ge_le j ht)
+
+/-! ### 2. Layer cake: the truncated first moment of one digit -/
+
+lemma min_eq_card_filter (a T : ℕ) :
+    min a T = ((Finset.range T).filter (fun k => k + 1 ≤ a)).card := by
+  classical
+  have hfil : (Finset.range T).filter (fun k => k + 1 ≤ a) = Finset.range (min T a) := by
+    ext k
+    simp only [Finset.mem_filter, Finset.mem_range, lt_min_iff]
+    omega
+  rw [hfil, Finset.card_range, Nat.min_comm]
+
+lemma min_digit_eq_sum_indicator (j T : ℕ) (α : ℝ) :
+    ((min (digit α j) T : ℕ) : ℝ≥0∞)
+      = ∑ k ∈ Finset.range T,
+          Set.indicator {β : ℝ | ((k : ℝ) + 1) ≤ (digit β j : ℝ)} (fun _ => (1 : ℝ≥0∞)) α := by
+  classical
+  have hind : ∀ k : ℕ,
+      Set.indicator {β : ℝ | ((k : ℝ) + 1) ≤ (digit β j : ℝ)} (fun _ => (1 : ℝ≥0∞)) α
+        = if k + 1 ≤ digit α j then (1 : ℝ≥0∞) else 0 := by
+    intro k
+    rw [Set.indicator_apply]
+    have hiff : (α ∈ {β : ℝ | ((k : ℝ) + 1) ≤ (digit β j : ℝ)}) ↔ k + 1 ≤ digit α j := by
+      simp only [Set.mem_setOf_eq]
+      constructor
+      · intro h; exact_mod_cast (by push_cast at h ⊢; linarith : ((k + 1 : ℕ) : ℝ) ≤ (digit α j : ℝ))
+      · intro h
+        have : ((k + 1 : ℕ) : ℝ) ≤ ((digit α j : ℕ) : ℝ) := by exact_mod_cast h
+        push_cast at this
+        linarith
+    by_cases h : k + 1 ≤ digit α j
+    · rw [if_pos (hiff.mpr h), if_pos h]
+    · rw [if_neg (fun hc => h (hiff.mp hc)), if_neg h]
+  simp only [hind]
+  rw [Finset.sum_ite, Finset.sum_const, Finset.sum_const_zero, add_zero, nsmul_eq_mul,
+    mul_one, min_eq_card_filter]
+
+lemma lintegral_min_digit_le (j T : ℕ) (_hT : 1 ≤ T) :
+    ∫⁻ α, ((min (digit α j) T : ℕ) : ℝ≥0∞) ∂(volume.restrict (Ioo (0 : ℝ) 1))
+      ≤ ENNReal.ofReal (digitTailConst * (1 + Real.log T)) := by
+  classical
+  have hmeas : ∀ k : ℕ, MeasurableSet {β : ℝ | ((k : ℝ) + 1) ≤ (digit β j : ℝ)} :=
+    fun k => measurableSet_digit_ge j _
+  calc ∫⁻ α, ((min (digit α j) T : ℕ) : ℝ≥0∞) ∂(volume.restrict (Ioo (0 : ℝ) 1))
+      = ∫⁻ α, (∑ k ∈ Finset.range T,
+            Set.indicator {β : ℝ | ((k : ℝ) + 1) ≤ (digit β j : ℝ)} (fun _ => (1 : ℝ≥0∞)) α)
+          ∂(volume.restrict (Ioo (0 : ℝ) 1)) := by
+        exact lintegral_congr (fun α => min_digit_eq_sum_indicator j T α)
+    _ = ∑ k ∈ Finset.range T,
+          (volume.restrict (Ioo (0 : ℝ) 1)) {β : ℝ | ((k : ℝ) + 1) ≤ (digit β j : ℝ)} := by
+        rw [lintegral_finset_sum _ (fun k _ => (measurable_const.indicator (hmeas k)))]
+        exact Finset.sum_congr rfl fun k _ => by
+          rw [lintegral_indicator_const (hmeas k), one_mul]
+    _ ≤ ∑ k ∈ Finset.range T, ENNReal.ofReal (digitTailConst / ((k : ℝ) + 1)) := by
+        refine Finset.sum_le_sum fun k _ => ?_
+        have hk : (1 : ℝ) ≤ (k : ℝ) + 1 := by
+          have h := (Nat.cast_nonneg k : (0 : ℝ) ≤ (k : ℝ))
+          linarith
+        rw [Measure.restrict_apply (hmeas k)]
+        have hset : {β : ℝ | ((k : ℝ) + 1) ≤ (digit β j : ℝ)} ∩ Ioo (0 : ℝ) 1
+            = {α : ℝ | α ∈ Ioo (0 : ℝ) 1 ∧ ((k : ℝ) + 1) ≤ (digit α j : ℝ)} := by
+          ext α; simp [and_comm]
+        rw [hset]
+        exact volume_digit_ge_le' j hk
+    _ ≤ ENNReal.ofReal (digitTailConst * (1 + Real.log T)) := by
+        rw [← ENNReal.ofReal_sum_of_nonneg
+          (fun k _ => div_nonneg digitTailConst_pos.le (by positivity))]
+        refine ENNReal.ofReal_le_ofReal ?_
+        have hsum : ∑ k ∈ Finset.range T, digitTailConst / ((k : ℝ) + 1)
+            = digitTailConst * ∑ k ∈ Finset.range T, ((k : ℝ) + 1)⁻¹ := by
+          rw [Finset.mul_sum]
+          exact Finset.sum_congr rfl fun k _ => by rw [div_eq_mul_inv]
+        have hharm : ((harmonic T : ℚ) : ℝ) = ∑ k ∈ Finset.range T, ((k : ℝ) + 1)⁻¹ := by
+          rw [harmonic, Rat.cast_sum]
+          refine Finset.sum_congr rfl fun k _ => ?_
+          push_cast
+          ring
+        rw [hsum, ← hharm]
+        exact mul_le_mul_of_nonneg_left (harmonic_le_one_add_log T) digitTailConst_pos.le
+
+/-! ### 3. The trim window, and the digit sum capped at `T` -/
+
+/-- The window the trim lives in: the first `⌈c·H⌉₊` levels. -/
+def trimLen (c : ℝ) (n : ℕ) : ℕ := ⌈c * Hscale n⌉₊
+
+lemma trimIndices_subset (c α : ℝ) (n : ℕ) :
+    trimIndices c α n ⊆ Finset.range (trimLen c n) := by
+  intro j hj
+  simp only [trimIndices, Finset.mem_filter, Finset.mem_range, not_le] at hj
+  rw [Finset.mem_range, trimLen]
+  have h2 : c * Hscale n ≤ (⌈c * Hscale n⌉₊ : ℝ) := Nat.le_ceil _
+  exact_mod_cast lt_of_lt_of_le hj.2 h2
+
+lemma sum_trimIndices_le_window (c α : ℝ) (n : ℕ) :
+    ∑ j ∈ trimIndices c α n, (digit α j : ℝ)
+      ≤ ∑ j ∈ Finset.range (trimLen c n), (digit α j : ℝ) :=
+  Finset.sum_le_sum_of_subset_of_nonneg (trimIndices_subset c α n)
+    (fun _ _ _ => Nat.cast_nonneg _)
+
+/-- The digits over the trim window, each capped at `T`. -/
+def cappedDigitSum (c : ℝ) (n T : ℕ) (α : ℝ) : ℝ≥0∞ :=
+  ∑ j ∈ Finset.range (trimLen c n), ((min (digit α j) T : ℕ) : ℝ≥0∞)
+
+lemma measurable_cappedDigitSum (c : ℝ) (n T : ℕ) :
+    Measurable (cappedDigitSum c n T) := by
+  refine Finset.measurable_sum _ fun j _ => ?_
+  exact (measurable_of_countable (fun m : ℕ => (m : ℝ≥0∞))).comp
+    ((measurable_digit_nat j).min measurable_const)
+
+lemma lintegral_cappedDigitSum_le (c : ℝ) (n T : ℕ) (hT : 1 ≤ T) :
+    ∫⁻ α, cappedDigitSum c n T α ∂(volume.restrict (Ioo (0 : ℝ) 1))
+      ≤ (trimLen c n : ℝ≥0∞) * ENNReal.ofReal (digitTailConst * (1 + Real.log T)) := by
+  have hmeas : ∀ j ∈ Finset.range (trimLen c n),
+      Measurable (fun α : ℝ => ((min (digit α j) T : ℕ) : ℝ≥0∞)) := fun j _ =>
+    (measurable_of_countable (fun m : ℕ => (m : ℝ≥0∞))).comp
+      ((measurable_digit_nat j).min measurable_const)
+  calc ∫⁻ α, cappedDigitSum c n T α ∂(volume.restrict (Ioo (0 : ℝ) 1))
+      = ∑ j ∈ Finset.range (trimLen c n),
+          ∫⁻ α, ((min (digit α j) T : ℕ) : ℝ≥0∞) ∂(volume.restrict (Ioo (0 : ℝ) 1)) :=
+        lintegral_finset_sum _ hmeas
+    _ ≤ ∑ _j ∈ Finset.range (trimLen c n),
+          ENNReal.ofReal (digitTailConst * (1 + Real.log T)) :=
+        Finset.sum_le_sum fun j _ => lintegral_min_digit_le j T hT
+    _ = (trimLen c n : ℝ≥0∞) * ENNReal.ofReal (digitTailConst * (1 + Real.log T)) := by
+        rw [Finset.sum_const, Finset.card_range, nsmul_eq_mul]
+
+/-- **Markov on the capped digit sum.** -/
+lemma meas_cappedDigitSum_ge (c : ℝ) (n T : ℕ) (hT : 1 ≤ T) {r : ℝ≥0∞}
+    (hr0 : r ≠ 0) (hrtop : r ≠ ⊤) :
+    (volume.restrict (Ioo (0 : ℝ) 1)) {α : ℝ | r ≤ cappedDigitSum c n T α}
+      ≤ ((trimLen c n : ℝ≥0∞)
+          * ENNReal.ofReal (digitTailConst * (1 + Real.log T))) / r := by
+  refine le_trans
+    (meas_ge_le_lintegral_div (measurable_cappedDigitSum c n T).aemeasurable hr0 hrtop) ?_
+  exact ENNReal.div_le_div_right (lintegral_cappedDigitSum_le c n T hT) r
+
+/-! ### 4. The untruncated event, and the digit-sum estimate -/
+
+/-- The event that some digit in the trim window exceeds the cap. -/
+def bigDigitSet (c : ℝ) (n T : ℕ) : Set ℝ :=
+  {α : ℝ | α ∈ Ioo (0 : ℝ) 1 ∧
+    ∃ j ∈ Finset.range (trimLen c n), (T : ℝ) ≤ (digit α j : ℝ)}
+
+lemma volume_bigDigitSet_le (c : ℝ) (n T : ℕ) (hT : 1 ≤ T) :
+    volume (bigDigitSet c n T)
+      ≤ (trimLen c n : ℝ≥0∞) * ENNReal.ofReal (digitTailConst / T) := by
+  have hT' : (1 : ℝ) ≤ (T : ℝ) := by exact_mod_cast hT
+  have hsub : bigDigitSet c n T ⊆ ⋃ j ∈ Finset.range (trimLen c n),
+      {α : ℝ | α ∈ Ioo (0 : ℝ) 1 ∧ (T : ℝ) ≤ (digit α j : ℝ)} := by
+    rintro α ⟨hα, j, hj, hdj⟩
+    exact Set.mem_biUnion hj ⟨hα, hdj⟩
+  refine le_trans (measure_mono hsub) ?_
+  refine le_trans (measure_biUnion_finset_le _ _) ?_
+  calc ∑ j ∈ Finset.range (trimLen c n),
+        volume {α : ℝ | α ∈ Ioo (0 : ℝ) 1 ∧ (T : ℝ) ≤ (digit α j : ℝ)}
+      ≤ ∑ _j ∈ Finset.range (trimLen c n), ENNReal.ofReal (digitTailConst / T) :=
+        Finset.sum_le_sum fun j _ => volume_digit_ge_le' j hT'
+    _ = (trimLen c n : ℝ≥0∞) * ENNReal.ofReal (digitTailConst / T) := by
+        rw [Finset.sum_const, Finset.card_range, nsmul_eq_mul]
+
+
+/-! ### 5. The digit-sum estimate -/
+
+/-- **The digit sum below the trim, estimated.**  For every cap `T ≥ 1` and
+every level `r > 0`, with `M = ⌈c·H⌉₊` the length of the trim window,
+
+`P( Σ_{j < M} a_{j+1} ≥ r ) ≤ M·C/T + M·C·(1 + log T)/r`,
+
+the first summand discarding the event that some digit exceeds the cap and the
+second being Markov applied to the capped sum. -/
+theorem volume_window_digitSum_ge_le (c : ℝ) (n T : ℕ) (hT : 1 ≤ T) {r : ℝ} (hr : 0 < r) :
+    (volume {α : ℝ | α ∈ Ioo (0 : ℝ) 1 ∧
+        r ≤ ∑ j ∈ Finset.range (trimLen c n), (digit α j : ℝ)}).toReal
+      ≤ (trimLen c n : ℝ) * digitTailConst / T
+        + (trimLen c n : ℝ) * digitTailConst * (1 + Real.log T) / r := by
+  classical
+  have hT' : (1 : ℝ) ≤ (T : ℝ) := by exact_mod_cast hT
+  have hTpos : (0 : ℝ) < (T : ℝ) := lt_of_lt_of_le zero_lt_one hT'
+  have hlogT : 0 ≤ Real.log T := Real.log_nonneg hT'
+  have hCpos := digitTailConst_pos
+  set A : Set ℝ := {α : ℝ | α ∈ Ioo (0 : ℝ) 1 ∧
+      r ≤ ∑ j ∈ Finset.range (trimLen c n), (digit α j : ℝ)} with hAdef
+  set D : Set ℝ := {α : ℝ | α ∈ Ioo (0 : ℝ) 1 ∧
+      ENNReal.ofReal r ≤ cappedDigitSum c n T α} with hDdef
+  -- (a) the split
+  have hsub : A ⊆ bigDigitSet c n T ∪ D := by
+    intro α hα
+    by_cases hb : α ∈ bigDigitSet c n T
+    · exact Or.inl hb
+    · refine Or.inr ⟨hα.1, ?_⟩
+      have hmin : ∀ j ∈ Finset.range (trimLen c n), min (digit α j) T = digit α j := by
+        intro j hj
+        have hlt : (digit α j : ℝ) < (T : ℝ) := by
+          by_contra hcon
+          exact hb ⟨hα.1, j, hj, not_lt.mp hcon⟩
+        have : digit α j < T := by exact_mod_cast hlt
+        omega
+      have hcap : cappedDigitSum c n T α
+          = ENNReal.ofReal (∑ j ∈ Finset.range (trimLen c n), (digit α j : ℝ)) := by
+        rw [cappedDigitSum,
+          ENNReal.ofReal_sum_of_nonneg (fun j _ => Nat.cast_nonneg _)]
+        exact Finset.sum_congr rfl fun j hj => by
+          rw [hmin j hj, ENNReal.ofReal_natCast]
+      rw [hcap]
+      exact ENNReal.ofReal_le_ofReal hα.2
+  -- (b) the two pieces
+  have hBle : volume (bigDigitSet c n T)
+      ≤ ENNReal.ofReal ((trimLen c n : ℝ) * digitTailConst / T) := by
+    refine le_trans (volume_bigDigitSet_le c n T hT) ?_
+    rw [← ENNReal.ofReal_natCast (trimLen c n),
+      ← ENNReal.ofReal_mul (Nat.cast_nonneg _), mul_div_assoc]
+  have hSmeas : MeasurableSet {α : ℝ | ENNReal.ofReal r ≤ cappedDigitSum c n T α} :=
+    measurableSet_le measurable_const (measurable_cappedDigitSum c n T)
+  have hDle : volume D
+      ≤ ENNReal.ofReal ((trimLen c n : ℝ) * digitTailConst * (1 + Real.log T) / r) := by
+    have hDeq : volume D
+        = (volume.restrict (Ioo (0 : ℝ) 1))
+            {α : ℝ | ENNReal.ofReal r ≤ cappedDigitSum c n T α} := by
+      rw [Measure.restrict_apply hSmeas]
+      congr 1
+      ext α
+      simp only [hDdef, Set.mem_setOf_eq, Set.mem_inter_iff]
+      exact and_comm
+    rw [hDeq]
+    refine le_trans (meas_cappedDigitSum_ge c n T hT
+      (by simpa using hr) ENNReal.ofReal_ne_top) ?_
+    rw [← ENNReal.ofReal_natCast (trimLen c n),
+      ← ENNReal.ofReal_mul (Nat.cast_nonneg _),
+      ← ENNReal.ofReal_div_of_pos hr, ← mul_assoc]
+  -- (c) combine
+  have hXnn : (0 : ℝ) ≤ (trimLen c n : ℝ) * digitTailConst / T :=
+    div_nonneg (mul_nonneg (Nat.cast_nonneg _) hCpos.le) hTpos.le
+  have hYnn : (0 : ℝ) ≤ (trimLen c n : ℝ) * digitTailConst * (1 + Real.log T) / r :=
+    div_nonneg (mul_nonneg (mul_nonneg (Nat.cast_nonneg _) hCpos.le) (by linarith)) hr.le
+  have hfin : volume A ≤ ENNReal.ofReal
+      ((trimLen c n : ℝ) * digitTailConst / T
+        + (trimLen c n : ℝ) * digitTailConst * (1 + Real.log T) / r) := by
+    refine le_trans (measure_mono hsub) (le_trans (measure_union_le _ _) ?_)
+    rw [ENNReal.ofReal_add hXnn hYnn]
+    exact add_le_add hBle hDle
+  calc (volume A).toReal
+      ≤ (ENNReal.ofReal ((trimLen c n : ℝ) * digitTailConst / T
+          + (trimLen c n : ℝ) * digitTailConst * (1 + Real.log T) / r)).toReal :=
+        ENNReal.toReal_mono ENNReal.ofReal_ne_top hfin
+    _ = _ := ENNReal.toReal_ofReal (by linarith)
+
+/-! ### 6. Lemma 7.1's first half -/
+
+lemma tendsto_Hscale_log_div_Lnorm :
+    Tendsto (fun n : ℕ => Hscale n * Real.log (Lnorm n) / Lnorm n) atTop (𝓝 0) := by
+  have hlog : Tendsto (fun x : ℝ => Real.log x / x ^ ((1 : ℝ) / 4)) atTop (𝓝 0) :=
+    (isLittleO_log_rpow_atTop (by norm_num : (0 : ℝ) < 1 / 4)).tendsto_div_nhds_zero
+  have hL : Tendsto (fun n : ℕ => Lnorm n) atTop atTop := tendsto_Lnorm_atTop
+  refine (hlog.comp hL).congr' ?_
+  filter_upwards [hL.eventually_gt_atTop 0] with n hn
+  have h1 : Hscale n / Lnorm n = (Lnorm n) ^ ((3 / 4 : ℝ) - 1) := by
+    rw [Real.rpow_sub hn, Real.rpow_one, Hscale]
+  have h2 : (Lnorm n) ^ ((3 / 4 : ℝ) - 1) = ((Lnorm n) ^ ((1 : ℝ) / 4))⁻¹ := by
+    rw [show (3 / 4 : ℝ) - 1 = -((1 : ℝ) / 4) by norm_num, Real.rpow_neg hn.le]
+  simp only [Function.comp_apply]
+  rw [div_eq_mul_inv (Real.log (Lnorm n)) ((Lnorm n) ^ ((1 : ℝ) / 4)), ← h2, ← h1]
+  ring
+
+/-- **The first half of `Section7EndTerms`, closed.**  `(1/L)·Σ_{j < c·H} a_{j+1}`
+tends to `0` in probability under Lebesgue measure on `(0,1)`.  With
+`abs_endTerms_le` and `tendsto_trim_deterministic` this is everything the `O(H)`
+trim of Lemma 7.1 needs.
+
+The cap is `T = ⌈L²⌉₊`: the untruncated event costs `O(H/L²)` and the Markov
+term `O(H·log L/L) = O(log L / L^{1/4})`, both `o(1)`. -/
+theorem tendsto_window_digitSum (c : ℝ) (hc : 0 ≤ c) {ε : ℝ} (hε : 0 < ε) :
+    Tendsto (fun n : ℕ =>
+        (volume {α : ℝ | α ∈ Ioo (0 : ℝ) 1 ∧
+          ε ≤ (1 / Lnorm n) * ∑ j ∈ Finset.range (trimLen c n), (digit α j : ℝ)}).toReal)
+      atTop (𝓝 0) := by
+  have hCpos := digitTailConst_pos
+  set K : ℝ := (c + 1) * digitTailConst * (1 + 4 / ε) with hKdef
+  have hmaj : Tendsto (fun n : ℕ => K * (Hscale n * Real.log (Lnorm n) / Lnorm n))
+      atTop (𝓝 0) := by
+    simpa using tendsto_Hscale_log_div_Lnorm.const_mul K
+  refine squeeze_zero' (Eventually.of_forall fun n => ENNReal.toReal_nonneg) ?_ hmaj
+  filter_upwards [tendsto_Lnorm_atTop.eventually_ge_atTop (8 : ℝ)] with n hn
+  have hL0 : (0 : ℝ) < Lnorm n := by linarith
+  have hL1 : (1 : ℝ) ≤ Lnorm n := by linarith
+  have hH1 : (1 : ℝ) ≤ Hscale n := by
+    have h := Real.rpow_le_rpow zero_le_one hL1 (by norm_num : (0 : ℝ) ≤ 3 / 4)
+    rwa [Real.one_rpow, ← Hscale] at h
+  have hH0 : (0 : ℝ) ≤ Hscale n := by linarith
+  have hlogL : (1 : ℝ) ≤ Real.log (Lnorm n) := by
+    have he : Real.exp 1 ≤ Lnorm n :=
+      le_trans (le_of_lt Real.exp_one_lt_d9) (by linarith)
+    exact (Real.le_log_iff_exp_le hL0).mpr he
+  have hlog2 : Real.log 2 ≤ 1 := by
+    have := Real.log_le_sub_one_of_pos (by norm_num : (0 : ℝ) < 2)
+    linarith
+  set T : ℕ := ⌈Lnorm n * Lnorm n⌉₊ with hTdef
+  have hTge : Lnorm n * Lnorm n ≤ (T : ℝ) := Nat.le_ceil _
+  have hTlt : (T : ℝ) < Lnorm n * Lnorm n + 1 := Nat.ceil_lt_add_one (by positivity)
+  have hLT : Lnorm n ≤ (T : ℝ) := by nlinarith
+  have hT1' : (1 : ℝ) ≤ (T : ℝ) := by linarith
+  have hT1 : 1 ≤ T := by exact_mod_cast hT1'
+  have hTpos : (0 : ℝ) < (T : ℝ) := by linarith
+  have hsetEq : {α : ℝ | α ∈ Ioo (0 : ℝ) 1 ∧
+        ε ≤ (1 / Lnorm n) * ∑ j ∈ Finset.range (trimLen c n), (digit α j : ℝ)}
+      = {α : ℝ | α ∈ Ioo (0 : ℝ) 1 ∧
+        ε * Lnorm n ≤ ∑ j ∈ Finset.range (trimLen c n), (digit α j : ℝ)} := by
+    ext α
+    simp only [Set.mem_setOf_eq, and_congr_right_iff]
+    intro _
+    rw [one_div, inv_mul_eq_div, le_div_iff₀ hL0]
+  rw [hsetEq]
+  have hr : (0 : ℝ) < ε * Lnorm n := by positivity
+  refine le_trans (volume_window_digitSum_ge_le c n T hT1 hr) ?_
+  have hM : (trimLen c n : ℝ) ≤ (c + 1) * Hscale n := by
+    have h0 : (0 : ℝ) ≤ c * Hscale n := mul_nonneg hc hH0
+    have hMlt : (trimLen c n : ℝ) < c * Hscale n + 1 := by
+      rw [trimLen]; exact Nat.ceil_lt_add_one h0
+    nlinarith
+  have hlogTle : Real.log T ≤ 1 + 2 * Real.log (Lnorm n) := by
+    have hle : (T : ℝ) ≤ 2 * (Lnorm n * Lnorm n) := by nlinarith
+    have h1 := Real.log_le_log hTpos hle
+    rw [Real.log_mul (by norm_num) (by positivity), Real.log_mul hL0.ne' hL0.ne'] at h1
+    linarith
+  have hcapLog : 1 + Real.log T ≤ 4 * Real.log (Lnorm n) := by linarith
+  have hcapNN : (0 : ℝ) ≤ 1 + Real.log T := by
+    have := Real.log_nonneg hT1'
+    linarith
+  have hdivL : ∀ a b : ℝ, a ≤ b → a / Lnorm n ≤ b / Lnorm n := by
+    intro a b h
+    rw [div_eq_mul_inv, div_eq_mul_inv]
+    exact mul_le_mul_of_nonneg_right h (inv_nonneg.mpr hL0.le)
+  have hdivT : ∀ a : ℝ, 0 ≤ a → a / (T : ℝ) ≤ a / Lnorm n := by
+    intro a ha
+    have h := one_div_le_one_div_of_le hL0 hLT
+    rw [one_div, one_div] at h
+    rw [div_eq_mul_inv, div_eq_mul_inv]
+    exact mul_le_mul_of_nonneg_left h ha
+  have hdivEL : ∀ a b : ℝ, a ≤ b → a / (ε * Lnorm n) ≤ b / (ε * Lnorm n) := by
+    intro a b h
+    rw [div_eq_mul_inv, div_eq_mul_inv]
+    exact mul_le_mul_of_nonneg_right h (inv_nonneg.mpr hr.le)
+  set Y : ℝ := Hscale n * Real.log (Lnorm n) / Lnorm n with hYdef
+  have hCHnn : (0 : ℝ) ≤ (c + 1) * Hscale n * digitTailConst :=
+    mul_nonneg (mul_nonneg (by linarith) hH0) hCpos.le
+  have hn1 : (trimLen c n : ℝ) * digitTailConst ≤ (c + 1) * Hscale n * digitTailConst :=
+    mul_le_mul_of_nonneg_right hM hCpos.le
+  have hterm1 : ((c + 1) * Hscale n * digitTailConst * Real.log (Lnorm n)) / Lnorm n
+      = (c + 1) * digitTailConst * Y := by
+    rw [hYdef]; field_simp
+  have h1 : (trimLen c n : ℝ) * digitTailConst / T ≤ (c + 1) * digitTailConst * Y := by
+    refine le_trans (hdivT _ (mul_nonneg (Nat.cast_nonneg _) hCpos.le)) ?_
+    refine le_trans (hdivL _ _ hn1) ?_
+    rw [← hterm1]
+    exact hdivL _ _ (le_mul_of_one_le_right hCHnn hlogL)
+  have hn3 : (trimLen c n : ℝ) * digitTailConst * (1 + Real.log T)
+      ≤ (c + 1) * Hscale n * digitTailConst * (4 * Real.log (Lnorm n)) :=
+    mul_le_mul hn1 hcapLog hcapNN hCHnn
+  have hterm2 : ((c + 1) * Hscale n * digitTailConst * (4 * Real.log (Lnorm n)))
+        / (ε * Lnorm n)
+      = (c + 1) * digitTailConst * (4 / ε) * Y := by
+    rw [hYdef]; field_simp
+  have h2 : (trimLen c n : ℝ) * digitTailConst * (1 + Real.log T) / (ε * Lnorm n)
+      ≤ (c + 1) * digitTailConst * (4 / ε) * Y := by
+    rw [← hterm2]
+    exact hdivEL _ _ hn3
+  have hKY : K * Y
+      = (c + 1) * digitTailConst * Y + (c + 1) * digitTailConst * (4 / ε) * Y := by
+    rw [hKdef]; ring
+  rw [hKY]
+  linarith
+
+
+/-- **The `O(H)` trim of Lemma 7.1, in probability.**  `(1/L)·Σ_{j < c·H} (−1)^j
+Φ(x_j,u_j) → 0` in probability under Lebesgue measure on `(0,1)`, for every
+trimming constant `c ≥ 0`.  This is display (44), the first of the two halves of
+`Section7EndTerms`.
+
+`abs_endTerms_le` splits the bound into the digit sum and a deterministic
+`O(H/L)` remainder; `tendsto_trim_deterministic` kills the second and
+`tendsto_window_digitSum` the first. -/
+theorem tendsto_endTerms_prob (c : ℝ) (hc : 0 ≤ c) {ε : ℝ} (hε : 0 < ε) :
+    Tendsto (fun n : ℕ =>
+        (volume {α : ℝ | α ∈ Ioo (0 : ℝ) 1 ∧ ε ≤ |endTerms c α n|}).toReal)
+      atTop (𝓝 0) := by
+  have hkey := tendsto_window_digitSum c hc (show (0 : ℝ) < 4 * ε by linarith)
+  refine squeeze_zero' (Eventually.of_forall fun n => ENNReal.toReal_nonneg) ?_ hkey
+  have hdet := (tendsto_trim_deterministic c).eventually
+    (gt_mem_nhds (show (0 : ℝ) < ε / 2 by linarith))
+  filter_upwards [tendsto_Lnorm_atTop.eventually_gt_atTop (0 : ℝ), hdet] with n hL0 hdetn
+  have hH0 : (0 : ℝ) ≤ c * Hscale n :=
+    mul_nonneg hc (Real.rpow_nonneg (le_of_lt hL0) _)
+  set B : Set ℝ := {α : ℝ | α ∈ Ioo (0 : ℝ) 1 ∧
+      4 * ε ≤ (1 / Lnorm n) * ∑ j ∈ Finset.range (trimLen c n), (digit α j : ℝ)} with hBdef
+  have hsub : {α : ℝ | α ∈ Ioo (0 : ℝ) 1 ∧ ε ≤ |endTerms c α n|}
+      ⊆ B ∪ {x : ℝ | ¬ Irrational x} := by
+    rintro α ⟨hα, hεα⟩
+    by_cases hirr : Irrational α
+    · refine Or.inl ⟨hα, ?_⟩
+      have hbd := abs_endTerms_le hα hirr c n hL0 hH0
+      have hwin := sum_trimIndices_le_window c α n
+      have hinv : (0 : ℝ) < 1 / Lnorm n := by positivity
+      have hstep : (1 / Lnorm n) *
+            ((1 / 8) * ∑ j ∈ trimIndices c α n, (digit α j : ℝ)
+              + (5 / 8) * (c * Hscale n + 1))
+          ≤ (1 / 8) * ((1 / Lnorm n)
+              * ∑ j ∈ Finset.range (trimLen c n), (digit α j : ℝ))
+            + (1 / Lnorm n) * ((5 / 8) * (c * Hscale n + 1)) := by
+        nlinarith [hwin, hinv]
+      nlinarith [hbd, hstep, hεα, hdetn]
+    · exact Or.inr hirr
+  have hBfin : volume B ≠ ⊤ := by
+    refine ne_top_of_le_ne_top ?_ (measure_mono (fun x hx => hx.1))
+    rw [Real.volume_Ioo]
+    exact ENNReal.ofReal_ne_top
+  refine ENNReal.toReal_mono hBfin ?_
+  refine le_trans (measure_mono hsub) ?_
+  refine le_trans (measure_union_le _ _) ?_
+  rw [vol_nonIrrational_zero, add_zero]
 
 end
 
