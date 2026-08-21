@@ -836,4 +836,171 @@ theorem isInPD_fejerPoly (D L : ℝ) (A N : ℕ) (M : ℝ) (g : ℕ → ℝ → 
 end
 
 end Fejer
+
+/-! ## The good set of a finite union of intervals
+
+`fejerPoly_L1_error_le` above runs against an explicit good set: the points of
+the fundamental cell at which the symbol does not move under translations of
+size at most `s`.  This section builds one from a jump count, which is the step
+`TupleFinal.goodSet_mark_factorization_intervals` records as the first of the
+two instantiations it still needs.  It is stated in `namespace IntervalClass`,
+where the class it consumes lives, and kept here because
+`Kwon1002/IntervalClass.lean` sits below this module. -/
+
+namespace IntervalClass
+
+open scoped ENNReal
+
+noncomputable section
+
+/-- The two `s`-collars of an interval: the points within `s` of its infimum or
+of its supremum.  For an unbounded or empty `I` the junk values of `sInf`/`sSup`
+make this a harmless overestimate, because the corresponding branch of
+`mem_collar_of_unstable` cannot fire. -/
+def collar (s : ℝ) (I : Set ℝ) : Set ℝ :=
+  Icc (sInf I - s) (sInf I + s) ∪ Icc (sSup I - s) (sSup I + s)
+
+lemma measurableSet_collar (s : ℝ) (I : Set ℝ) : MeasurableSet (collar s I) :=
+  (measurableSet_Icc).union measurableSet_Icc
+
+lemma volume_collar_le (s : ℝ) (hs : 0 ≤ s) (I : Set ℝ) :
+    volume (collar s I) ≤ ENNReal.ofReal (4 * s) := by
+  refine le_trans (measure_union_le _ _) ?_
+  rw [Real.volume_Icc, Real.volume_Icc,
+    show sInf I + s - (sInf I - s) = 2 * s by ring,
+    show sSup I + s - (sSup I - s) = 2 * s by ring,
+    ← ENNReal.ofReal_add (by linarith) (by linarith)]
+  exact ENNReal.ofReal_le_ofReal (by linarith)
+
+/-- **The endpoint arithmetic.**  If membership in an order-convex `I` changes
+under a shift of size at most `s`, the base point lies in one of the two
+`s`-collars of `I`. -/
+lemma mem_collar_of_unstable {I : Set ℝ} (hI : I.OrdConnected) {s θ u : ℝ}
+    (hs : 0 ≤ s) (hu : |u - θ| ≤ s) (hne : ¬ (u ∈ I ↔ θ ∈ I)) : θ ∈ collar s I := by
+  -- name the member `p` and the non-member `q`
+  have hkey : ∀ p q : ℝ, p ∈ I → q ∉ I → |p - q| ≤ s → (θ = p ∨ θ = q) →
+      θ ∈ collar s I := by
+    intro p q hp hq hpq hθ
+    have hps : p - q ≤ s := (le_abs_self _).trans hpq
+    have hqp : q - p ≤ s := by
+      have := neg_le_abs (p - q)
+      linarith
+    have hsplit : (∀ x ∈ I, q ≤ x) ∨ (∀ x ∈ I, x ≤ q) := by
+      by_contra hc
+      push_neg at hc
+      obtain ⟨⟨x₁, hx₁, hlt₁⟩, ⟨x₂, hx₂, hlt₂⟩⟩ := hc
+      exact hq (hI.out hx₁ hx₂ ⟨hlt₁.le, hlt₂.le⟩)
+    rcases hsplit with hlow | hupp
+    · have hbdd : BddBelow I := ⟨q, hlow⟩
+      have hIne : I.Nonempty := ⟨p, hp⟩
+      have hqa : q ≤ sInf I := le_csInf hIne hlow
+      have hap : sInf I ≤ p := csInf_le hbdd hp
+      refine Or.inl ?_
+      rcases hθ with rfl | rfl
+      · exact ⟨by linarith, by linarith⟩
+      · exact ⟨by linarith, by linarith⟩
+    · have hbdd : BddAbove I := ⟨q, hupp⟩
+      have hIne : I.Nonempty := ⟨p, hp⟩
+      have hbq : sSup I ≤ q := csSup_le hIne hupp
+      have hpb : p ≤ sSup I := le_csSup hbdd hp
+      refine Or.inr ?_
+      rcases hθ with rfl | rfl
+      · exact ⟨by linarith, by linarith⟩
+      · exact ⟨by linarith, by linarith⟩
+  by_cases hθI : θ ∈ I
+  · have huI : u ∉ I := fun h => hne (iff_of_true h hθI)
+    refine hkey θ u hθI huI ?_ (Or.inl rfl)
+    rw [abs_sub_comm]
+    exact hu
+  · have huI : u ∈ I := by
+      by_contra h
+      exact hne (iff_of_false h hθI)
+    exact hkey u θ huI hθI hu (Or.inr rfl)
+
+/-- **The good set of a finite union of intervals, with the wrap-around.**
+
+For `B` a union of at most `m` intervals inside `(0,1)` and a shift budget
+`s ≥ 0`, there is a measurable `G ⊆ (0,1)` on which membership in `B` is
+insensitive to every shift of size at most `s` — and every such shift stays
+inside `(0,1)`, which is what makes the periodised symbol of display (24) see
+no wrap at `0` or `1` — with
+
+`volume ((0,1) \ G) ≤ (4m + 2)·s`.
+
+This is the input `Fejer.fejerPoly_L1_error_le` asks for: it turns a jump count
+into a good set of the right measure, and `+2` is the price of the two
+endpoints of the fundamental cell. -/
+theorem exists_goodSet {m : ℕ} {B : Set ℝ} (hB : IsUnionOfIntervals m B)
+    {s : ℝ} (hs : 0 ≤ s) :
+    ∃ G : Set ℝ, MeasurableSet G ∧ G ⊆ Ioo (0 : ℝ) 1 ∧
+      (∀ θ ∈ G, ∀ u : ℝ, |u - θ| ≤ s → u ∈ Ioo (0 : ℝ) 1 ∧ (u ∈ B ↔ θ ∈ B)) ∧
+      volume (Ioo (0 : ℝ) 1 \ G) ≤ ENNReal.ofReal ((4 * m + 2) * s) := by
+  classical
+  obtain ⟨t, hcard, hoc, hBeq⟩ := hB
+  set Bad : Set ℝ := ⋃ I ∈ t, collar s I with hBadDef
+  refine ⟨Ioo s (1 - s) \ Bad, ?_, ?_, ?_, ?_⟩
+  · exact measurableSet_Ioo.diff
+      (t.measurableSet_biUnion fun I _ => measurableSet_collar s I)
+  · rintro θ ⟨hθ, -⟩
+    exact ⟨by linarith [hθ.1], by linarith [hθ.2]⟩
+  · rintro θ ⟨hθ, hθbad⟩ u hu
+    have habs := abs_le.mp hu
+    refine ⟨⟨by linarith [hθ.1, habs.1], by linarith [hθ.2, habs.2]⟩, ?_⟩
+    by_contra hne
+    -- some interval of the family is unstable at `θ`
+    have hmem : ∀ I ∈ t, (u ∈ I ↔ θ ∈ I) := by
+      intro I hI
+      by_contra hIne
+      exact hθbad (Set.mem_biUnion hI (mem_collar_of_unstable (hoc I hI) hs hu hIne))
+    apply hne
+    rw [hBeq]
+    simp only [Set.mem_iUnion, exists_prop]
+    constructor
+    · rintro ⟨I, hI, hxI⟩
+      exact ⟨I, hI, (hmem I hI).mp hxI⟩
+    · rintro ⟨I, hI, hxI⟩
+      exact ⟨I, hI, (hmem I hI).mpr hxI⟩
+  · have hsplit : Ioo (0 : ℝ) 1 \ (Ioo s (1 - s) \ Bad)
+        ⊆ (Ioo (0 : ℝ) 1 \ Ioo s (1 - s)) ∪ Bad := by
+      rintro x ⟨hx, hx2⟩
+      by_cases hb : x ∈ Bad
+      · exact Or.inr hb
+      · exact Or.inl ⟨hx, fun hc => hx2 ⟨hc, hb⟩⟩
+    have hedge : volume (Ioo (0 : ℝ) 1 \ Ioo s (1 - s)) ≤ ENNReal.ofReal (2 * s) := by
+      have hsub : Ioo (0 : ℝ) 1 \ Ioo s (1 - s) ⊆ Icc 0 s ∪ Icc (1 - s) 1 := by
+        rintro x ⟨hx, hx2⟩
+        by_cases h : x ≤ s
+        · exact Or.inl ⟨hx.1.le, h⟩
+        · push_neg at h
+          refine Or.inr ⟨?_, hx.2.le⟩
+          by_contra hc
+          push_neg at hc
+          exact hx2 ⟨h, hc⟩
+      refine le_trans (measure_mono hsub) (le_trans (measure_union_le _ _) ?_)
+      rw [Real.volume_Icc, Real.volume_Icc,
+        show (1 : ℝ) - (1 - s) = s by ring, show s - (0 : ℝ) = s by ring,
+        ← ENNReal.ofReal_add hs hs]
+      exact ENNReal.ofReal_le_ofReal (by linarith)
+    have hbad : volume Bad ≤ ENNReal.ofReal (4 * m * s) := by
+      refine le_trans (measure_biUnion_finset_le _ _) ?_
+      calc ∑ I ∈ t, volume (collar s I)
+          ≤ ∑ _I ∈ t, ENNReal.ofReal (4 * s) :=
+            Finset.sum_le_sum fun I _ => volume_collar_le s hs I
+        _ = (t.card : ℝ≥0∞) * ENNReal.ofReal (4 * s) := by
+            rw [Finset.sum_const, nsmul_eq_mul]
+        _ ≤ (m : ℝ≥0∞) * ENNReal.ofReal (4 * s) := by
+            exact mul_le_mul_right' (by exact_mod_cast hcard) _
+        _ = ENNReal.ofReal (4 * m * s) := by
+            rw [← ENNReal.ofReal_natCast m, ← ENNReal.ofReal_mul (Nat.cast_nonneg _)]
+            congr 1
+            ring
+    refine le_trans (measure_mono hsplit) (le_trans (measure_union_le _ _) ?_)
+    refine le_trans (add_le_add hedge hbad) ?_
+    rw [← ENNReal.ofReal_add (by linarith) (mul_nonneg (by positivity) hs)]
+    exact le_of_eq (by rw [show (2 : ℝ) * s + 4 * (m : ℝ) * s = (4 * (m : ℝ) + 2) * s by ring])
+
+end
+
+end IntervalClass
+
 end Kwon1002

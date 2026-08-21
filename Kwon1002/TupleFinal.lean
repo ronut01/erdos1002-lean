@@ -636,13 +636,20 @@ are different constants, and `Fejer.isInPD_fejerPoly` keeps them apart.
 **What remains, exactly.**  Two instantiation steps, neither of which is a
 kernel construction any more.
 
-1. *The good set.*  `Fejer.fejerPoly_L1_error_le` runs against an explicit set
-   `G` of points that do not move under translations of size at most `s`.
-   Turning `IntervalClass.IsUnionOfIntervals m B` — together with
-   `IntervalClass.markSection_isUnionOfIntervals`, which supplies the `2m`
-   jump count uniformly in the digit and the sign — into such a `G` with
-   `volume (Ioo 0 1 \ G) = O(m·s)` is arithmetic on endpoints, complicated
-   only by the wrap-around at `0` and `1`.
+1. *The good set.*  **Done.**  `Fejer.fejerPoly_L1_error_le` runs against an
+   explicit set `G` of points that do not move under translations of size at
+   most `s`, and `IntervalClass.exists_goodSet` (in `Kwon1002/Fejer.lean`, above
+   the class it consumes) builds one from
+   `IntervalClass.IsUnionOfIntervals m B`: a measurable `G ⊆ (0,1)` on which
+   membership in `B` survives every shift of size `≤ s`, every such shift
+   staying inside `(0,1)` so the periodised symbol sees no wrap, with
+   `volume ((0,1) \ G) ≤ (4m + 2)·s`.  The `4m` is the two `s`-collars of each
+   of the `m` intervals (`IntervalClass.mem_collar_of_unstable` is the endpoint
+   arithmetic, and it needs no boundedness: an unbounded order-convex set
+   simply cannot fire the corresponding branch), the `+2` is the two endpoints
+   of the fundamental cell.  Combined with
+   `IntervalClass.markSection_isUnionOfIntervals`, which supplies the `2m` jump
+   count uniformly in the digit and the sign, this is the whole of step 1.
 2. *The bookkeeping.*  From the one-level `L¹` bound to the `k`-level error
    `C/L^{k+1}`: `det_singleLevel_measure_le` caps each level at `O(1/L)`, so
    the replacement costs `k·η_L·L^{-(k-1)}` and `η_L = O(L^{-2})` suffices.
