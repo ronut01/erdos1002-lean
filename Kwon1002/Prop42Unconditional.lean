@@ -1,4 +1,4 @@
-import Kwon1002.NonzeroMode
+import Kwon1002.P42Later
 
 /-!
 # Proposition 4.2, assembled above the modules that discharge its cases
@@ -11,7 +11,9 @@ assembly with the proved inputs.
 
 ## What is achieved here
 
-* **Case 1 is consumed, proved.**  `PhaseBounds.zeroMode_gauss_mixing'` is
+* **Cases 1 and 2 are consumed, proved.**  `P42Later.laterMode_phase_bound''`
+  is case 2, proved outright.
+* **Case 1.**  `PhaseBounds.zeroMode_gauss_mixing'` is
   the token-identical, sorry-free form of `MonomialCore.zeroMode_gauss_mixing`;
   the assembly below uses it directly, so the zero-mode branch of
   Proposition 4.2 carries no residual.
@@ -22,11 +24,12 @@ assembly with the proved inputs.
 
 ## Residuals
 
-Exactly two, the two nonzero-mode cases of the manuscript's proof, restated
-here token-identically from `Kwon1002/MonomialCore.lean`:
-`laterMode_phase_bound'` and `earlierMode_phase_bound'`.  See their
-docstrings for the precise remaining content.  Everything else on the route
-from the cases to display (34) is proved outright.
+Exactly one: `earlierMode_phase_bound'`, case 3 of the manuscript's proof
+("the earlier mode is nonzero and the later mode is zero"), restated here
+token-identically from `Kwon1002/MonomialCore.lean`.  Case 2 is proved in
+`Kwon1002/P42Later.lean` and case 1 in `Kwon1002/PhaseBounds.lean`;
+everything else on the route from the cases to display (34) is proved
+outright.
 -/
 
 open MeasureTheory Set Filter
@@ -41,7 +44,8 @@ noncomputable section
 /-! ## 1. The two nonzero-mode cases -/
 
 /-- **Case 2 of the proof of 4.2**, "Assume the later mode `(r₂,s₂)` is
-nonzero", token-identical to `Kwon1002.MonomialCore.laterMode_phase_bound`. -/
+nonzero", token-identical to `Kwon1002.MonomialCore.laterMode_phase_bound`,
+**proved** in `Kwon1002/P42Later.lean`. -/
 theorem laterMode_phase_bound' (R K : ℕ) (Wu Wv : Finset (Fin (2 * R) → ℕ)) :
     ∃ C c ρ : ℝ, 0 < C ∧ 0 < c ∧ 0 < ρ ∧ ρ < 1 ∧ ∀ᶠ n : ℕ in atTop,
       ∀ w ∈ Wu, ∀ m ∈ Prop42.modeBox K, ∀ w' ∈ Wv, ∀ m' ∈ Prop42.modeBox K, m' ≠ (0, 0) →
@@ -49,8 +53,8 @@ theorem laterMode_phase_bound' (R K : ℕ) (Wu Wv : Finset (Fin (2 * R) → ℕ)
         ‖(∫ α in Ioo (0 : ℝ) 1,
               Prop42.monoAt R w m.1 m.2 α n p.1 * Prop42.monoAt R w' m'.1 m'.2 α n p.2)‖
           ≤ C * (Real.exp (-c * Real.sqrt (Lnorm n))
-                  + Real.exp (-c * Hscale n) + ρ ^ (c * Hscale n)) := by
-  sorry
+                  + Real.exp (-c * Hscale n) + ρ ^ (c * Hscale n)) :=
+  P42Later.laterMode_phase_bound'' R K Wu Wv
 
 /-- **Case 3 of the proof of 4.2**, "the earlier mode is nonzero and the later
 mode is zero", token-identical to

@@ -11,7 +11,7 @@ prefix cylinders, with every analytic input taken from the tree:
   (`PhaseBounds.monoAt_mul_oscillatory`) and the freezing of the combined
   frequency at depth `max j k` (`PhaseBounds.Qpair_congr`, here in its word
   form `QpairWord`);
-* Lemma 3.3 (`AntiConcentration.shrinking_anti_concentration`) to discard the
+* Lemma 3.3 (`Kwon1002.shrinking_anti_concentration`) to discard the
   depth-`k` cylinders on which `|Q_k(r₂,s₂)| < e^{-H}q_k`;
 * the Fibonacci domination `|Q| ≥ ½e^{-H}q_k`
   (`Prop42.later_frequency_dominates`);
@@ -105,7 +105,7 @@ cylinder.**  On the cylinder of a positive word `u` reaching depth `k + R`,
 both window indicators and the combined frequency are functions of `u`, so
 the integrand of (33) is the per-cylinder constant `c` times the pure phase
 at the frozen integer frequency. -/
-lemma integrand_eq_on_cylinder {R j k : ℕ} (hR1 : 1 ≤ R) (hRj : R ≤ j) (hRk : R ≤ k)
+lemma integrand_eq_on_cylinder {R j k : ℕ} (hRj : R ≤ j) (hRk : R ≤ k)
     (hj1 : 1 ≤ j) (hk1 : 1 ≤ k) {u : List ℕ} {t : ℕ} (hlen : u.length = t)
     (hpos : ∀ a ∈ u, 0 < a) (hjt : j + R ≤ t) (hkt : k + R ≤ t)
     (w w' : Fin (2 * R) → ℕ) (r₁ s₁ r₂ s₂ : ℤ) (n : ℕ)
@@ -165,9 +165,9 @@ set_option maxHeartbeats 1600000 in
 that the manuscript takes "for all sufficiently large `n`" is a hypothesis
 here; §4 supplies them. -/
 theorem later_case_fixed
-    {n : ℕ} (hn1 : 1 ≤ n) {R : ℕ} (hR1 : 1 ≤ R)
-    {j k : ℕ} (hjb : j ∈ bulkJ n) (hkb : k ∈ bulkJ n)
-    (hRj : R ≤ j) (hjk : j < k)
+    {n : ℕ} (hn1 : 1 ≤ n) {R : ℕ}
+    {j k : ℕ} (_hjb : j ∈ bulkJ n) (hkb : k ∈ bulkJ n)
+    (hj1 : 1 ≤ j) (hRj : R ≤ j) (hjk : j < k)
     (w w' : Fin (2 * R) → ℕ) {r₁ s₁ r₂ s₂ : ℤ}
     {Kc : ℝ} (hmode : |(r₁ : ℝ)| + |(s₁ : ℝ)| ≤ Kc)
     {m : ℕ} (hgap : j + 2 * m ≤ k)
@@ -193,7 +193,6 @@ theorem later_case_fixed
   have hη0 : (0 : ℝ) < η := Real.exp_pos _
   set d : ℕ := k + R with hddef
   set t : ℕ := (Prop41.kMinus n k).toNat with htdef
-  have hj1 : 1 ≤ j := le_trans hR1 hRj
   have hRk : R ≤ k := le_trans hRj hjk.le
   have hk1 : 1 ≤ k := by omega
   have hd0 : 0 < d := by omega
@@ -526,7 +525,7 @@ theorem later_case_fixed
       show Prop42.monoAt R w r₁ s₁ α n j * Prop42.monoAt R w' r₂ s₂ α n k
           = cf z (u.drop d) * Erdos1002.oscillatoryPhase ((n : ℝ) * ((Qf z : ℤ) : ℝ)) α
       rw [hval, hQz]
-      exact integrand_eq_on_cylinder hR1 hRj hRk hj1 hk1 hlen hpos hjt hkt
+      exact integrand_eq_on_cylinder hRj hRk hj1 hk1 hlen hpos hjt hkt
         w w' r₁ s₁ r₂ s₂ n hαu hirr
     rw [hpt, setIntegral_eq_intervalIntegral hpos, hlen, hcat]
     ring
@@ -568,6 +567,175 @@ theorem later_case_fixed
         add_le_add hstep1 hTnorm
     _ = 3 * (C₀ * Real.exp (-c₀ * Real.sqrt (Lnorm n))) + Cac
           + 28 * Real.exp (-Hscale n) := by rw [hηdef, hHdef]; ring
+
+/-! ## 4. The `∀ᶠ n` wrapper -/
+
+/-- **The Fibonacci exponent.**  `2^m ≥ 2K_c e^{H}` is achieved at
+`m = ⌈(H + log 2K_c)/log 2⌉`, which is `O(H)`. -/
+lemma exists_fib_exponent {Kc H : ℝ} (hKc : 1 ≤ Kc) (hH : 0 ≤ H) :
+    ∃ m : ℕ, 2 * Kc ≤ Real.exp (-H) * 2 ^ m
+      ∧ (m : ℝ) ≤ (H + Real.log (2 * Kc)) / Real.log 2 + 1 := by
+  have hlog2 : (0 : ℝ) < Real.log 2 := Real.log_pos (by norm_num)
+  set A : ℝ := Real.log (2 * Kc) with hAdef
+  have hA0 : 0 ≤ A := Real.log_nonneg (by linarith)
+  set x : ℝ := (H + A) / Real.log 2 with hxdef
+  have hx0 : 0 ≤ x := div_nonneg (by linarith) hlog2.le
+  refine ⟨⌈x⌉₊, ?_, ?_⟩
+  · have hmx : x ≤ ((⌈x⌉₊ : ℕ) : ℝ) := Nat.le_ceil x
+    have hval : (2 : ℝ) ^ x = Real.exp (H + A) := by
+      rw [Real.rpow_def_of_pos (by norm_num : (0 : ℝ) < 2), hxdef]
+      congr 1
+      field_simp
+    have h2 : (2 : ℝ) ^ x ≤ (2 : ℝ) ^ ((⌈x⌉₊ : ℕ) : ℝ) :=
+      Real.rpow_le_rpow_of_exponent_le (by norm_num) hmx
+    rw [hval, Real.rpow_natCast] at h2
+    have hexpA : Real.exp A = 2 * Kc := Real.exp_log (by linarith)
+    calc 2 * Kc = Real.exp (-H) * Real.exp (H + A) := by
+          rw [← Real.exp_add, show -H + (H + A) = A by ring, hexpA]
+      _ ≤ Real.exp (-H) * (2 : ℝ) ^ (⌈x⌉₊ : ℕ) :=
+          mul_le_mul_of_nonneg_left h2 (Real.exp_pos _).le
+  · exact (Nat.ceil_lt_add_one hx0).le
+
+set_option maxHeartbeats 1600000 in
+/-- **Case 2 of the proof of Proposition 4.2**, token-identical to
+`Kwon1002.MonomialCore.laterMode_phase_bound`, proved. -/
+theorem laterMode_phase_bound'' (R K : ℕ) (Wu Wv : Finset (Fin (2 * R) → ℕ)) :
+    ∃ C c ρ : ℝ, 0 < C ∧ 0 < c ∧ 0 < ρ ∧ ρ < 1 ∧ ∀ᶠ n : ℕ in atTop,
+      ∀ w ∈ Wu, ∀ m ∈ Prop42.modeBox K, ∀ w' ∈ Wv, ∀ m' ∈ Prop42.modeBox K, m' ≠ (0, 0) →
+      ∀ p ∈ bulkPairs n, C * Hscale n < (p.2 : ℝ) - (p.1 : ℝ) →
+        ‖(∫ α in Ioo (0 : ℝ) 1,
+              Prop42.monoAt R w m.1 m.2 α n p.1 * Prop42.monoAt R w' m'.1 m'.2 α n p.2)‖
+          ≤ C * (Real.exp (-c * Real.sqrt (Lnorm n))
+                  + Real.exp (-c * Hscale n) + ρ ^ (c * Hscale n)) := by
+  classical
+  obtain ⟨C20, c20, hC20, hc20, h20⟩ := LargeDeviation.display20_of_pos 1 one_pos
+  obtain ⟨C3, c3, hc3, hAC⟩ := Kwon1002.shrinking_anti_concentration
+  set C3' : ℝ := max C3 0 with hC3'def
+  have hC3'0 : (0 : ℝ) ≤ C3' := le_max_right _ _
+  have hC3C3' : C3 ≤ C3' := le_max_left _ _
+  set Kc : ℝ := 2 * (K : ℝ) + 1 with hKcdef
+  have hKc1 : (1 : ℝ) ≤ Kc := by
+    have : (0 : ℝ) ≤ (K : ℝ) := Nat.cast_nonneg K
+    rw [hKcdef]; linarith
+  set c : ℝ := min 1 (min c20 (200 * c3)) with hcdef
+  have hc0 : 0 < c := lt_min one_pos (lt_min hc20 (by linarith))
+  have hc1 : c ≤ 1 := min_le_left _ _
+  have hcc20 : c ≤ c20 := le_trans (min_le_right _ _) (min_le_left _ _)
+  have hcc3 : c ≤ 200 * c3 := le_trans (min_le_right _ _) (min_le_right _ _)
+  set C : ℝ := max 10 (max (3 * C20) (2 * C3' + 28)) with hCdef
+  have hC10 : (10 : ℝ) ≤ C := le_max_left _ _
+  have hC0 : 0 < C := by linarith
+  have hCA : 3 * C20 ≤ C := le_trans (le_max_left _ _) (le_max_right _ _)
+  have hCB : 2 * C3' + 28 ≤ C := le_trans (le_max_right _ _) (le_max_right _ _)
+  refine ⟨C, c, 1 / 2, hC0, hc0, by norm_num, by norm_num, ?_⟩
+  set M : ℝ := max 1 (max ((R : ℝ) / 200)
+    ((3 * Real.log (2 * Kc) + 2) / 7)) with hMdef
+  filter_upwards [h20, PhaseBounds.eventually_prefix_lt_kMinus R,
+    P42Cases.tendsto_Hscale.eventually_ge_atTop M, eventually_ge_atTop 1]
+    with n h20n hpref hHM hn1
+  intro w hw m hm w' hw' m' hm' hm'0 p hp hgapC
+  set H : ℝ := Hscale n with hHdef
+  have hH1 : (1 : ℝ) ≤ H := le_trans (le_max_left _ _) hHM
+  have hH0 : (0 : ℝ) ≤ H := by linarith
+  have hHR : (R : ℝ) / 200 ≤ H := le_trans (le_trans (le_max_left _ _) (le_max_right _ _)) hHM
+  have hHlog : (3 * Real.log (2 * Kc) + 2) / 7 ≤ H :=
+    le_trans (le_trans (le_max_right _ _) (le_max_right _ _)) hHM
+  -- the pair
+  have hjb : p.1 ∈ bulkJ n := MonomialCore.mem_bulkPairs_fst hp
+  have hkb : p.2 ∈ bulkJ n := PhaseBounds.mem_bulkPairs_snd hp
+  have hjk : p.1 < p.2 := MonomialCore.mem_bulkPairs_lt hp
+  have hjlo : 200 * H ≤ (p.1 : ℝ) := ((Finset.mem_filter.1 hjb).2).1
+  have hklo : 200 * H ≤ (p.2 : ℝ) := ((Finset.mem_filter.1 hkb).2).1
+  have hRj : R ≤ p.1 := by
+    have : (R : ℝ) ≤ (p.1 : ℝ) := by linarith
+    exact_mod_cast this
+  have hj1 : 1 ≤ p.1 := by
+    have : (1 : ℝ) ≤ (p.1 : ℝ) := by linarith
+    exact_mod_cast this
+  have hk1 : 1 ≤ p.2 := by omega
+  -- the Fibonacci exponent
+  obtain ⟨mm, hmm1, hmm2⟩ := exists_fib_exponent hKc1 hH0
+  have hlog2 : (2 : ℝ) / 3 < Real.log 2 := by
+    have := Real.log_two_gt_d9
+    linarith
+  have hgap : p.1 + 2 * mm ≤ p.2 := by
+    have hA0 : (0 : ℝ) ≤ Real.log (2 * Kc) := Real.log_nonneg (by linarith)
+    have hdiv : (H + Real.log (2 * Kc)) / Real.log 2
+        ≤ (H + Real.log (2 * Kc)) / (2 / 3) :=
+      div_le_div_of_nonneg_left (by linarith) (by norm_num) hlog2.le
+    have hmmR : (mm : ℝ) ≤ (3 / 2) * (H + Real.log (2 * Kc)) + 1 := by
+      have : (H + Real.log (2 * Kc)) / (2 / 3) = (3 / 2) * (H + Real.log (2 * Kc)) := by
+        field_simp
+      linarith [hmm2, hdiv, this ▸ hdiv]
+    have h10 : (10 : ℝ) * H ≤ C * H := mul_le_mul_of_nonneg_right hC10 hH0
+    have h2mm : (2 : ℝ) * (mm : ℝ) ≤ (p.2 : ℝ) - (p.1 : ℝ) := by
+      have h7 : 3 * Real.log (2 * Kc) + 2 ≤ 7 * H := by linarith
+      linarith
+    have hcast : ((p.1 + 2 * mm : ℕ) : ℝ) ≤ ((p.2 : ℕ) : ℝ) := by push_cast; linarith
+    exact_mod_cast hcast
+  -- the modes
+  have hmode : |((m.1 : ℤ) : ℝ)| + |((m.2 : ℤ) : ℝ)| ≤ Kc := by
+    rw [Prop42.modeBox, Finset.mem_product, Finset.mem_Icc, Finset.mem_Icc] at hm
+    have h1 : |((m.1 : ℤ) : ℝ)| ≤ (K : ℝ) := by
+      rw [abs_le]
+      constructor
+      · exact_mod_cast hm.1.1
+      · exact_mod_cast hm.1.2
+    have h2 : |((m.2 : ℤ) : ℝ)| ≤ (K : ℝ) := by
+      rw [abs_le]
+      constructor
+      · exact_mod_cast hm.2.1
+      · exact_mod_cast hm.2.2
+    rw [hKcdef]; linarith
+  -- anti-concentration at `η = e^{-H}`
+  have hη0 : (0 : ℝ) < Real.exp (-H) := Real.exp_pos _
+  have hη2 : Real.exp (-H) < 1 / 2 := by
+    have h1 : Real.exp (-H) ≤ Real.exp (-1 : ℝ) := Real.exp_le_exp.2 (by linarith)
+    have he : (2 : ℝ) < Real.exp 1 := by
+      have := Real.exp_one_gt_d9
+      linarith
+    have hp : (0 : ℝ) < Real.exp (-1 : ℝ) := Real.exp_pos _
+    have hid : Real.exp (-1 : ℝ) * Real.exp 1 = 1 := by
+      rw [← Real.exp_add]; norm_num
+    nlinarith
+  have hacn := hAC m'.1 m'.2 (by rw [Prod.mk.eta]; exact hm'0) p.2 hk1
+    (Real.exp (-H)) hη0 hη2
+  have hdt : p.2 + R < (Prop41.kMinus n p.2).toNat := (hpref p hp).2
+  have hmain := later_case_fixed hn1 hjb hkb hj1 hRj hjk w w' hmode hgap hmm1 hdt
+    (C₀ := C20) (c₀ := c20) h20n
+    (Cac := C3 * (Real.exp (-H) + Real.exp (-c3 * (p.2 : ℝ)))) hacn
+  refine le_trans hmain ?_
+  -- the error shape
+  have hLsq : (0 : ℝ) ≤ Real.sqrt (Lnorm n) := Real.sqrt_nonneg _
+  have e1 : Real.exp (-c20 * Real.sqrt (Lnorm n))
+      ≤ Real.exp (-c * Real.sqrt (Lnorm n)) := Real.exp_le_exp.2 (by nlinarith)
+  have e2 : Real.exp (-H) ≤ Real.exp (-c * H) := Real.exp_le_exp.2 (by nlinarith)
+  have e3 : Real.exp (-c3 * (p.2 : ℝ)) ≤ Real.exp (-c * H) := by
+    refine Real.exp_le_exp.2 ?_
+    nlinarith
+  have hp1 : (0 : ℝ) < Real.exp (-H) := Real.exp_pos _
+  have hp2 : (0 : ℝ) < Real.exp (-c3 * (p.2 : ℝ)) := Real.exp_pos _
+  have hp3 : (0 : ℝ) < Real.exp (-c * H) := Real.exp_pos _
+  have hp4 : (0 : ℝ) < Real.exp (-c20 * Real.sqrt (Lnorm n)) := Real.exp_pos _
+  have hp5 : (0 : ℝ) < Real.exp (-c * Real.sqrt (Lnorm n)) := Real.exp_pos _
+  have hρ0 : (0 : ℝ) ≤ (1 / 2 : ℝ) ^ (c * H) := Real.rpow_nonneg (by norm_num) _
+  have hC3b : C3 * (Real.exp (-H) + Real.exp (-c3 * (p.2 : ℝ)))
+      ≤ 2 * C3' * Real.exp (-c * H) := by
+    have hstep1 : C3 * (Real.exp (-H) + Real.exp (-c3 * (p.2 : ℝ)))
+        ≤ C3' * (Real.exp (-H) + Real.exp (-c3 * (p.2 : ℝ))) :=
+      mul_le_mul_of_nonneg_right hC3C3' (by linarith)
+    have hstep2 : C3' * (Real.exp (-H) + Real.exp (-c3 * (p.2 : ℝ)))
+        ≤ C3' * (2 * Real.exp (-c * H)) :=
+      mul_le_mul_of_nonneg_left (by linarith) hC3'0
+    linarith
+  have hAterm : 3 * (C20 * Real.exp (-c20 * Real.sqrt (Lnorm n)))
+      ≤ C * Real.exp (-c * Real.sqrt (Lnorm n)) := by
+    have h1 : 3 * (C20 * Real.exp (-c20 * Real.sqrt (Lnorm n)))
+        ≤ 3 * (C20 * Real.exp (-c * Real.sqrt (Lnorm n))) := by nlinarith
+    nlinarith
+  have hBterm : 2 * C3' * Real.exp (-c * H) + 28 * Real.exp (-H)
+      ≤ C * Real.exp (-c * H) := by nlinarith
+  nlinarith [hAterm, hBterm, hC3b, hρ0, hC0, hp3, hp5]
 
 end
 
