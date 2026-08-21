@@ -59,6 +59,94 @@ full-range form is already proved as
 range and hypothesis, so this is a plumbing repair: point the canonical
 name at the proved full-range statement.
 
+### 5. Residual 2 of `TupleFinal` quantified over a class its own route cannot reach
+
+`TupleFinal.goodSet_mark_factorization` (Proposition 4.1 for the mark event)
+quantified over merely measurable `B`, with only `∃ δ > 0, ∀ x ∈ B, δ ≤ |x|`
+and `∃ R, ∀ x ∈ B, |x| ≤ R`. `Kwon1002/JacksonGate.lean` shows the route the
+residual's own docstring names cannot reach that class:
+`JacksonGate.continuous_of_isInPD` proves every symbol of display (24)'s class
+`P_D(L)` is continuous (the coefficients vanish outside `|v| ≤ L^D`, so the
+`tsum` is a trigonometric polynomial), and `isInPD_const_of_two_valued` draws
+the consequence that a two-valued member is constant. So `1_B` is never *in*
+the class; the passage is an approximation, and the residual's own error budget
+fixes the rate at `η_L = O(L^{-2})` uniformly in the digit. For a merely
+measurable `B` no such rate exists — and `volume (frontier B) = 0` does not
+repair it, since it gives qualitative approximability without a rate.
+
+**What was done.** The residual is *split*, not weakened, and no consumer
+signature changed.
+
+- `TupleFinal.goodSet_mark_factorization_intervals` — residual 2a, the Jackson
+  step at the class it admits. It carries the added hypothesis
+  `IntervalClass.IsFiniteUnionOfIntervals B`. That predicate is defined in the
+  new `Kwon1002/IntervalClass.lean` as "a union of at most `m` order-convex
+  sets"; order-convexity (`Set.OrdConnected`) is the rendering of "interval"
+  that is stable under the operations the argument performs and needs no
+  endpoint bookkeeping.
+
+- `TupleFinal.goodSet_intervals_to_measurable` — residual 2b, the implication
+  *interval case ⟹ measurable case*, uniformly in `k`. This is the
+  approximation step, and isolating it is the whole point: the consumers
+  (`det_quasi_independence`, `det_tuple_measure_convergence`,
+  `tuple_measure_convergence`, `tuple_quasi_independence`, and through the
+  token-identity checks the canonical `LevyExponent.tuple_measure_convergence`
+  and `TupleMeasure.tuple_quasi_independence`) quantify over measurable `B`,
+  and those statements are expected to be *true* at that generality. Pushing
+  the interval hypothesis into them would weaken true statements, so it is not
+  done.
+
+- `TupleFinal.goodSet_mark_factorization` — statement byte-identical to before
+  (checked against `git show`; the only textual change is `:= by` becoming
+  `:=`), every consumer and every token-identity check untouched, but no longer
+  a bare `sorry`: it is now *derived* from 2a and 2b.
+
+**Why `IsFiniteUnionOfIntervals` is the right hypothesis, machine-checked.**
+`IntervalClass.markSection_isUnionOfIntervals` proves that `W(θ) = {θ}(1-{θ})/2`
+is piecewise monotone with exactly two branches on the fundamental cell
+(increasing on `[0,1/2]` by `monotoneOn_W_left`, decreasing on `[1/2,1)` by
+`antitoneOn_W_right`), so for `B` a union of `m` intervals the `θ`-section
+`{θ ∈ [0,1) : κ·W(θ) ∈ B}` is a union of at most `2m` intervals **for every
+real `κ`** — hence uniformly in the digit `a` and in the sign `(-1)^j`, which
+enter only through `κ = ±a/L`. That uniformity is exactly what the tuple sum
+needs and what the Jackson rate `O(m/deg)` is available at.
+
+**Every instantiation the development makes supplies it.**
+`IntervalClass.isUnionOfIntervals_truncation` proves the large-jump truncation
+window `{x : ε < |x| ∧ |x| ≤ R}` — the only shape `B` ever takes below
+Proposition 5.1, and the shape the residual's own `_hB0`/`_hBbd` force — is a
+union of **two** intervals. `TupleFinal.goodSet_mark_factorization_truncation`
+records that instance as a named theorem, so residual 2a alone already covers
+every concrete use; residual 2b exists only to keep the consumers stated at
+their present generality.
+
+**What remains open in 2a.** Proposition 4.1 itself is now unconditional
+(`prop_4_1_marked_factorization_unconditional`), and the sorting bijection is
+discharged (`JacksonGate.exists_goodTuple_of_sepGoodSet`). The single remaining
+obstruction is the Jackson construction proper: from "the section is a union of
+at most `2m` intervals" to "a trigonometric polynomial of degree `L^D` within
+`L¹`-distance `O(m·L^{-D})` of its indicator, with coefficient `ℓ¹` norm inside
+display (24)'s budget". Mathlib carries no Fejér or Jackson kernel
+(`Mathlib/Analysis/Fourier/` has `AddCircle`, `FourierTransform`,
+`RiemannLebesgueLemma`, `Inversion`, `PoissonSummation` and no summability
+kernel of positive type), so this is a from-scratch construction.
+
+### 6. The `ℓ¹` budget of display (24) is binding, and forces two distinct `D`s
+
+`Kwon1002/OneLevelLaw.lean` exhibits the first member of `IsInPD` anywhere in
+the development (`isInPD_separable`; the class had only ever been consumed,
+never populated, so nothing had checked that display (24) admits the symbols
+§5 needs). Building it surfaces that the third clause of (24),
+`∑_{a,v} |c(a,v)| ≤ L^D`, is not bookkeeping. A digit weight of size `O(1)` on
+the cut `a ≤ L^D` already spends the whole allowance, so a symbol that *also*
+carries a nonconstant phase factor — a Jackson polynomial of degree `L^D`,
+whose coefficients contribute a further `log`-sized `ℓ¹` norm — overshoots and
+must be placed in `P_{D'}(L)` for some `D' > D`. Proposition 4.1 holds for
+every `D > 0`, so this costs nothing; but the `D` of the symbol class and the
+`D` of the digit cut are then *different constants*, and any statement tying
+them together is mis-stated. Recorded on `goodSet_mark_factorization_intervals`
+and in the header of `Kwon1002/OneLevelLaw.lean`.
+
 ## Hypotheses v8 made explicit that this development already carried
 
 These required no change, and are recorded because they are the formal

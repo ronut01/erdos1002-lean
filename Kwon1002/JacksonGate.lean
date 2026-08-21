@@ -59,21 +59,42 @@ carries positive measure the rate can be made slower than any prescribed
 sequence.  Note also that `volume (frontier B) = 0` would *not* repair this: it
 gives qualitative approximability, not a rate.
 
-**Verdict.**  `goodSet_mark_factorization` is not provable by the route its own
-docstring names under the hypotheses it carries.  It needs a boundary-regularity
-hypothesis on `B` — a finite union of intervals, or an indicator of bounded
-variation — and the same applies to every statement above it that quantifies
-over merely measurable `B`: `TupleFinal.det_quasi_independence`,
-`LevyExponent.tuple_measure_convergence`, `PoissonRoute.factorialMoment_convergence`,
-`PoissonRoute.xi_count_poisson_limit`.  This is reported, not patched: no
-canonical statement is weakened here.
+**Verdict, and what was done about it.**  `goodSet_mark_factorization` is not
+provable by the route its own docstring names under the hypotheses it carried.
+It needs a boundary-regularity hypothesis on `B` — a finite union of intervals,
+or an indicator of bounded variation.
 
-**Is the extra hypothesis harmless downstream?**  In the consumers the class of
-`B` only has to be rich enough to identify the limiting point process, and every
-concrete instantiation in the tree is a truncation set of the shape
-`{x | ε < |x|}` intersected with a bounded window — a finite union of intervals.
-So restricting to finite unions of intervals costs the argument nothing; it is
-the hypothesis the manuscript's own proof uses and the signature omits.
+The residual is now **split** in `Kwon1002/TupleFinal.lean`, and no consumer
+signature changed:
+
+* `TupleFinal.goodSet_mark_factorization_intervals` carries the added
+  hypothesis `IntervalClass.IsFiniteUnionOfIntervals B` and is the Jackson step
+  at the class it admits;
+* `TupleFinal.goodSet_intervals_to_measurable` is the separate approximation
+  step, *interval case implies measurable case*;
+* `TupleFinal.goodSet_mark_factorization` keeps its exact statement — every
+  consumer and every token-identity check reads the same `Prop` as before — and
+  is derived from the two.
+
+The hypothesis was deliberately **not** propagated into
+`TupleFinal.det_quasi_independence`, `LevyExponent.tuple_measure_convergence`,
+`PoissonRoute.factorialMoment_convergence` or
+`PoissonRoute.xi_count_poisson_limit`.  Those statements quantify over
+measurable `B` and are expected to be true at that generality, recoverable from
+the interval case by approximation against the absolutely continuous limit `Λ`;
+adding the hypothesis to them would weaken true statements rather than repair a
+false one.  The approximation is what the second residual isolates.
+
+**Why finite unions of intervals are the right class, machine-checked.**
+`Kwon1002/IntervalClass.lean` proves that `W` is piecewise monotone with exactly
+two branches on the fundamental cell, so the `θ`-section of the mark event over
+a union of `m` intervals is a union of at most `2m` intervals *uniformly in the
+scaling* — hence uniformly in the digit and in the sign
+(`IntervalClass.markSection_isUnionOfIntervals`).  That is the uniformity the
+tuple sum needs.  It also proves that every concrete instantiation in the tree,
+the truncation `{x | ε < |x|}` cut to a bounded window, is a union of **two**
+intervals (`IntervalClass.isUnionOfIntervals_truncation`), so the interval case
+already covers every use the development makes.
 -/
 
 open Filter MeasureTheory Set

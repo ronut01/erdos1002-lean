@@ -1,5 +1,6 @@
 import Kwon1002.Prop41Unconditional
 import Kwon1002.Prop4Final
+import Kwon1002.DigitLocalLaw
 
 /-!
 # The one-level joint law of digit and phase
@@ -252,6 +253,90 @@ theorem oneLevel_digit_law (D A : ℝ) (hD : 0 < D) (hA : 0 < A) :
     have hz : ((0 : ℤ) : ℝ) * theta α n j = 0 := by simp
     rw [hz, Prop4Final.torusChar_zero, mul_one]
   simpa only [hint] using h
+
+
+/-! ## Part 5, the level-`j` Gauss-Kuzmin law
+
+`oneLevel_digit_law` transfers any digit observable below the cut from the
+level-`j` Lebesgue law to the stationary Gauss law, and
+`Kwon1002/DigitLocalLaw.lean` evaluates the stationary law in closed form.
+Composing them makes the transfer concrete: the classical Gauss-Kuzmin value
+holds at level `j`, under **Lebesgue** measure on `(0,1)`, with rate
+`O_{D,A}(L^{-A})` uniformly over the levels of the deterministic bulk.  This is
+the digit half of the per-level intensity that display (35) needs. -/
+
+lemma measurableSet_digit_eq (j k : ℕ) : MeasurableSet {x : ℝ | digit x j = k} := by
+  have h : {x : ℝ | digit x j = k} = (fun x : ℝ => (digit x j : ℝ)) ⁻¹' {(k : ℝ)} := by
+    ext x
+    simp only [Set.mem_setOf_eq, Set.mem_preimage, Set.mem_singleton_iff]
+    exact ⟨fun h => by rw [h], fun h => by exact_mod_cast h⟩
+  rw [h]
+  exact (measurable_digit_real j) (measurableSet_singleton _)
+
+/-- The digit indicator integrates to the measure of the digit event. -/
+lemma integral_digit_indicator (μ : Measure ℝ) (j k : ℕ) :
+    (∫ x, (if digit x j = k then (1 : ℂ) else 0) ∂μ)
+      = ((μ {x : ℝ | digit x j = k}).toReal : ℂ) := by
+  classical
+  have hind : (fun x : ℝ => if digit x j = k then (1 : ℂ) else 0)
+      = Set.indicator {x : ℝ | digit x j = k} (fun _ => (1 : ℂ)) := by
+    funext x
+    by_cases hx : digit x j = k
+    · rw [Set.indicator_of_mem (by exact hx)]
+      simp [hx]
+    · rw [Set.indicator_of_notMem (by exact hx)]
+      simp [hx]
+  rw [hind, integral_indicator_const (1 : ℂ) (measurableSet_digit_eq j k)]
+  simp [MeasureTheory.Measure.real]
+
+/-- **The Gauss-Kuzmin law at level `j`, under Lebesgue measure.**
+
+For every level `j` of the deterministic bulk of display (19) and every digit
+`k ≥ 1` below the cut `L^D`,
+
+`vol{α ∈ (0,1) : a_{j+1}(α) = k} = log(1 + 1/(k(k+2)))/log 2 + O_{D,A}(L^{-A})`,
+
+with one constant, uniform in `j` and in `k`.  The right-hand side is the exact
+stationary value `DigitLocalLaw.gaussMeasure_real_digit_zero`; the transfer from
+the stationary law to the level-`j` Lebesgue law is Proposition 4.1 at `r = 1`,
+which is the bridge the closing note of `Kwon1002/DigitLocalLaw.lean` records as
+missing.  It is the `a^{-2}` decay of this law, and not the `O(1/A)`-shaped tail
+of `Kwon1002/DigitTail.lean`, that finding F7 shows the band-mass input needs. -/
+theorem oneLevel_gaussKuzmin (D A : ℝ) (hD : 0 < D) (hA : 0 < A) :
+    ∃ C : ℝ, 0 < C ∧ ∀ᶠ n : ℕ in atTop,
+      ∀ j ∈ bulkJ n, ∀ k : ℕ, 1 ≤ k → (k : ℝ) ≤ (Lnorm n) ^ D →
+        |(volume ({x : ℝ | digit x j = k} ∩ Ioo (0 : ℝ) 1)).toReal
+            - Real.log (1 + 1 / ((k : ℝ) * ((k : ℝ) + 2))) / Real.log 2|
+          ≤ C * (Lnorm n) ^ (-A) := by
+  classical
+  obtain ⟨C, hC, hev⟩ := oneLevel_digit_law D A hD hA
+  have hLtend : Tendsto (fun n : ℕ => Lnorm n) atTop atTop :=
+    Real.tendsto_log_atTop.comp tendsto_natCast_atTop_atTop
+  refine ⟨C, hC, ?_⟩
+  filter_upwards [hev, hLtend.eventually (eventually_ge_atTop (1 : ℝ))]
+    with n hn hL1 j hj k hk hkcut
+  have hLD : (1 : ℝ) ≤ (Lnorm n) ^ D := Real.one_le_rpow hL1 hD.le
+  have hsupp : ∀ a ∉ ({k} : Finset ℕ), (if a = k then (1 : ℂ) else 0) = 0 := by
+    intro a ha
+    simp only [Finset.mem_singleton] at ha
+    simp [ha]
+  have hcut : ∀ a ∈ ({k} : Finset ℕ), (a : ℝ) ≤ (Lnorm n) ^ D := by
+    intro a ha
+    simp only [Finset.mem_singleton] at ha
+    subst ha; exact hkcut
+  have hsum : (∑ a ∈ ({k} : Finset ℕ), ‖(if a = k then (1 : ℂ) else 0)‖)
+      ≤ (Lnorm n) ^ D := by simpa using hLD
+  have h := hn j hj (fun a => if a = k then (1 : ℂ) else 0) {k} hsupp hcut hsum
+  have hleb : (∫ α in Ioo (0 : ℝ) 1, (if digit α j = k then (1 : ℂ) else 0))
+      = ((volume ({x : ℝ | digit x j = k} ∩ Ioo (0 : ℝ) 1)).toReal : ℂ) := by
+    rw [integral_digit_indicator (volume.restrict (Ioo (0 : ℝ) 1)) j k,
+      Measure.restrict_apply (measurableSet_digit_eq j k)]
+  have hgauss : (∫ x, (if digit x 0 = k then (1 : ℂ) else 0) ∂Erdos1002.gaussMeasure)
+      = ((Erdos1002.gaussMeasure {x : ℝ | digit x 0 = k}).toReal : ℂ) :=
+    integral_digit_indicator _ 0 k
+  rw [hleb, hgauss, DigitLocalLaw.gaussMeasure_real_digit_zero hk,
+    ← Complex.ofReal_sub, Complex.norm_real, Real.norm_eq_abs] at h
+  exact h
 
 end
 

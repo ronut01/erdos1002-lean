@@ -1,5 +1,6 @@
 import Kwon1002.FiveFinal
 import Kwon1002.TupleCount
+import Kwon1002.IntervalClass
 
 /-!
 # Scratch (agent `tuples`), the two `TupleMeasure` inputs and (39)-(40)
@@ -581,7 +582,8 @@ theorem bulk_window_bridge_tuple (c : ℝ) (B : Set ℝ) (_hB : MeasurableSet B)
       atTop (𝓝 0) := by
   sorry
 
-/-- **Residual 2: Proposition 4.1 for the mark event.**
+/-- **Residual 2a: Proposition 4.1 for the mark event, at the class the
+Jackson step actually admits.**
 
 On a `k`-element subset `S` of the deterministic bulk satisfying the
 symmetrized (25)/(26), the joint probability that every level of `S` carries a
@@ -590,23 +592,125 @@ error `O(L^{-(k+1)})`, *one power of `L` better than the `O(L^{-k})` needed to
 survive the `O(L^k)` tuples*, which is exactly the `O_{r,D,A}(L^{-A})` of
 display (27) taken at `A = k+1`.
 
-**Obstruction (named).**  This is `Kwon1002.Section4.prop_4_1_marked_factorization`
-(sorried) applied to `F_ℓ = 1_B ∘ ((-1)^{j} a W(θ)/L)`, after the `a ≤ L^D`
-digit cut and the Jackson approximation that put the indicator of `B` into the
-symbol class `P_D(L)` of display (24).  Neither of those two steps is stated in
-`Kwon1002/`.
+**The boundary-regularity hypothesis, and why it is here.**  The residual used
+to quantify over merely measurable `B`.  `Kwon1002/JacksonGate.lean` shows the
+route the residual names cannot reach that class: membership of the symbol
+class `P_D(L)` of display (24) forces continuity
+(`JacksonGate.continuous_of_isInPD`), so a two-valued member is constant
+(`JacksonGate.isInPD_const_of_two_valued`), and the passage is therefore an
+*approximation* whose rate the error budget fixes at `η_L = O(L^{-2})`
+uniformly in the digit.  For an indicator with `m` jumps Jackson gives
+`O(m/deg) = O(m·L^{-D})` with `D > 2`; for a merely measurable `B` no rate
+exists at all, and `volume (frontier B) = 0` does not repair it (it gives
+qualitative approximability, not a rate).  `IsFiniteUnionOfIntervals` is the
+hypothesis that supplies the jump count, and
+`IntervalClass.markSection_isUnionOfIntervals` proves it supplies it
+*uniformly in the digit and in the sign*: `W` is piecewise monotone with
+exactly two branches on the fundamental cell, so the `θ`-section of the mark
+event over a union of `m` intervals is a union of at most `2m` intervals
+whatever the digit `a` and the sign `(-1)^j` are.  That uniformity is what the
+tuple sum needs.
 
-**The one bookkeeping step not machine-checked.**  Proposition 4.1 is stated on
-an increasing tuple `j_1 < ⋯ < j_k`, this residual on the subset `S`.  Both
-sides depend only on `S` (an intersection and a product), so the two are the
-same statement read through the sorting bijection; the bijection is not carried
-out in Lean here.  Recorded, not hidden. -/
-theorem goodSet_mark_factorization (B : Set ℝ) (_hB : MeasurableSet B)
-    (_hB0 : ∃ δ > 0, ∀ x ∈ B, δ ≤ |x|) (_hBbd : ∃ R : ℝ, ∀ x ∈ B, |x| ≤ R) (k : ℕ) :
+**Obstruction that remains.**  Proposition 4.1 itself is now unconditional
+(`Kwon1002.prop_4_1_marked_factorization_unconditional`), and the sorting
+bijection between its increasing tuple `j_1 < ⋯ < j_k` and this residual's
+subset `S` is discharged (`JacksonGate.exists_goodTuple_of_sepGoodSet`).  What
+is left is exactly the Jackson construction: from "the `θ`-section is a union
+of at most `2m` intervals" to "there is a trigonometric polynomial of degree
+`L^{D}` within `L¹`-distance `O(m·L^{-D})` of its indicator, with coefficient
+`ℓ¹` norm inside the budget of display (24)".  Mathlib carries no Fejér or
+Jackson kernel, so this is a from-scratch construction.  Note also the budget
+finding recorded in `Kwon1002/OneLevelLaw.lean`: the digit cut already spends
+`L^D` of display (24)'s `ℓ¹` allowance, so the Jackson factor must be placed in
+`P_{D'}(L)` for some `D' > D`; the `D` of the class and the `D` of the digit cut
+are different constants. -/
+theorem goodSet_mark_factorization_intervals (B : Set ℝ) (_hB : MeasurableSet B)
+    (_hB0 : ∃ δ > 0, ∀ x ∈ B, δ ≤ |x|) (_hBbd : ∃ R : ℝ, ∀ x ∈ B, |x| ≤ R)
+    (_hint : IntervalClass.IsFiniteUnionOfIntervals B) (k : ℕ) :
     ∃ C : ℝ, 0 < C ∧ ∀ᶠ n : ℕ in atTop, ∀ S : Finset ℕ, S.card = k → SepGoodSet n S →
       |unifIoo.real (⋂ x ∈ (S : Set ℕ), detMarkEvent n B x)
           - ∏ x ∈ S, unifIoo.real (detMarkEvent n B x)| ≤ C / (Lnorm n) ^ (k + 1) := by
   sorry
+
+/-- **Residual 2b: the passage from finite unions of intervals back to
+measurable sets.**
+
+Residual 2a is stated at finite unions of intervals because that is the class
+the Jackson step admits (see its docstring).  The consumers of residual 2 —
+`det_quasi_independence` below, and through it
+`det_tuple_measure_convergence`, `tuple_measure_convergence` and
+`tuple_quasi_independence` — quantify over merely measurable `B`, and those
+statements are *not* weakened here: their `B`-generality is expected to be
+true, recoverable from the interval case by an approximation argument against
+the absolutely continuous limit `Λ`.  That argument is a separate step, and
+isolating it is the point of this residual.  Pushing the interval hypothesis
+into the consumers instead would weaken statements that are true, which is why
+it is not done.
+
+The residual is stated as the implication rather than as a second copy of the
+conclusion, so that it says exactly one thing: *the interval case implies the
+measurable case*, uniformly in `k`.
+
+**Obstruction.**  The approximation is not free: the error in residual 2a is
+`C/L^{k+1}` with `C` depending on `B`, and an approximation argument has to
+control how `C` degrades as an interval family approaches a general measurable
+set.  The route is the outer regularity of Lebesgue measure together with the
+proved one-level bound `det_singleLevel_measure_le`, which caps the mass of
+the symmetric difference at each level by `O(1/L)`. -/
+theorem goodSet_intervals_to_measurable
+    (_h : ∀ B : Set ℝ, MeasurableSet B → (∃ δ > 0, ∀ x ∈ B, δ ≤ |x|) →
+        (∃ R : ℝ, ∀ x ∈ B, |x| ≤ R) → IntervalClass.IsFiniteUnionOfIntervals B →
+        ∀ k : ℕ,
+        ∃ C : ℝ, 0 < C ∧ ∀ᶠ n : ℕ in atTop, ∀ S : Finset ℕ, S.card = k → SepGoodSet n S →
+          |unifIoo.real (⋂ x ∈ (S : Set ℕ), detMarkEvent n B x)
+              - ∏ x ∈ S, unifIoo.real (detMarkEvent n B x)| ≤ C / (Lnorm n) ^ (k + 1)) :
+    ∀ B : Set ℝ, MeasurableSet B → (∃ δ > 0, ∀ x ∈ B, δ ≤ |x|) →
+      (∃ R : ℝ, ∀ x ∈ B, |x| ≤ R) → ∀ k : ℕ,
+      ∃ C : ℝ, 0 < C ∧ ∀ᶠ n : ℕ in atTop, ∀ S : Finset ℕ, S.card = k → SepGoodSet n S →
+        |unifIoo.real (⋂ x ∈ (S : Set ℕ), detMarkEvent n B x)
+            - ∏ x ∈ S, unifIoo.real (detMarkEvent n B x)| ≤ C / (Lnorm n) ^ (k + 1) := by
+  sorry
+
+/-- **Residual 2: Proposition 4.1 for the mark event.**
+
+Statement unchanged — every consumer below and every token-identity check at
+the foot of this file reads exactly the same `Prop` as before — but it is no
+longer a bare `sorry`: it is now *derived* from residuals 2a and 2b, which
+between them say what the manuscript's proof actually does.  The split is the
+content of `Kwon1002/JacksonGate.lean`'s verdict, carried out.
+
+The concrete `B` the §5 chain instantiates is the large-jump truncation
+`{x : ε < |x|}` cut to the bounded window that `_hBbd` forces, and
+`IntervalClass.isUnionOfIntervals_truncation` proves that set is a union of
+**two** intervals — so residual 2a alone already covers every instantiation the
+development makes, and residual 2b is only needed to keep the consumers stated
+at their present generality. -/
+theorem goodSet_mark_factorization (B : Set ℝ) (_hB : MeasurableSet B)
+    (_hB0 : ∃ δ > 0, ∀ x ∈ B, δ ≤ |x|) (_hBbd : ∃ R : ℝ, ∀ x ∈ B, |x| ≤ R) (k : ℕ) :
+    ∃ C : ℝ, 0 < C ∧ ∀ᶠ n : ℕ in atTop, ∀ S : Finset ℕ, S.card = k → SepGoodSet n S →
+      |unifIoo.real (⋂ x ∈ (S : Set ℕ), detMarkEvent n B x)
+          - ∏ x ∈ S, unifIoo.real (detMarkEvent n B x)| ≤ C / (Lnorm n) ^ (k + 1) :=
+  goodSet_intervals_to_measurable
+    (fun B' hB' hB0' hBbd' hint' k' =>
+      goodSet_mark_factorization_intervals B' hB' hB0' hBbd' hint' k')
+    B _hB _hB0 _hBbd k
+
+/-- **Every instantiation the §5 chain makes supplies the hypothesis of
+residual 2a.**  The truncation window `{x : ε < |x| ∧ |x| ≤ R}` — the only
+shape `B` ever takes below Proposition 5.1, and the shape the residual's own
+`_hB0`/`_hBbd` hypotheses force — is a union of two intervals, so residual 2a
+applies to it directly, with jump count `m = 2` and hence with a `θ`-section of
+at most four intervals uniformly in the digit
+(`IntervalClass.markSection_isUnionOfIntervals`). -/
+theorem goodSet_mark_factorization_truncation (ε R : ℝ)
+    (hB : MeasurableSet {x : ℝ | ε < |x| ∧ |x| ≤ R})
+    (hB0 : ∃ δ > 0, ∀ x ∈ {x : ℝ | ε < |x| ∧ |x| ≤ R}, δ ≤ |x|) (k : ℕ) :
+    ∃ C : ℝ, 0 < C ∧ ∀ᶠ n : ℕ in atTop, ∀ S : Finset ℕ, S.card = k → SepGoodSet n S →
+      |unifIoo.real (⋂ x ∈ (S : Set ℕ), detMarkEvent n {x : ℝ | ε < |x| ∧ |x| ≤ R} x)
+          - ∏ x ∈ S, unifIoo.real (detMarkEvent n {x : ℝ | ε < |x| ∧ |x| ≤ R} x)|
+        ≤ C / (Lnorm n) ^ (k + 1) :=
+  goodSet_mark_factorization_intervals _ hB hB0 ⟨R, fun x hx => hx.2⟩
+    (IntervalClass.isUnionOfIntervals_truncation ε R).finite k
 
 /-! ## Part G, the deterministic quasi-independence, proved from the residual -/
 
