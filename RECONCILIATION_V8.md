@@ -147,6 +147,28 @@ every `D > 0`, so this costs nothing; but the `D` of the symbol class and the
 them together is mis-stated. Recorded on `goodSet_mark_factorization_intervals`
 and in the header of `Kwon1002/OneLevelLaw.lean`.
 
+### 7. Nothing established that the deterministic bulk `J_n` is ever nonempty
+
+`TupleFinal.bulkJ_card_le` bounds `#J_n` from above; no result in the tree
+bounded it from below or produced a single element. That gap is load-bearing,
+not cosmetic. Every statement of §§4-5 of the form `∀ᶠ n, ∀ j ∈ bulkJ n, …` is
+vacuous when `J_n` is empty, and `deterministic_oneLevel_intensity` (display
+(35)) would be outright **false** if `J_n` were eventually empty: it asserts
+that `∑_{j ∈ J_n} P(X_{n,j} ∈ B) → Λ(B)`, and `Λ(B)` is positive.
+
+`OneLevelLaw.eventually_bulkJ_nonempty` closes it, axiom-clean, together with
+`lyapunov_pos` and `lyapunov_lt_two` (the latter from `Real.pi_le_four` and
+`Real.log_two_gt_d9`: `π² ≤ 16 < 16.63 < 24 log 2`).
+
+The threshold is worth recording. Display (19) trims `200H = 200L^{3/4}` from
+each end of a range of length `m_n = ⌊L/λ⌋` with `λ ≈ 1.186`, so `J_n` is empty
+until roughly `400L^{3/4} ≤ L/λ`, i.e. until `L ≳ 5·10^{10}` and
+`n ≳ exp(5·10^{10})`. Every `∀ᶠ n, ∀ j ∈ bulkJ n, …` statement in the
+development is therefore true for trivial reasons at every `n` a reader could
+compute with, and acquires content only in the limit. That is a property of the
+manuscript's constant `200`, not of the Lean statements, but it means an `∀ᶠ`
+guard here must not be mistaken for a numerical check.
+
 ## Hypotheses v8 made explicit that this development already carried
 
 These required no change, and are recorded because they are the formal

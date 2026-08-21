@@ -85,6 +85,106 @@ namespace OneLevelLaw
 
 noncomputable section
 
+/-! ## Part 0, the deterministic bulk is eventually nonempty
+
+Every statement of §§4-5 that quantifies over `j ∈ J_n` — `oneLevel_joint_law`
+below, `Kwon1002.deterministic_oneLevel_intensity`, and every sum over
+`bulkJ n` — is vacuous when `J_n` is empty, and
+`deterministic_oneLevel_intensity` would then be *false*: it asserts that the
+sum over `J_n` tends to `Λ(B)`, which is positive.  Non-emptiness of `J_n` is
+therefore load-bearing, and nothing in the tree established it —
+`TupleFinal.bulkJ_card_le` bounds the cardinality from above only.  It is
+established here.
+
+The threshold is not cosmetic.  Display (19) trims `200H = 200L^{3/4}` from each
+end of a range of length `m_n = ⌊L/λ⌋`, so `J_n` is empty until roughly
+`400L^{3/4} ≤ L/λ`, that is until `L ≳ 5·10^{10}` and `n ≳ exp(5·10^{10})`.
+Every statement of the form `∀ᶠ n, ∀ j ∈ bulkJ n, …` in this development is
+therefore true for trivial reasons at every `n` a reader could compute with, and
+acquires content only in the limit.  That is a property of the manuscript's
+constant `200`, not of the statements; it is recorded so that a reader does not
+mistake an `∀ᶠ` guard for a numerical check. -/
+
+theorem lyapunov_pos : 0 < lyapunov := by
+  have hlog : (0.6931471803 : ℝ) < Real.log 2 := Real.log_two_gt_d9
+  exact div_pos (pow_pos Real.pi_pos 2) (by nlinarith)
+
+theorem lyapunov_lt_two : lyapunov < 2 := by
+  have hpi : Real.pi ≤ 4 := Real.pi_le_four
+  have hpi0 : (0 : ℝ) < Real.pi := Real.pi_pos
+  have hlog : (0.6931471803 : ℝ) < Real.log 2 := Real.log_two_gt_d9
+  have hpos : (0 : ℝ) < 12 * Real.log 2 := by nlinarith
+  rw [lyapunov, div_lt_iff₀ hpos]
+  nlinarith
+
+/-- `L = L^{3/4} · L^{1/4}`, the splitting the threshold estimate uses. -/
+lemma Lnorm_eq_Hscale_mul {n : ℕ} (hL0 : 0 < Lnorm n) :
+    Lnorm n = Hscale n * (Lnorm n) ^ (1 / 4 : ℝ) := by
+  rw [Hscale, ← Real.rpow_add hL0]
+  norm_num
+
+/-- Once `L ≥ 801^4`, the two trims of display (19) leave room. -/
+theorem eventually_trim_le :
+    ∀ᶠ n : ℕ in atTop, 0 < Lnorm n ∧ 800 * Hscale n + 4 ≤ Lnorm n := by
+  have hLtend : Tendsto (fun n : ℕ => Lnorm n) atTop atTop :=
+    Real.tendsto_log_atTop.comp tendsto_natCast_atTop_atTop
+  filter_upwards [hLtend.eventually_ge_atTop ((801 : ℝ) ^ (4 : ℝ))] with n hn
+  have h801 : (0 : ℝ) < (801 : ℝ) ^ (4 : ℝ) := Real.rpow_pos_of_pos (by norm_num) _
+  have hL0 : (0 : ℝ) < Lnorm n := lt_of_lt_of_le h801 hn
+  refine ⟨hL0, ?_⟩
+  have hq : ((801 : ℝ) ^ (4 : ℝ)) ^ (1 / 4 : ℝ) = 801 := by
+    rw [← Real.rpow_mul (by norm_num : (0 : ℝ) ≤ 801)]
+    norm_num
+  have hquarter : (801 : ℝ) ≤ (Lnorm n) ^ (1 / 4 : ℝ) := by
+    rw [← hq]
+    exact Real.rpow_le_rpow h801.le hn (by norm_num)
+  have hq3 : ((801 : ℝ) ^ (4 : ℝ)) ^ (3 / 4 : ℝ) = (801 : ℝ) ^ (3 : ℝ) := by
+    rw [← Real.rpow_mul (by norm_num : (0 : ℝ) ≤ 801)]
+    norm_num
+  have h4le : (4 : ℝ) ≤ (801 : ℝ) ^ (3 : ℝ) := by
+    have h1 : (801 : ℝ) ^ (1 : ℝ) ≤ (801 : ℝ) ^ (3 : ℝ) :=
+      Real.rpow_le_rpow_of_exponent_le (by norm_num) (by norm_num)
+    rw [Real.rpow_one] at h1
+    linarith
+  have hH4 : (4 : ℝ) ≤ Hscale n := by
+    have h : ((801 : ℝ) ^ (4 : ℝ)) ^ (3 / 4 : ℝ) ≤ (Lnorm n) ^ (3 / 4 : ℝ) :=
+      Real.rpow_le_rpow h801.le hn (by norm_num)
+    rw [hq3] at h
+    rw [Hscale]
+    linarith
+  have hsplit := Lnorm_eq_Hscale_mul hL0
+  nlinarith [hH4, hquarter, hsplit]
+
+/-- **The deterministic bulk of display (19) is eventually nonempty.**  Without
+this, every `∀ j ∈ bulkJ n` statement in §§4-5 is vacuous and
+`deterministic_oneLevel_intensity` is false. -/
+theorem eventually_bulkJ_nonempty : ∀ᶠ n : ℕ in atTop, (bulkJ n).Nonempty := by
+  filter_upwards [eventually_trim_le] with n hn
+  obtain ⟨hL0, htrim⟩ := hn
+  have hlamp : (0 : ℝ) < lyapunov := lyapunov_pos
+  have hlam2 : lyapunov < 2 := lyapunov_lt_two
+  have hH0 : (0 : ℝ) ≤ Hscale n := by
+    rw [Hscale]; exact Real.rpow_nonneg hL0.le _
+  set j : ℕ := ⌊200 * Hscale n⌋₊ + 1 with hjdef
+  have hjlow : 200 * Hscale n ≤ (j : ℝ) := by
+    have := Nat.lt_floor_add_one (200 * Hscale n)
+    rw [hjdef]; push_cast; linarith
+  have hjhigh : (j : ℝ) ≤ 200 * Hscale n + 1 := by
+    have := Nat.floor_le (by positivity : (0 : ℝ) ≤ 200 * Hscale n)
+    rw [hjdef]; push_cast; linarith
+  have hmfloor : Lnorm n / lyapunov < (mIndex n : ℝ) + 1 := by
+    rw [mIndex]; exact Nat.lt_floor_add_one _
+  have ht : Lnorm n ≤ 2 * (Lnorm n / lyapunov) := by
+    rw [mul_div_assoc', le_div_iff₀ hlamp]
+    nlinarith
+  have hjm : (j : ℝ) ≤ (mIndex n : ℝ) - 200 * Hscale n := by linarith
+  have hjm' : j ≤ mIndex n := by
+    have h : (j : ℝ) ≤ (mIndex n : ℝ) := by linarith
+    exact_mod_cast h
+  refine ⟨j, ?_⟩
+  rw [bulkJ, Finset.mem_filter, Finset.mem_range]
+  exact ⟨by omega, hjlow, hjm⟩
+
 /-! ## Part 1, Proposition 4.1 at `r = 1` -/
 
 /-- The one-level tuple: the level `j` at position `0`, normalized to `0`
