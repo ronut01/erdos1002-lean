@@ -2146,4 +2146,209 @@ end
 
 end NonzeroMode
 
+
+/-! ## The `namespace ZeroMode` readings of the chain and of step 3
+
+`Kwon1002/ZeroMode.lean` states the three-step chain and derives step 3 of the
+§4 body from it, but sits below this module, which proves the chain.  The two
+declarations therefore live here, in the same namespace and with the same
+statements. -/
+
+namespace ZeroMode
+
+open Prop41 ErrorShape
+
+noncomputable section
+
+/-- **Step 3 of the three-step chain, retained form (the oscillatory
+kill).**  Once display (20) has selected the retained words `W` and step 2
+has replaced the post-resonance digit factors by the constant stationary
+product, what is left is `Σ_w amp_w ∫_{I_w} e(nQ_wα) A(α) dα` with
+`‖amp w‖ ≤ B`; under the hypotheses of display (22) — `Q_w ≠ 0` fixed on
+`I_w` (supplied for the mode amplitudes by `exists_frozen_freqQ` together
+with display (28) `Prop41Canon.display_28`), the support of `A` below `I_w`
+a union of depth-`k` descendants with `q_k ≤ R_w`, and `R_w² ≤ ε n |Q_w|`
+(the first inequality of (29)) — the whole sum is `O(Bε)`.  At
+`ε = e^{-cH}`, `B = L^{O_{r,D}(1)}`, this is the third bound of
+`nonzero_mode_three_step`. -/
+theorem nonzero_mode_kill_of_retained :
+    ∃ C : ℝ, 0 < C ∧ ∀ (ε : ℝ), 0 < ε → ∀ (n d k : ℕ), 0 < n → d < k →
+      ∀ (W : Finset (List ℕ)) (Q : List ℕ → ℤ) (R : List ℕ → ℝ)
+        (S : List ℕ → Finset (List ℕ)) (A : ℝ → ℂ) (amp : List ℕ → ℂ) (B : ℝ),
+        0 ≤ B → (∀ w ∈ W, ‖amp w‖ ≤ B) →
+        (∀ w ∈ W, w.length = d ∧ ∀ a ∈ w, 0 < a) →
+        (∀ w ∈ W, Q w ≠ 0) →
+        (∀ w ∈ W, (R w) ^ 2 ≤ ε * (n : ℝ) * |(Q w : ℝ)|) →
+        (∀ α, ‖A α‖ ≤ 1) →
+        (∀ u : List ℕ, u.length = k → (∀ a ∈ u, 0 < a) →
+          ∀ α ∈ Erdos1002.closedGaussPrefixCylinder u,
+            ∀ β ∈ Erdos1002.closedGaussPrefixCylinder u, A α = A β) →
+        Measurable A →
+        (∀ w ∈ W, ∀ v ∈ S w, v.length = k - d ∧ (∀ a ∈ v, 0 < a)) →
+        (∀ w ∈ W, ∀ α ∈ Erdos1002.closedGaussPrefixCylinder w, A α ≠ 0 →
+          ∃ v ∈ S w, α ∈ Erdos1002.closedGaussPrefixCylinder (w ++ v)) →
+        (∀ w ∈ W, ∀ v ∈ S w,
+          (Erdos1002.cfTerminalDenominator (w ++ v) : ℝ) ≤ R w) →
+        ‖∑ w ∈ W, amp w *
+            ∫ α in Erdos1002.gaussHalfOpenPrefixCylinder w,
+              Erdos1002.oscillatoryPhase ((n : ℝ) * (Q w : ℝ)) α * A α‖
+          ≤ C * B * ε := by
+  obtain ⟨C, hC, hest⟩ := descendant_cylinder_estimate
+  refine ⟨C, hC, ?_⟩
+  intro ε hε n d k hn hdk W Q R S A amp B hB hamp hW hQ hR hAbd hAconst hAmeas
+    hSlen hAsupp hSden
+  have h22 := hest ε hε n d k hn hdk W Q R S A hW hQ hR hAbd hAconst hAmeas
+    hSlen hAsupp hSden
+  have hint : ∀ w ∈ W,
+      (∫ α in Erdos1002.gaussHalfOpenPrefixCylinder w,
+          Erdos1002.oscillatoryPhase ((n : ℝ) * (Q w : ℝ)) α * A α)
+        = ∫ α in Erdos1002.closedGaussPrefixCylinder w,
+            Erdos1002.oscillatoryPhase ((n : ℝ) * (Q w : ℝ)) α * A α :=
+    fun w hw => setIntegral_congr_set (halfOpen_ae_eq_closed (hW w hw).2)
+  calc ‖∑ w ∈ W, amp w *
+          ∫ α in Erdos1002.gaussHalfOpenPrefixCylinder w,
+            Erdos1002.oscillatoryPhase ((n : ℝ) * (Q w : ℝ)) α * A α‖
+      ≤ ∑ w ∈ W, ‖amp w *
+          ∫ α in Erdos1002.gaussHalfOpenPrefixCylinder w,
+            Erdos1002.oscillatoryPhase ((n : ℝ) * (Q w : ℝ)) α * A α‖ :=
+        norm_sum_le _ _
+    _ ≤ ∑ w ∈ W, B * ‖∫ α in Erdos1002.closedGaussPrefixCylinder w,
+          Erdos1002.oscillatoryPhase ((n : ℝ) * (Q w : ℝ)) α * A α‖ := by
+        refine Finset.sum_le_sum (fun w hw => ?_)
+        rw [norm_mul, hint w hw]
+        exact mul_le_mul_of_nonneg_right (hamp w hw) (norm_nonneg _)
+    _ = B * ∑ w ∈ W, ‖∫ α in Erdos1002.closedGaussPrefixCylinder w,
+          Erdos1002.oscillatoryPhase ((n : ℝ) * (Q w : ℝ)) α * A α‖ := by
+        rw [Finset.mul_sum]
+    _ ≤ B * (C * ε) := mul_le_mul_of_nonneg_left h22 hB
+    _ = C * B * ε := by ring
+
+/-! ## 10. Step 3 of the §4 body: a nonzero mode
+
+The manuscript's `v_s ≠ 0` branch (lines ≈ 337-383) is a *chain of three
+replacements*, and its three error terms are exactly the three summands of
+the bracket of (30).  Writing `T₁` for the integral after the three local
+complete-cylinder cuts at depths `j_s`, `k_-`, `k_+` have been made, and
+`T₂` for what is left after the post-resonance digit factors have been
+replaced by their stationary means:
+
+1. **Cutting and restoring** (manuscript: "By (20), the total discarded mass
+   is `O(e^{-cL^{1/2}})`" and "extend the stationary-mean replacement to the
+   discarded depth-`k_+` cylinders and restore them … this costs at most
+   `L^{O_{r,D}(1)} e^{-cL^{1/2}}`") bounds `‖modeTerm − T₁‖`.
+2. **The stationary-mean replacement** ("the conditional density of the
+   future has uniformly bounded variation, so Lemma 3.2 replaces all
+   post-resonance digit factors by their stationary means, with total error
+   `L^{O(1)}(e^{-cH} + ρ^{cH})`"; the `100H` clearance is
+   `Prop41.good_avoids_resonance_window`) bounds `‖T₁ − T₂‖`.
+3. **The oscillatory kill** ("On each depth-`(j_s+1)` prefix the integer `Q`
+   is fixed.  The first inequality in (29) and Lemma 3.4 give a contribution
+   `O(e^{-cH})`") bounds `‖T₂‖`.
+
+`nonzero_mode_three_step` states exactly that chain, and
+`nonzero_mode_small` is derived from it **outright** below: the derivation
+is the triangle inequality plus the arithmetic that merges the three
+constants into the single bracket of (30).
+
+**Obstruction of `nonzero_mode_three_step`** (it is the substantive half of
+§4, and it is the one place where the two §3 oscillatory inputs enter):
+
+* step 1 needs the large-deviation estimate (20) for `log q_j`, the
+  statement `q_j ∈ [e^{λj−δH}, e^{λj+δH}]` off a set of measure
+  `O(e^{-cL^{1/2}})`, which no module of `Kwon1002/` yet supplies, and the
+  deterministic frequency bound (28) `q_{j_s}/2 ≤ |Q| ≤ 2L^D q_{j_s}`, which
+  needs the Fibonacci lower bound on continuants together with `|v_ℓ| ≤ L^D`
+  and the separation (25);
+* step 2 is `MixingBV.lem_3_2_conditional_multiblock_mixing'` (available)
+  applied at the clearance `Prop41.good_avoids_resonance_window` provides,
+  but conditioned on a depth-`k_+` cylinder rather than on `(0,1)`; the
+  conditional-density BV bound the manuscript invokes there is *not* the
+  zero-mode BV bound of `Bridge.bv_of_firstDigit_step`;
+* step 3 is `Kwon1002.descendant_cylinder_estimate` (display (22), proved)
+  fed with `d = j_s + 1`, `k = k_-`, `Q_w` the fixed integer of (28) and
+  `R_w = q_{k_-}`, whose hypothesis `R_w² ≤ ε n |Q_w|` is the first
+  inequality of (29); `Kwon1002.shrinking_anti_concentration` (Lemma 3.3,
+  proved) is what makes the frequency non-degenerate on the retained set.
+  The cylinder bookkeeping that puts `modeTerm` into the shape
+  `∑_w ‖∑_v c_{w,v} ∫ e(nQ_wα)‖` those lemmas consume is now **built in
+  §9 above**: `modeTerm_eq_oscillatory` (frequency extraction via (8)),
+  `exists_frozen_freqQ` + `retained_integral_oscillatory_form` (the frozen
+  `Q_w` on each retained cylinder), `nonzero_mode_cut_of_retained` (step 1
+  with the discarded mass as an explicit hypothesis, constant `C = 1`) and
+  `nonzero_mode_kill_of_retained` (step 3 under (22)'s hypotheses).  The
+  residual between those conditional forms and this statement is exactly
+  display (20) — the selection of the retained words, the `e^{-cL^{1/2}}`
+  mass of the discard, and both inequalities of (29) — plus step 2's
+  Lebesgue-conditional mean replacement.
+
+**Error budget.**  Step 2 carries the `e^{-c√L}` summand as well as the two
+`H`-summands.  The manuscript restores the discarded depth-`k_+` cylinders
+*after* the stationary-mean replacement, at cost `L^{O(1)} e^{-cL^{1/2}}`,
+so that cost falls in step 2 and not only in step 1.  Charging it to step 1
+alone made the chain underivable, since `e^{-c√L}` dominates `e^{-cH}` at
+`H = L^{3/4}`.  The consumer `ErrorShape.nonzero_mode_small` already sums
+all three summands, so widening step 2 is downstream-safe. -/
+theorem nonzero_mode_three_step (r : ℕ) (D : ℝ) (hD : 0 < D) :
+    ∃ C c₀ ρ : ℝ, 0 < C ∧ 0 < c₀ ∧ 0 < ρ ∧ ρ < 1 ∧ ∀ᶠ n : ℕ in atTop,
+      ∀ j : ℕ → ℕ, GoodTuple n r j →
+      ∀ F : ℕ → ℕ → ℝ → ℂ, ∀ c : ℕ → ℕ → ℤ → ℂ,
+        RepresentsPD r D (Lnorm n) F c →
+      ∀ v ∈ modeTuples r D (Lnorm n), v ≠ 0 →
+        ∃ T₁ T₂ : ℂ,
+          ‖modeTerm n r j c v - T₁‖
+              ≤ C * (Lnorm n) ^ (D * r) * Real.exp (-c₀ * Real.sqrt (Lnorm n)) ∧
+            ‖T₁ - T₂‖
+              ≤ C * (Lnorm n) ^ (D * r) *
+                  (Real.exp (-c₀ * Real.sqrt (Lnorm n))
+                    + Real.exp (-c₀ * Hscale n) + ρ ^ (c₀ * Hscale n)) ∧
+            ‖T₂‖ ≤ C * (Lnorm n) ^ (D * r) * Real.exp (-c₀ * Hscale n) :=
+  NonzeroMode.nonzero_mode_three_step_unconditional r D hD
+
+/-- Machine check: the chain just proved **is** the chain verbatim as
+`Kwon1002/ZeroMode.lean` used to state it. -/
+example : @NonzeroMode.nonzero_mode_three_step_unconditional
+    = @nonzero_mode_three_step := rfl
+
+/-- **Step 3 of the §4 body.**  Statement reproduced token-identically from
+`Kwon1002.ErrorShape.nonzero_mode_small`; proved outright from
+`nonzero_mode_three_step`. -/
+theorem nonzero_mode_small (r : ℕ) (D : ℝ) (hD : 0 < D) :
+    ∃ C c₀ ρ : ℝ, 0 < C ∧ 0 < c₀ ∧ 0 < ρ ∧ ρ < 1 ∧ ∀ᶠ n : ℕ in atTop,
+      ∀ j : ℕ → ℕ, GoodTuple n r j →
+      ∀ F : ℕ → ℕ → ℝ → ℂ, ∀ c : ℕ → ℕ → ℤ → ℂ,
+        RepresentsPD r D (Lnorm n) F c →
+      ∀ v ∈ modeTuples r D (Lnorm n), v ≠ 0 →
+        ‖modeTerm n r j c v‖
+          ≤ C * (Lnorm n) ^ (D * r) *
+              (Real.exp (-c₀ * Real.sqrt (Lnorm n)) + Real.exp (-c₀ * Hscale n)
+                + ρ ^ (c₀ * Hscale n)) := by
+  obtain ⟨C, c₀, ρ, hC, hc₀, hρ0, hρ1, hbd⟩ := nonzero_mode_three_step r D hD
+  have hLtend : Tendsto (fun n : ℕ => Lnorm n) atTop atTop :=
+    Real.tendsto_log_atTop.comp tendsto_natCast_atTop_atTop
+  refine ⟨3 * C, c₀, ρ, by linarith, hc₀, hρ0, hρ1, ?_⟩
+  filter_upwards [hbd, hLtend.eventually (eventually_ge_atTop (1 : ℝ))]
+    with n hn hL1 j hj F c hc v hv hv0
+  obtain ⟨T₁, T₂, h1, h2, h3⟩ := hn j hj F c hc v hv hv0
+  have hL0 : (0 : ℝ) < Lnorm n := lt_of_lt_of_le zero_lt_one hL1
+  have hX : (0 : ℝ) ≤ (Lnorm n) ^ (D * (r : ℝ)) := Real.rpow_nonneg hL0.le _
+  have e1 : (0 : ℝ) < Real.exp (-c₀ * Real.sqrt (Lnorm n)) := Real.exp_pos _
+  have e2 : (0 : ℝ) < Real.exp (-c₀ * Hscale n) := Real.exp_pos _
+  have e3 : (0 : ℝ) < ρ ^ (c₀ * Hscale n) := Real.rpow_pos_of_pos hρ0 _
+  have htri : ‖modeTerm n r j c v‖ ≤ ‖modeTerm n r j c v - T₁‖ + ‖T₁ - T₂‖ + ‖T₂‖ := by
+    calc ‖modeTerm n r j c v‖
+        = ‖(modeTerm n r j c v - T₁) + ((T₁ - T₂) + T₂)‖ := by ring_nf
+      _ ≤ ‖modeTerm n r j c v - T₁‖ + ‖(T₁ - T₂) + T₂‖ := norm_add_le _ _
+      _ ≤ ‖modeTerm n r j c v - T₁‖ + (‖T₁ - T₂‖ + ‖T₂‖) :=
+          add_le_add le_rfl (norm_add_le _ _)
+      _ = ‖modeTerm n r j c v - T₁‖ + ‖T₁ - T₂‖ + ‖T₂‖ := by ring
+  refine le_trans htri ?_
+  have hsum := add_le_add (add_le_add h1 h2) h3
+  refine le_trans hsum ?_
+  nlinarith [hX, e1.le, e2.le, e3.le, hC.le,
+    mul_nonneg hX e1.le, mul_nonneg hX e2.le, mul_nonneg hX e3.le]
+
+end
+
+end ZeroMode
+
 end Kwon1002

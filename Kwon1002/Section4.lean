@@ -121,28 +121,15 @@ right of (27).  `a₁(x) = ⌊1/x⌋ = digit x 0`, `dν` is Gauss measure
 def stationaryMean (F : ℕ → ℝ → ℂ) : ℂ :=
   ∫ x, (∫ θ in Ioo (0 : ℝ) 1, F (digit x 0) θ) ∂Erdos1002.gaussMeasure
 
-/-- **Proposition 4.1** (Marked factorization), display (27).
+/-! ### Proposition 4.1 (Marked factorization), display (27)
 
-For fixed `r, D, A`: uniformly over good tuples `(j_1,…,j_r)` in `J_n`
-and over `F_1,…,F_r ∈ P_D(L)`,
-
-`∫₀¹ ∏_ℓ F_ℓ(a_{j_ℓ+1}, θ_{j_ℓ}) dα
-   = ∏_ℓ ∫₀¹∫₀¹ F_ℓ(a₁(x), θ) dθ dν(x) + O_{r,D,A}(L^{-A})`.
-
-**Reading (uniformity).**  `O_{r,D,A}` means: one constant `C`,
-depending on `r, D, A` only, valid for all large `n`, all good tuples and
-all admissible symbol families.  That is the reading the downstream use
-in §§5-6 needs, and it is the strongest one; the constant is therefore
-quantified outside `n`, `j` and `F`. -/
-theorem prop_4_1_marked_factorization (r : ℕ) (D A : ℝ) (hD : 0 < D) (hA : 0 < A) :
-    ∃ C : ℝ, 0 < C ∧ ∀ᶠ n : ℕ in atTop,
-      ∀ j : ℕ → ℕ, GoodTuple n r j →
-      ∀ F : ℕ → ℕ → ℝ → ℂ, (∀ ℓ, ℓ < r → IsInPD D (Lnorm n) (F ℓ)) →
-        ‖(∫ α in Ioo (0 : ℝ) 1,
-              ∏ ℓ ∈ Finset.range r, F ℓ (digit α (j ℓ)) (theta α n (j ℓ)))
-            - ∏ ℓ ∈ Finset.range r, stationaryMean (F ℓ)‖
-          ≤ C * (Lnorm n) ^ (-A) := by
-  sorry
+`Kwon1002.prop_4_1_marked_factorization` is **declared in
+`Kwon1002/Prop41Unconditional.lean`**, not here.  Its proof consumes the
+`v_s ≠ 0` branch of §4, discharged in `Kwon1002/NonzeroMode.lean`, and every
+module able to prove it sits above this one.  A declaration placed here could
+therefore never shed its `sorry` by mathematics alone, so the name is put
+where the proof lives instead.  The statement is unchanged; see the docstring
+at its declaration site. -/
 
 /-! ## (31): reduction of a radius-`R` window character to the central pair -/
 
@@ -262,32 +249,14 @@ def WindowSymbol.stationaryIntegral {R K : ℕ} (U : WindowSymbol R K) : ℂ :=
 
 /-! ## Proposition 4.2 (Two-block factorization), display (34) -/
 
-/-- **Proposition 4.2** (Two-block factorization), display (34).
+/-! ### Proposition 4.2 (Two-block factorization), display (34)
 
-For fixed finite linear combinations `U`, `V` of monomials (32), all but
-`O_{U,V}(LH)` pairs `j < k` in `J_n` satisfy
-
-`|∫₀¹ U_j V_k dα - ∫U dμ̂₀ ∫V dμ̂₀| ≤ C_{U,V}(e^{-cL^{1/2}} + e^{-cH} + ρ^{cH})`.
-
-**Reading (exceptional set).**  "All but `O(LH)` pairs" is rendered as a
-cardinality bound on the set of pairs in `J_n` *failing* the estimate,
-with the implied constant depending only on `U` and `V`, not on `n`.
-
-**Reading (constants).**  `c` and `ρ ∈ (0,1)` are the mixing/deviation
-constants of §3, existentially quantified together with `C`; note cosmetic
-item 5 of our referee report: the proof needs the anti-concentration
-constant `c` (in `η = e^{-cH}`), together with `3δ`, to sit below
-`80λ ≈ 94.9`.  That compatibility is a constraint on the *choice* of `c`
-and so is absorbed by the existential here. -/
-theorem prop_4_2_two_block_factorization {R K : ℕ} (U V : WindowSymbol R K) :
-    ∃ C c ρ : ℝ, 0 < C ∧ 0 < c ∧ 0 < ρ ∧ ρ < 1 ∧ ∀ᶠ n : ℕ in atTop,
-      (({p ∈ (bulkPairs n : Set (ℕ × ℕ)) |
-          ¬ ‖(∫ α in Ioo (0 : ℝ) 1, U.at α n p.1 * V.at α n p.2)
-                - U.stationaryIntegral * V.stationaryIntegral‖
-              ≤ C * (Real.exp (-c * Real.sqrt (Lnorm n))
-                      + Real.exp (-c * Hscale n) + ρ ^ (c * Hscale n))}).ncard : ℝ)
-        ≤ C * Lnorm n * Hscale n := by
-  sorry
+`Kwon1002.prop_4_2_two_block_factorization` is **declared in
+`Kwon1002/Prop42Unconditional.lean`**, not here, for the same reason as
+Proposition 4.1: the three cases of its monomial core are discharged in
+`Kwon1002/PhaseBounds.lean`, `Kwon1002/P42Later.lean` and
+`Kwon1002/P42Super.lean`, all of which sit above this module.  The statement
+is unchanged; see the docstring at its declaration site. -/
 
 end
 

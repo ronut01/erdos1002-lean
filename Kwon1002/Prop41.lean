@@ -278,64 +278,15 @@ theorem lem_3_2_conditional_multiblock_mixing (s : ℕ) :
 
 /-! ## The body of the §4 proof, in the shape (30) states it -/
 
-/-- **Display (30)**, the half that is *not* proved here: the body of the
-manuscript's proof of Proposition 4.1.
+/-! ## Display (30) and Proposition 4.1
 
-Reading: there are a polynomial weight `L^B` (the `L^{O_{r,D}(1)}` of (30),
-coming from the `ℓ¹` mass `L^{Dr}` of the extracted Fourier-digit
-coefficients times the number of Fourier terms) and mixing/deviation
-constants `c > 0`, `ρ ∈ (0,1)` such that, uniformly over good tuples and
-over symbol families in `P_D(L)`, the factorization error of (27) is at
-most `C L^B δ_n`.
-
-What this packages (manuscript lines ≈ 340-404):
-* the digit/Fourier expansion and the `ℓ¹` bound `L^{Dr}` on the extracted
-  coefficients;
-* the `v = 0` branch: `lem_3_2_conditional_multiblock_mixing` applied across
-  the gaps `goodTuple_sep` supplies, error `L^{O(1)} ρ^{200H}`;
-* the `v_s ≠ 0` branch: the deterministic frequency bound (28), the three
-  local complete-cylinder cuts at depths `j_s`, `k_-`, `k_+` with discarded
-  mass `O(e^{-cL^{1/2}})` by (20), the consequence (29), the replacement of
-  the post-resonance digit factors by their stationary means (which uses
-  `good_avoids_resonance_window` to place them `100H` clear of the window),
-  and Lemma 3.4 (`Kwon1002.descendant_phase_small`) on each depth-`(j_s+1)`
-  prefix. -/
-theorem prop_4_1_error_shape (r : ℕ) (D : ℝ) (hD : 0 < D) :
-    ∃ B C c ρ : ℝ, 0 < C ∧ 0 < c ∧ 0 < ρ ∧ ρ < 1 ∧ ∀ᶠ n : ℕ in atTop,
-      ∀ j : ℕ → ℕ, GoodTuple n r j →
-      ∀ F : ℕ → ℕ → ℝ → ℂ, (∀ ℓ, ℓ < r → IsInPD D (Lnorm n) (F ℓ)) →
-        ‖(∫ α in Ioo (0 : ℝ) 1,
-              ∏ ℓ ∈ Finset.range r, F ℓ (digit α (j ℓ)) (theta α n (j ℓ)))
-            - ∏ ℓ ∈ Finset.range r, stationaryMean (F ℓ)‖
-          ≤ C * (Lnorm n) ^ B * deltaScale c ρ n := by
-  sorry
-
-/-! ## Proposition 4.1 -/
-
-/-- **Proposition 4.1** (Marked factorization), display (27).
-
-Statement reproduced token-identically from
-`Kwon1002/Section4.lean` (`Kwon1002.prop_4_1_marked_factorization`); proved
-here from `prop_4_1_error_shape` and the fully proved `O_A(L^{-A})`
-reduction `eventually_rpow_mul_deltaScale_le`. -/
-theorem prop_4_1_marked_factorization (r : ℕ) (D A : ℝ) (hD : 0 < D) (hA : 0 < A) :
-    ∃ C : ℝ, 0 < C ∧ ∀ᶠ n : ℕ in atTop,
-      ∀ j : ℕ → ℕ, GoodTuple n r j →
-      ∀ F : ℕ → ℕ → ℝ → ℂ, (∀ ℓ, ℓ < r → IsInPD D (Lnorm n) (F ℓ)) →
-        ‖(∫ α in Ioo (0 : ℝ) 1,
-              ∏ ℓ ∈ Finset.range r, F ℓ (digit α (j ℓ)) (theta α n (j ℓ)))
-            - ∏ ℓ ∈ Finset.range r, stationaryMean (F ℓ)‖
-          ≤ C * (Lnorm n) ^ (-A) := by
-  obtain ⟨B, C, c, ρ, hC, hc, hρ0, hρ1, hbd⟩ := prop_4_1_error_shape r D hD
-  refine ⟨C, hC, ?_⟩
-  filter_upwards [hbd, eventually_rpow_mul_deltaScale_le A B c ρ hc hρ0 hρ1]
-    with n hn harith j hj F hF
-  calc ‖(∫ α in Ioo (0 : ℝ) 1,
-            ∏ ℓ ∈ Finset.range r, F ℓ (digit α (j ℓ)) (theta α n (j ℓ)))
-          - ∏ ℓ ∈ Finset.range r, stationaryMean (F ℓ)‖
-      ≤ C * (Lnorm n) ^ B * deltaScale c ρ n := hn j hj F hF
-    _ = C * ((Lnorm n) ^ B * deltaScale c ρ n) := by ring
-    _ ≤ C * (Lnorm n) ^ (-A) := mul_le_mul_of_nonneg_left harith hC.le
+`Kwon1002.Prop41.prop_4_1_error_shape` (display (30)) and
+`Kwon1002.Prop41.prop_4_1_marked_factorization` are **declared in
+`Kwon1002/Prop41Unconditional.lean`**, not here.  The `v_s ≠ 0` branch that
+(30) rests on is discharged in `Kwon1002/NonzeroMode.lean`, above this file,
+so declarations placed here could never lose their `sorry`.  Everything (30)
+needs from this module — `deltaScale`, `eventually_rpow_mul_deltaScale_le`
+and the `P_D(L)` apparatus — is proved above. -/
 
 end
 
