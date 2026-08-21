@@ -16,10 +16,74 @@ through the `open`s, and each is checked *inside Lean* by an
     = `Kwon1002.principal_cauchy_law`
       (`Kwon1002/PoissonLimit.lean` line 46).
 
-Neither closes outright: both sit below Proposition 4.1, which is only
-*stated* in this development.  What this file delivers is the assembly of
-both from a **two-element** named input set, together with two things that
-were previously commentary rather than theorems.
+Neither closes outright.  What this file delivers is the assembly of both from
+a **two-element** named input set, together with two things that were
+previously commentary rather than theorems.
+
+## THE STRUCTURAL GATE (verified this pass, and it is the operative one)
+
+The header used to say the two endpoints "sit below Proposition 4.1, which is
+only *stated* in this development".  Half of that is now false and the other
+half is the whole obstruction, so it is worth stating exactly.
+
+Proposition 4.1 is **no longer only stated**: `prop_4_1_marked_factorization`
+and `Prop41.prop_4_1_error_shape` (`Kwon1002/Prop41Unconditional.lean`),
+`prop_4_2_two_block_factorization` (`Kwon1002/Prop42Unconditional.lean`) and
+display (20) (`LargeDeviation.display20_of_pos`, `Kwon1002/LDMain.lean`) are
+all proved outright, as are the Jackson kernel (`Kwon1002/Fejer.lean`) and the
+one-level laws (`Kwon1002/OneLevelLaw.lean`, `Kwon1002/DigitLocalLaw.lean`).
+
+What blocks the two residuals below is the **module direction**, and it blocks
+every §5 residual in the tree uniformly.  Writing `R` for the modules that
+declare a §5 residual and `P` for the modules that prove §4, the import
+closure of every `R` misses every `P`:
+
+|                     | Prop41Unc | Prop42Unc | LDMain | Fejer | OneLevelLaw | DigitLocalLaw |
+|---------------------|-----------|-----------|--------|-------|-------------|---------------|
+| `CorFinal`          | no        | no        | no     | no    | no          | no            |
+| `FiveFinal`         | no        | no        | no     | no    | no          | no            |
+| `TupleFinal`        | no        | no        | no     | no    | no          | no            |
+| `CovarianceChain`   | no        | no        | no     | no    | no          | no            |
+| `Assembly5`, `Finale`, `OffDiagonal`, `OffDiagFinal`, `L2Estimate`, `TupleMeasure`, `LevyExponent`, `SmallJumps`: all no. |
+
+and none of the `P` imports any of the `R` either, so the two families are
+*incomparable*, not ordered.  (`IntervalClass` is the single exception:
+`TupleFinal` does reach it, which is why the good-set construction could be
+placed where it is used.)
+
+**Consequence.**  `largeSum_charFun_limit` and `bulk_offdiagonal_abs_far_sharp`
+can never shed `sorryAx` *where they are declared*, for exactly the reason
+`Kwon1002.principal_cauchy_law` cannot in `Kwon1002/PoissonLimit.lean`: the
+modules able to supply their inputs sit off to the side.  No amount of §4 work
+inside `CorFinal`, `FiveFinal`, `TupleFinal` or `CovarianceChain` will move
+them.  The endgame is a **join module** importing both families — the pattern
+`Kwon1002/Prop41Unconditional.lean` already used for `Section4`'s canonical
+name and `Kwon1002/Master.lean` for `principal_cauchy_law` — in which
+`Master.PrincipalCauchyLaw c` is proved directly.  Such a module exists without
+a cycle: `Kwon1002.lean` imports both families already.
+
+What that join module still needs *mathematically*, over and above what is
+proved today, is two things and only two:
+
+* **the Jackson instantiation at the interval class.**  Every ingredient is
+  proved — `Fejer.fejerPoly_L1_error_le`, `Fejer.fejerCoeff_l1_le`,
+  `Fejer.isInPD_fejerPoly`, `IntervalClass.markSection_isUnionOfIntervals`
+  (the uniform `2m` jump count), `IntervalClass.exists_goodSet` and
+  `JacksonGate.exists_goodTuple_of_sepGoodSet` (the sorting bijection) — and
+  what is missing is the `k`-level bookkeeping that assembles them into
+  `TupleFinal.goodSet_mark_factorization_intervals`, together with display
+  (35) `FiveFinal.deterministic_oneLevel_intensity`, whose two classical
+  inputs (`OneLevelLaw.oneLevel_gaussKuzmin` for the exact `a^{-2}` digit law
+  and `OneLevelLaw.oneLevel_phase_equidistribution` for `θ`) are now proved;
+* **the `L¹` band-mass estimate** of finding (F7),
+  `CovarianceChain.truncatedMark_sub_lipTrunc_L1_of_band`, which is the one
+  input the tree does *not* contain in any form and which (F7) shows is not
+  derivable from the display-(15) tails.  This one gates residual 2 only.
+
+The §7 factor that used to be the third item on that list is gone:
+`Kwon1002/StoppingWindow.lean` proves `τ_n = m_n + O(H)` off a set of measure
+`O(e^{−c√L})`, and `Kwon1002.bulk_window_bridge_oneLevel` is the one-level
+consequence, proved.
 
 ## THE REMAINING DEBT (exactly two statements, both declared here)
 
@@ -293,11 +357,33 @@ symbol above is inside the class as it stands; no widening of Proposition
 What separates this statement from Proposition 4.1 is therefore *not* §4
 and not the vague topology: it is the tuple-sum bookkeeping of
 `Kwon1002/TupleFinal.lean`, whose reduction of the tuple limit leaves three
-residuals, and the two that are not Proposition 4.1
-(`bulk_window_bridge_tuple`, needing the §7 stopping-time analysis, and
-`FiveFinal.deterministic_oneLevel_intensity`, display (35), needing the
-asymptotic Gauss digit tail and the equidistribution of `θ_j`) remain open.
-Those two are where this debt now sits. -/
+residuals.
+
+**Where the debt sits now** (revised; the previous reading named the §7
+stopping-time analysis, which is proved).
+
+* `TupleFinal.bulk_window_bridge_tuple`, the index-set bridge at `k` levels.
+  Its analytic content is **discharged**: `Kwon1002/StoppingWindow.lean` gives
+  `τ_n = m_n + O(H)` off a set of measure `O(e^{−c√L})`, and the `k = 1` case
+  is proved outright as `Kwon1002.bulk_window_bridge_oneLevel`.  What is left
+  for `k ≥ 2` is a cardinality count for embeddings with a coordinate
+  constraint — combinatorics, not analysis; see that docstring.
+* `TupleFinal.goodSet_mark_factorization_intervals`, the Jackson step.  Step 1
+  (the good set) is `IntervalClass.exists_goodSet` and the sorting bijection is
+  `JacksonGate.exists_goodTuple_of_sepGoodSet`, both proved; the kernel and its
+  three estimates are `Kwon1002/Fejer.lean`, proved.  The `k`-level bookkeeping
+  is what is missing.
+* `FiveFinal.deterministic_oneLevel_intensity`, display (35).  Its two
+  classical inputs are now proved: `OneLevelLaw.oneLevel_gaussKuzmin` (the
+  level-`j` digit law with the exact `a^{-2}` decay, to `O_{D,A}(L^{-A})`) and
+  `OneLevelLaw.oneLevel_phase_equidistribution` (`θ_j`).  The normalization was
+  re-checked by hand this pass and is consistent:
+  `E[W] = 1/12`, per-level intensity `1/(12uL log 2)`, `#J_n ≈ 12 L log 2/π²`,
+  parity factor `1/2`, giving `Λ{x > u} = 1/(2π²u)` exactly.
+
+None of the three can be discharged where it stands — see the structural gate
+in this file's header — so all three, and this statement, belong in the join
+module. -/
 theorem largeSum_charFun_limit (c ε : ℝ) (_hε0 : 0 < ε) (_hε1 : ε < 1) (t : ℝ) :
     Tendsto (fun n : ℕ => ∫ α in Ioo (0 : ℝ) 1,
         Complex.exp ((t : ℂ) * (largeSum c ε α n : ℂ) * Complex.I)) atTop
