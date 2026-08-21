@@ -23,7 +23,14 @@ of display (24)" needs such a kernel, so it is built here from scratch.
 * `fejerKernel_closed_form`, `F_N(θ) = (1/(N+1))·(sin(π(N+1)θ)/sin(πθ))²`;
 * `integral_fejerKernel`, total mass `1` on the fundamental cell;
 * `fejerKernel_le_of_mem`, the concentration bound
-  `F_N(θ) ≤ 1/(4(N+1)·d(θ)²)` with `d(θ) = min(θ, 1−θ)` the distance to `ℤ`.
+  `F_N(θ) ≤ 1/(4(N+1)·d(θ)²)` with `d(θ) = min(θ, 1−θ)` the distance to `ℤ`;
+* `fejerPoly`, the Fejér mean, *defined by its coefficient list* so that
+  display (24)'s `ℓ¹` budget is read off the definition, with the convolution
+  identity `fejerPoly_eq_conv` proved rather than assumed;
+* `fejerCoeff_l1_le` and `tsum_norm_fejerCoeff`, the `ℓ¹` budget;
+* `fejerPoly_L1_error_le`, the `L¹` approximation bound;
+* `isInPD_fejerPoly`, membership of the resulting symbol in the class `P_D(L)`
+  of display (24).
 
 ## The rate that is proved, and the rate that is classical
 
@@ -706,6 +713,125 @@ theorem fejerPoly_L1_error_le {f : ℝ → ℂ} {M : ℝ} (hf : IsPerBdd f M) (N
     rfl
   rw [hu, integral_add (integrableOn_const_of_ne_top hIoo_ne A) (hindInt.const_mul _),
     h1, integral_const_mul, h2]
+
+/-! ## Part 6, membership in the symbol class of display (24)
+
+`Kwon1002/JacksonGate.lean` proves that an *indicator* cannot lie in `P_D(L)`
+(members are trigonometric polynomials, hence continuous, hence constant if
+two-valued).  Its approximants can, and that is what this part supplies: a
+digit-indexed family of Fejér means, cut off above the digit `A`, is a member
+of `P_{D}(L)` as soon as the degree and the total coefficient mass fit the
+budget.
+
+The two constants really are different, as `Kwon1002/OneLevelLaw.lean` records:
+the `ℓ¹` sum of display (24) runs over **both** the digit and the frequency, so
+a digit cut at `A_L = L^D` already spends the whole `L^D` allowance and the
+approximant has to be placed in `P_{D'}(L)` for a strictly larger `D'`.  The
+hypothesis `hbudget` below is exactly that accounting, written out.
+-/
+
+/-- The coefficient family of the Fejér mean, extended by zero off its degree
+window. -/
+def fejerCoeff (N : ℕ) (f : ℝ → ℂ) (v : ℤ) : ℂ :=
+  if v.natAbs ≤ N then ((fejerWeight N v : ℝ) : ℂ) * fourierCoeff1 f v else 0
+
+lemma fejerCoeff_eq_zero {N : ℕ} {f : ℝ → ℂ} {v : ℤ} (h : N < v.natAbs) :
+    fejerCoeff N f v = 0 := by
+  simp [fejerCoeff, Nat.not_le.mpr h]
+
+lemma mem_Icc_iff_natAbs_le {N : ℕ} {v : ℤ} :
+    v ∈ Finset.Icc (-(N : ℤ)) (N : ℤ) ↔ v.natAbs ≤ N := by
+  simp only [Finset.mem_Icc]; omega
+
+/-- The Fejér mean *is* the trigonometric series of its coefficient family. -/
+theorem tsum_fejerCoeff (N : ℕ) (f : ℝ → ℂ) (θ : ℝ) :
+    ∑' v : ℤ, fejerCoeff N f v * torusChar ((v : ℝ) * θ) = fejerPoly N f θ := by
+  rw [tsum_eq_sum (s := Finset.Icc (-(N : ℤ)) (N : ℤ)) ?_]
+  · unfold fejerPoly
+    refine Finset.sum_congr rfl fun v hv => ?_
+    rw [fejerCoeff, if_pos (mem_Icc_iff_natAbs_le.mp hv)]
+  · intro v hv
+    rw [fejerCoeff_eq_zero (Nat.not_le.mp fun h => hv (mem_Icc_iff_natAbs_le.mpr h)), zero_mul]
+
+/-- The `ℓ¹` mass of the coefficient family, as a `tsum`. -/
+theorem tsum_norm_fejerCoeff {f : ℝ → ℂ} {M : ℝ} (hf : IsPerBdd f M) (N : ℕ) :
+    ∑' v : ℤ, ‖fejerCoeff N f v‖ ≤ (2 * (N : ℝ) + 1) * M := by
+  rw [tsum_eq_sum (s := Finset.Icc (-(N : ℤ)) (N : ℤ)) ?_]
+  · refine le_trans (le_of_eq ?_) (fejerCoeff_l1_le hf N)
+    refine Finset.sum_congr rfl fun v hv => ?_
+    rw [fejerCoeff, if_pos (mem_Icc_iff_natAbs_le.mp hv)]
+  · intro v hv
+    rw [fejerCoeff_eq_zero (Nat.not_le.mp fun h => hv (mem_Icc_iff_natAbs_le.mpr h)), norm_zero]
+
+/-- **The Jackson symbol lies in the class of display (24).**
+
+`fun a θ => if a ≤ A then fejerPoly N (g a) θ else 0` is a member of
+`P_D(L)` whenever
+
+* the digit cut fits, `A ≤ L^D` (`hAle`);
+* the degree fits, `N ≤ L^D` (`hNle`);
+* the *total* coefficient mass over digits **and** frequencies fits,
+  `(A+1)·(2N+1)·M ≤ L^D` (`hbudget`).
+
+The third is the binding one, and it is why the class constant `D` here must
+exceed the `D` of the digit cut `A_L = L^D`: at `A = L^D` the left side is
+already `L^D·(2N+1)·M`. -/
+theorem isInPD_fejerPoly (D L : ℝ) (A N : ℕ) (M : ℝ) (g : ℕ → ℝ → ℂ)
+    (hg : ∀ a, IsPerBdd (g a) M)
+    (hAle : (A : ℝ) ≤ L ^ D) (hNle : (N : ℝ) ≤ L ^ D)
+    (hbudget : ((A : ℝ) + 1) * ((2 * (N : ℝ) + 1) * M) ≤ L ^ D) :
+    IsInPD D L (fun a θ => if a ≤ A then fejerPoly N (g a) θ else 0) := by
+  classical
+  refine ⟨fun a v => if a ≤ A then fejerCoeff N (g a) v else 0, ?_, ?_, ?_, ?_⟩
+  · intro a v ha
+    have : ¬ a ≤ A := by
+      intro h
+      exact absurd (le_trans (by exact_mod_cast Nat.cast_le.mpr h) hAle) (not_le.mpr ha)
+    simp [this]
+  · intro a v hv
+    have hvN : N < v.natAbs := by
+      by_contra hc
+      push_neg at hc
+      have h1 : -(N : ℤ) ≤ v := by omega
+      have h2 : v ≤ (N : ℤ) := by omega
+      have hb : |(v : ℝ)| ≤ (N : ℝ) := by
+        rw [abs_le]
+        exact ⟨by exact_mod_cast h1, by exact_mod_cast h2⟩
+      linarith
+    by_cases ha : a ≤ A
+    · simp [ha, fejerCoeff_eq_zero hvN]
+    · simp [ha]
+  · -- the `ℓ¹` budget
+    have hsupp : ∀ p : ℕ × ℤ,
+        p ∉ (Finset.range (A + 1)) ×ˢ (Finset.Icc (-(N : ℤ)) (N : ℤ)) →
+          ‖if p.1 ≤ A then fejerCoeff N (g p.1) p.2 else 0‖ = 0 := by
+      rintro ⟨a, v⟩ hp
+      simp only [Finset.mem_product, Finset.mem_range, not_and_or] at hp
+      rcases hp with h | h
+      · have : ¬ a ≤ A := by omega
+        simp [this]
+      · have hvN : N < v.natAbs := Nat.not_le.mp fun hc => h (mem_Icc_iff_natAbs_le.mpr hc)
+        by_cases ha : a ≤ A <;> simp [ha, fejerCoeff_eq_zero hvN]
+    rw [tsum_eq_sum hsupp, Finset.sum_product]
+    have hrow : ∀ a ∈ Finset.range (A + 1),
+        ∑ v ∈ Finset.Icc (-(N : ℤ)) (N : ℤ),
+            ‖if a ≤ A then fejerCoeff N (g a) v else 0‖ ≤ (2 * (N : ℝ) + 1) * M := by
+      intro a ha
+      simp only [Finset.mem_range] at ha
+      have haA : a ≤ A := by omega
+      simp only [haA, if_pos]
+      refine le_trans (le_of_eq ?_) (fejerCoeff_l1_le (hg a) N)
+      refine Finset.sum_congr rfl fun v hv => ?_
+      rw [fejerCoeff, if_pos (mem_Icc_iff_natAbs_le.mp hv)]
+    refine le_trans (Finset.sum_le_sum hrow) (le_trans (le_of_eq ?_) hbudget)
+    rw [Finset.sum_const, Finset.card_range, nsmul_eq_mul]
+    push_cast
+    ring
+  · intro a θ
+    by_cases ha : a ≤ A
+    · simp only [ha, if_pos]
+      rw [← tsum_fejerCoeff N (g a) θ]
+    · simp [ha]
 
 end
 
