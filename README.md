@@ -30,19 +30,20 @@ The Lean toolchain, axiom policy, treatment of work-in-progress placeholders, CI
 
 Apache License 2.0. See [LICENSE](LICENSE).
 
-## Current state (2026-08-12)
+## Current state (2026-08-21)
 
 The Lean development builds against Lean v4.27.0 and mathlib pinned in
 `lake-manifest.json`.
 
-**1,742 theorems, 1,560 of them axiom-clean**, under the discipline this
+**1,821 theorems, 1,641 of them axiom-clean**, under the discipline this
 project enforces in CI: axioms exactly `propext`, `Classical.choice`,
 `Quot.sound`, with no `sorry` in any completed result, no `native_decide`,
 and no custom axioms anywhere, including the vendored infrastructure. The
 current measurement reports **zero** theorems on a non-standard axiom. Of
-the theorems still open, 86 carry a placeholder directly; the rest depend
-on one.  (Measurement 2026-08-12, after the large-deviation chain landed:
-1,742 / 1,560 / 0, up from 1,681 / 1,499 / 0.)
+the theorems still open, 84 carry a placeholder directly; the rest depend
+on one.  (Measurement 2026-08-21, after section 4 closed:
+1,821 / 1,641 / 0, up from 1,742 / 1,560 / 0 when the large-deviation
+chain landed.)
 
 **The large-deviation input is closed.** Display (16) is proved
 (`Kwon1002/LDDeviation.lean`, `continuant_large_deviation`): for all
