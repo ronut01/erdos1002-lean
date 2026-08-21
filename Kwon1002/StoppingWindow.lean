@@ -486,6 +486,161 @@ theorem mem_bulkIndices_iff (c : ℝ) (n : ℕ) (hH : 0 ≤ Hscale n) {α : ℝ}
     by_contra hjP
     exact hj (hQP (Finset.mem_sdiff.mpr ⟨hjQ, hjP⟩))
 
+/-! ## Part G, the Lamé cap
+
+The deterministic bound `τ_n ≤ 2L/log 2 + 2` of `L2Estimate.stoppingTime_le_log`
+confines both index sets to `O(L)` levels, which is what keeps the exceptional
+mass `O(e^{−c√L})` from being multiplied by `n`. -/
+
+/-- `Tcap n = ⌈2L/log 2 + 2⌉`, the Lamé cap on the stopping time. -/
+def Tcap (n : ℕ) : ℕ := ⌈2 * Lnorm n / Real.log 2 + 2⌉₊
+
+lemma stoppingTime_le_Tcap {α : ℝ} (hα : α ∈ Ioo (0 : ℝ) 1) (hirr : Irrational α)
+    {n : ℕ} (hn : 1 ≤ n) : stoppingTime α n ≤ Tcap n := by
+  have h := L2Estimate.stoppingTime_le_log α hα hirr n hn
+  have h2 : ((stoppingTime α n : ℕ) : ℝ) ≤ (Tcap n : ℝ) := le_trans h (Nat.le_ceil _)
+  exact_mod_cast h2
+
+lemma Tcap_le (n : ℕ) (hL : 0 ≤ Lnorm n) : (Tcap n : ℝ) ≤ 3 * Lnorm n + 3 := by
+  have hlog : (0.6931471803 : ℝ) < Real.log 2 := Real.log_two_gt_d9
+  have h : (Tcap n : ℝ) < 2 * Lnorm n / Real.log 2 + 2 + 1 :=
+    Nat.ceil_lt_add_one (by positivity)
+  have h2 : 2 * Lnorm n / Real.log 2 ≤ 3 * Lnorm n := by
+    rw [div_le_iff₀ (by linarith)]; nlinarith
+  linarith
+
+lemma mIndex_lt_Tcap (n : ℕ) (hL : 0 < Lnorm n) : mIndex n < Tcap n := by
+  have hlog : (0.6931471803 : ℝ) < Real.log 2 := Real.log_two_gt_d9
+  have hlam := LargeDeviation.one_lt_lyapunov
+  have h1 : (mIndex n : ℝ) ≤ Lnorm n / lyapunov :=
+    Nat.floor_le (div_nonneg hL.le (by linarith))
+  have h2 : Lnorm n / lyapunov ≤ Lnorm n := by
+    rw [div_le_iff₀ (by linarith)]; nlinarith
+  have h3 : 2 * Lnorm n / Real.log 2 + 2 ≤ (Tcap n : ℝ) := Nat.le_ceil _
+  have hlog1 : Real.log 2 ≤ 1 := by
+    have := Real.log_le_sub_one_of_pos (by norm_num : (0 : ℝ) < 2); linarith
+  have h4 : 2 * Lnorm n ≤ 2 * Lnorm n / Real.log 2 := by
+    rw [le_div_iff₀ (by linarith)]; nlinarith [hL.le]
+  have : (mIndex n : ℝ) < (Tcap n : ℝ) := by linarith
+  exact_mod_cast this
+
+/-- Above the Lamé cap the random bulk is empty for every irrational `α`, so the
+mark event carries no mass. -/
+lemma unifIoo_bulkMarkEvent_eq_zero (c : ℝ) (B : Set ℝ) {n j : ℕ} (hn : 1 ≤ n)
+    (hj : Tcap n ≤ j) : unifIoo.real (LevyExponent.bulkMarkEvent c n B j) = 0 := by
+  have hnull : volume {x : ℝ | ¬ Irrational x} = 0 := by
+    have hset : {x : ℝ | ¬ Irrational x} = Set.range ((↑) : ℚ → ℝ) := by
+      ext x; simp [Irrational]
+    rw [hset]
+    exact (Set.countable_range _).measure_zero _
+  have hsub : LevyExponent.bulkMarkEvent c n B j ∩ Ioo (0 : ℝ) 1 ⊆ {x : ℝ | ¬ Irrational x} := by
+    rintro α ⟨hmem, hα⟩
+    show ¬ Irrational α
+    intro hirr
+    have hlt : j < stoppingTime α n := by
+      have := hmem.1
+      rw [bulkIndices, Finset.mem_filter, Finset.mem_range] at this
+      exact this.1
+    have := stoppingTime_le_Tcap hα hirr hn
+    omega
+  have hzero : unifIoo (LevyExponent.bulkMarkEvent c n B j) = 0 := by
+    rw [unifIoo, Measure.restrict_apply' measurableSet_Ioo]
+    exact measure_mono_null hsub hnull
+  rw [Measure.real, hzero, ENNReal.toReal_zero]
+
+lemma not_mem_bulkJ_of_Tcap_le {n j : ℕ} (hL : 0 < Lnorm n) (hj : Tcap n ≤ j) :
+    j ∉ bulkJ n := by
+  intro hmem
+  have h1 : j ∈ Finset.range (mIndex n + 1) := Finset.mem_of_mem_filter j hmem
+  rw [Finset.mem_range] at h1
+  have := mIndex_lt_Tcap n hL
+  omega
+
+lemma unifIoo_real_not_mem_Ioo : unifIoo.real {x : ℝ | x ∉ Ioo (0 : ℝ) 1} = 0 := by
+  have hzero : unifIoo {x : ℝ | x ∉ Ioo (0 : ℝ) 1} = 0 := by
+    rw [unifIoo, Measure.restrict_apply' measurableSet_Ioo]
+    convert measure_empty (μ := (volume : Measure ℝ))
+    ext x
+    simp
+  rw [Measure.real, hzero, ENNReal.toReal_zero]
+
+lemma bulkJ_subset_range (n : ℕ) : bulkJ n ⊆ Finset.range (n + 1) := by
+  have hlam := LargeDeviation.one_lt_lyapunov
+  have hL0 : (0 : ℝ) ≤ Lnorm n := by
+    rcases Nat.eq_zero_or_pos n with rfl | hn
+    · simp [Lnorm]
+    · exact Real.log_nonneg (by exact_mod_cast hn)
+  have hlog : Lnorm n ≤ (n : ℝ) := by
+    rcases Nat.eq_zero_or_pos n with rfl | hn
+    · simp [Lnorm]
+    · have h : (0 : ℝ) < (n : ℝ) := by exact_mod_cast hn
+      have := Real.log_le_sub_one_of_pos h
+      show Real.log (n : ℝ) ≤ (n : ℝ)
+      linarith
+  have hmle : mIndex n ≤ n := by
+    have h1 : Lnorm n / lyapunov ≤ (n : ℝ) := by
+      have hdiv : Lnorm n / lyapunov ≤ Lnorm n := by
+        rw [div_le_iff₀ (by linarith)]; nlinarith
+      linarith
+    calc mIndex n = ⌊Lnorm n / lyapunov⌋₊ := rfl
+      _ ≤ ⌊(n : ℝ)⌋₊ := Nat.floor_mono h1
+      _ = n := Nat.floor_natCast n
+  intro j hj
+  have h1 : j ∈ Finset.range (mIndex n + 1) := Finset.mem_of_mem_filter j hj
+  rw [Finset.mem_range] at h1 ⊢
+  omega
+
+/-! ## Part H, the two decay rates the consumers need -/
+
+/-- `(2D_n + 2A_n + 1)/L = O(H/L) = O(L^{-1/4}) → 0`. -/
+lemma tendsto_windowCard_div_Lnorm (c : ℝ) :
+    Tendsto (fun n : ℕ =>
+        (2 * (bdryLen c n : ℝ) + 2 * (trimAmt n : ℝ) + 1) / Lnorm n) atTop (𝓝 0) := by
+  have hmaj : Tendsto (fun n : ℕ =>
+      (2 * |c| + 402) * (Hscale n / Lnorm n)
+        + (3 + 2 * trimConst) * (1 / Lnorm n)) atTop (𝓝 0) := by
+    simpa using (tendsto_Hscale_div_Lnorm.const_mul (2 * |c| + 402)).add
+      (tendsto_inv_Lnorm.const_mul (3 + 2 * trimConst))
+  refine squeeze_zero' ?_ ?_ hmaj
+  · filter_upwards [TupleMeasure.tendsto_Lnorm_atTop.eventually_gt_atTop (0 : ℝ)] with n hL
+    positivity
+  · filter_upwards [TupleMeasure.tendsto_Lnorm_atTop.eventually_gt_atTop (0 : ℝ)] with n hL
+    have hH0 : (0 : ℝ) ≤ Hscale n := by rw [Hscale]; exact Real.rpow_nonneg hL.le _
+    have hD := bdryLen_le c n hH0
+    have hA := trimAmt_le n hH0
+    have hac := abs_nonneg c
+    have hkey : 2 * (bdryLen c n : ℝ) + 2 * (trimAmt n : ℝ) + 1
+        ≤ (2 * |c| + 402) * Hscale n + (3 + 2 * trimConst) := by nlinarith
+    have hexp : ((2 * |c| + 402) * Hscale n + (3 + 2 * trimConst)) / Lnorm n
+        = (2 * |c| + 402) * (Hscale n / Lnorm n) + (3 + 2 * trimConst) * (1 / Lnorm n) := by
+      field_simp
+    rw [← hexp]
+    gcongr
+
+lemma tendsto_exp_neg_sqrt_Lnorm {cs : ℝ} (hcs : 0 < cs) :
+    Tendsto (fun n : ℕ => Real.exp (-cs * Real.sqrt (Lnorm n))) atTop (𝓝 0) := by
+  have hsq : Tendsto (fun n : ℕ => Real.sqrt (Lnorm n)) atTop atTop :=
+    Real.tendsto_sqrt_atTop.comp TupleMeasure.tendsto_Lnorm_atTop
+  exact Real.tendsto_exp_atBot.comp (hsq.const_mul_atTop_of_neg (by linarith))
+
+/-- `L·e^{−c√L} → 0`: the exceptional mass survives multiplication by the Lamé
+cap, which is what makes the one-level bridge summable. -/
+lemma tendsto_Lnorm_mul_exp_neg_sqrt {cs : ℝ} (hcs : 0 < cs) :
+    Tendsto (fun n : ℕ => Lnorm n * Real.exp (-cs * Real.sqrt (Lnorm n)))
+      atTop (𝓝 0) := by
+  have hbase : Tendsto (fun x : ℝ => x ^ 2 * Real.exp (-x)) atTop (𝓝 0) :=
+    Real.tendsto_pow_mul_exp_neg_atTop_nhds_zero 2
+  have hu : Tendsto (fun n : ℕ => cs * Real.sqrt (Lnorm n)) atTop atTop :=
+    (Real.tendsto_sqrt_atTop.comp TupleMeasure.tendsto_Lnorm_atTop).const_mul_atTop hcs
+  have h := (hbase.comp hu).const_mul (1 / cs ^ 2)
+  rw [mul_zero] at h
+  refine h.congr' ?_
+  filter_upwards [TupleMeasure.tendsto_Lnorm_atTop.eventually_ge_atTop (0 : ℝ)] with n hL
+  have hsq : Real.sqrt (Lnorm n) ^ 2 = Lnorm n := Real.sq_sqrt hL
+  simp only [Function.comp_apply]
+  rw [mul_pow, hsq]
+  field_simp
+
 end
 
 end StopWin

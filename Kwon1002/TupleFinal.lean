@@ -569,9 +569,29 @@ and (38) without comment; `Kwon1002.bulk_window_bridge_oneLevel` isolates the
 `k = 1` case, and this statement is the one (38)-(40) actually needs.  The
 `k = 1` case is *derived* from it below, so the two bridges collapse to one.
 
-**Obstruction.**  Needs the §7 stopping-time analysis (Lem. 7.1 and the `O(H)`
-trimming at both ends), of which only the Lamé bound
-`Kwon1002.L2Estimate.stoppingTime_le_log` is currently proved in-tree. -/
+**State (obstruction narrowed).**  The §7 stopping-time analysis this needed is
+now proved: `Kwon1002/StoppingWindow.lean` puts `τ_n` inside `m_n ± A_n` with
+`A_n = H + O(1)` off a set of measure `O(e^{−c√L})`
+(`StopWin.stopBad_measure_le`), and therefore makes the two index sets agree
+outside the deterministic `O(H)` window `StopWin.diffWindow c n`
+(`StopWin.mem_bulkIndices_iff`).  The `k = 1` case **is proved** with exactly
+that input — `Kwon1002.bulk_window_bridge_oneLevel` of
+`Kwon1002/FiveFinal.lean`, axiom-clean — so the analytic content of this
+statement is discharged.
+
+What is left is purely combinatorial, and only for `k ≥ 2`: at `k = 1` the
+index set of the sum is a `Finset ℕ`, and the two error terms are counted by
+`#diffWindow ≤ 2D_n + 2A_n + 1 = O(H)` and by the Lamé cap
+`StopWin.Tcap n = O(L)`.  For general `k` the sum runs over
+`Fin k ↪ ↥(range (n+1))`, and the same split needs
+
+* `#{f : ∀ i, f i < Tcap n} ≤ (Tcap n)^k = O(L^k)`, against `O(e^{−c√L})`; and
+* `#{f : ∀ i, f i < Tcap n ∧ ∃ i, f i ∈ diffWindow c n} ≤ k·#diffWindow·(Tcap n)^{k−1}`,
+  against the uniform `(C/L)^k` of `TupleMeasure.tuple_measure_le`,
+
+i.e. cardinality bounds for embeddings with a coordinate constraint, obtained
+by pushing forward along `Function.Embedding.coeFn_injective` into
+`Fintype.piFinset`.  Nothing analytic remains. -/
 theorem bulk_window_bridge_tuple (c : ℝ) (B : Set ℝ) (_hB : MeasurableSet B)
     (_hB0 : ∃ δ > 0, ∀ x ∈ B, δ ≤ |x|) (_hBbd : ∃ R : ℝ, ∀ x ∈ B, |x| ≤ R) (k : ℕ) :
     Tendsto (fun n : ℕ =>
