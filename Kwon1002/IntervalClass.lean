@@ -50,14 +50,22 @@ condition.
 
 ## What this does **not** supply
 
-The Jackson approximation itself.  Passing from "the section is a union of at
-most `2m` intervals" to "there is a trigonometric polynomial of degree `L^D`
-within `L¹`-distance `O(m·L^{-D})` of its indicator" needs a Fejér- or
-Jackson-kernel construction, and Mathlib carries no Fejér kernel (searched:
-`Mathlib/Analysis/Fourier/` has `AddCircle`, `FourierTransform`,
-`RiemannLebesgueLemma`, `Inversion`, `PoissonSummation`, and no summability
-kernel of positive type).  That construction is the remaining obstruction and
-is recorded as such on `TupleFinal.goodSet_mark_factorization`.
+The instantiation of the Jackson approximation at this class.  The kernel
+itself is no longer missing: `Kwon1002/Fejer.lean` builds it from scratch
+(Mathlib still carries none — `Mathlib/Analysis/Fourier/` has `AddCircle`,
+`FourierTransform`, `RiemannLebesgueLemma`, `Inversion`, `PoissonSummation`,
+and no summability kernel of positive type), together with the `L¹`
+approximation bound `Fejer.fejerPoly_L1_error_le`, the `ℓ¹` coefficient budget
+`Fejer.fejerCoeff_l1_le`, and membership of the approximant in the symbol
+class of display (24), `Fejer.isInPD_fejerPoly`.
+
+What is *not* done here is the instantiation: `Fejer.fejerPoly_L1_error_le`
+runs against an explicit **good set** — the points of the fundamental cell at
+which the symbol does not move under translations of size at most `s` — and
+turning `IsUnionOfIntervals m B` into such a good set with
+`volume (bad) = O(m·s)` is the step that remains, together with the passage
+from the `θ`-section back to `TupleFinal.detMarkEvent`.  Both are recorded on
+`TupleFinal.goodSet_mark_factorization_intervals`.
 -/
 
 open Set

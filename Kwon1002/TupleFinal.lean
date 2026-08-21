@@ -615,15 +615,41 @@ tuple sum needs.
 (`Kwon1002.prop_4_1_marked_factorization_unconditional`), and the sorting
 bijection between its increasing tuple `j_1 < ⋯ < j_k` and this residual's
 subset `S` is discharged (`JacksonGate.exists_goodTuple_of_sepGoodSet`).  What
-is left is exactly the Jackson construction: from "the `θ`-section is a union
-of at most `2m` intervals" to "there is a trigonometric polynomial of degree
-`L^{D}` within `L¹`-distance `O(m·L^{-D})` of its indicator, with coefficient
-`ℓ¹` norm inside the budget of display (24)".  Mathlib carries no Fejér or
-Jackson kernel, so this is a from-scratch construction.  Note also the budget
-finding recorded in `Kwon1002/OneLevelLaw.lean`: the digit cut already spends
-`L^D` of display (24)'s `ℓ¹` allowance, so the Jackson factor must be placed in
-`P_{D'}(L)` for some `D' > D`; the `D` of the class and the `D` of the digit cut
-are different constants. -/
+is left is the Jackson construction, and **the kernel half of it is now done**:
+`Kwon1002/Fejer.lean` builds the Fejér kernel from scratch (Mathlib carries
+none) with its Fourier expansion, closed form, unit mass and concentration,
+and on top of it
+
+* `Fejer.fejerPoly_L1_error_le`, the `L¹` approximation bound;
+* `Fejer.fejerCoeff_l1_le` and `Fejer.tsum_norm_fejerCoeff`, the `ℓ¹` budget;
+* `Fejer.isInPD_fejerPoly`, membership of the approximant in the class of
+  display (24), with the digit cut, the degree and the total coefficient mass
+  written out as three separate side conditions.
+
+The budget finding recorded in `Kwon1002/OneLevelLaw.lean` is carried in that
+last statement rather than in commentary: display (24)'s `ℓ¹` sum runs over the
+digit as well as the frequency, so a digit cut at `A_L = L^D` already spends
+the whole `L^D` allowance and the Jackson factor must be placed in `P_{D'}(L)`
+for a strictly larger `D'`.  The `D` of the class and the `D` of the digit cut
+are different constants, and `Fejer.isInPD_fejerPoly` keeps them apart.
+
+**What remains, exactly.**  Two instantiation steps, neither of which is a
+kernel construction any more.
+
+1. *The good set.*  `Fejer.fejerPoly_L1_error_le` runs against an explicit set
+   `G` of points that do not move under translations of size at most `s`.
+   Turning `IntervalClass.IsUnionOfIntervals m B` — together with
+   `IntervalClass.markSection_isUnionOfIntervals`, which supplies the `2m`
+   jump count uniformly in the digit and the sign — into such a `G` with
+   `volume (Ioo 0 1 \ G) = O(m·s)` is arithmetic on endpoints, complicated
+   only by the wrap-around at `0` and `1`.
+2. *The bookkeeping.*  From the one-level `L¹` bound to the `k`-level error
+   `C/L^{k+1}`: `det_singleLevel_measure_le` caps each level at `O(1/L)`, so
+   the replacement costs `k·η_L·L^{-(k-1)}` and `η_L = O(L^{-2})` suffices.
+   The rate `Fejer.fejerPoly_L1_error_le` proves is a cube root of the degree
+   rather than the classical `O(1/deg)` (see that module's note on the rate),
+   which is why `D' > 6` rather than `D' > 2` is what clears the budget — `D'`
+   is free, so this costs nothing. -/
 theorem goodSet_mark_factorization_intervals (B : Set ℝ) (_hB : MeasurableSet B)
     (_hB0 : ∃ δ > 0, ∀ x ∈ B, δ ≤ |x|) (_hBbd : ∃ R : ℝ, ∀ x ∈ B, |x| ≤ R)
     (_hint : IntervalClass.IsFiniteUnionOfIntervals B) (k : ℕ) :

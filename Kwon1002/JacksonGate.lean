@@ -95,6 +95,16 @@ tuple sum needs.  It also proves that every concrete instantiation in the tree,
 the truncation `{x | ε < |x|}` cut to a bounded window, is a union of **two**
 intervals (`IntervalClass.isUnionOfIntervals_truncation`), so the interval case
 already covers every use the development makes.
+
+**The kernel now exists.**  `Kwon1002/Fejer.lean` builds the Fejér kernel from
+scratch — expansion, closed form, unit mass, concentration — together with the
+Fejér mean, its `L¹` approximation bound, its `ℓ¹` coefficient budget, and
+`Fejer.isInPD_fejerPoly`, which places the approximant inside the class
+`P_D(L)` this file proves the indicator itself cannot inhabit.  The two facts
+are consistent and complementary: `continuous_of_isInPD` rules out the
+*indicator*, `Fejer.isInPD_fejerPoly` admits its *approximants*, and the
+residual is the passage between them.  What is left of that passage is
+recorded on `TupleFinal.goodSet_mark_factorization_intervals`.
 -/
 
 open Filter MeasureTheory Set
