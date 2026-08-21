@@ -24,12 +24,10 @@ assembly with the proved inputs.
 
 ## Residuals
 
-Exactly one: `earlierMode_phase_bound'`, case 3 of the manuscript's proof
-("the earlier mode is nonzero and the later mode is zero"), restated here
-token-identically from `Kwon1002/MonomialCore.lean`.  Case 2 is proved in
-`Kwon1002/P42Later.lean` and case 1 in `Kwon1002/PhaseBounds.lean`;
-everything else on the route from the cases to display (34) is proved
-outright.
+Exactly one: `earlierMode_superResonance_bound`, the `k > t₀ + 100H` branch
+of case 3.  Case 1 is proved in `Kwon1002/PhaseBounds.lean`, case 2 and the
+`k < t₀ − 100H` branch of case 3 in `Kwon1002/P42Later.lean`, and everything
+else on the route from the cases to display (34) is proved outright.
 -/
 
 open MeasureTheory Set Filter
@@ -56,9 +54,39 @@ theorem laterMode_phase_bound' (R K : ℕ) (Wu Wv : Finset (Fin (2 * R) → ℕ)
                   + Real.exp (-c * Hscale n) + ρ ^ (c * Hscale n)) :=
   P42Later.laterMode_phase_bound'' R K Wu Wv
 
+/-- **The super-resonance branch of case 3**, "If `k > t₀ + 100H`", the sole
+residual of Proposition 4.2 in this development.
+
+The sub-resonance branch `k < t₀ − 100H` is proved
+(`P42Later.earlierMode_subResonance_bound`), and case 3 is assembled from the
+two branches below.  What this branch asks for, and what the tree does not yet
+put together, is the manuscript's extra step: on each retained depth-`t₊`
+cylinder freeze the earlier phase (`NonzeroMode.phase_freeze_on_cylinder`,
+with the margin supplied by `PhaseBounds.ascended_descendant_bound_at_cut`),
+replace the later zero-mode block by its stationary Gauss mean
+(`StationaryReplace.leb_halfOpen_multiblock_mixing_complex`, at a gap of
+`c_mix H` past `t₊`, which `P42Cases.mixingGap_eventually` provides), then
+restore the discarded depth-`t₊` cylinders as in `NonzeroMode`, and only then
+apply display (22) at prefix depth `j + R` with descendant depth `t₋`.  Every
+one of those inputs is proved; it is their assembly on the *pair* geometry of
+`bulkPairs` that is missing. -/
+theorem earlierMode_superResonance_bound (R K : ℕ)
+    (Wu Wv : Finset (Fin (2 * R) → ℕ)) :
+    ∃ C c ρ : ℝ, 0 < C ∧ 0 < c ∧ 0 < ρ ∧ ρ < 1 ∧ ∀ᶠ n : ℕ in atTop,
+      ∀ w ∈ Wu, ∀ m ∈ Prop42.modeBox K, m ≠ (0, 0) → ∀ w' ∈ Wv,
+      ∀ p ∈ bulkPairs n,
+        Prop41.resonanceTime n p.1 + 100 * Hscale n < (p.2 : ℝ) →
+        ‖(∫ α in Ioo (0 : ℝ) 1,
+              Prop42.monoAt R w m.1 m.2 α n p.1 * Prop42.monoAt R w' 0 0 α n p.2)‖
+          ≤ C * (Real.exp (-c * Real.sqrt (Lnorm n))
+                  + Real.exp (-c * Hscale n) + ρ ^ (c * Hscale n)) := by
+  sorry
+
 /-- **Case 3 of the proof of 4.2**, "the earlier mode is nonzero and the later
 mode is zero", token-identical to
-`Kwon1002.MonomialCore.earlierMode_phase_bound`. -/
+`Kwon1002.MonomialCore.earlierMode_phase_bound`, assembled from its two
+branches: the sub-resonance branch is proved, the super-resonance branch is
+the residual above. -/
 theorem earlierMode_phase_bound' (R K : ℕ) (Wu Wv : Finset (Fin (2 * R) → ℕ)) :
     ∃ C c ρ : ℝ, 0 < C ∧ 0 < c ∧ 0 < ρ ∧ ρ < 1 ∧ ∀ᶠ n : ℕ in atTop,
       ∀ w ∈ Wu, ∀ m ∈ Prop42.modeBox K, m ≠ (0, 0) → ∀ w' ∈ Wv,
@@ -68,7 +96,30 @@ theorem earlierMode_phase_bound' (R K : ℕ) (Wu Wv : Finset (Fin (2 * R) → �
               Prop42.monoAt R w m.1 m.2 α n p.1 * Prop42.monoAt R w' 0 0 α n p.2)‖
           ≤ C * (Real.exp (-c * Real.sqrt (Lnorm n))
                   + Real.exp (-c * Hscale n) + ρ ^ (c * Hscale n)) := by
-  sorry
+  obtain ⟨C₁, c₁, ρ₁, hC₁, hc₁, hρ₁0, hρ₁1, hsub⟩ :=
+    P42Later.earlierMode_subResonance_bound R K Wu Wv
+  obtain ⟨C₂, c₂, ρ₂, hC₂, hc₂, hρ₂0, hρ₂1, hsup⟩ :=
+    earlierMode_superResonance_bound R K Wu Wv
+  refine ⟨max C₁ C₂, min c₁ c₂, max ρ₁ ρ₂, lt_of_lt_of_le hC₁ (le_max_left _ _),
+    lt_min hc₁ hc₂, lt_of_lt_of_le hρ₁0 (le_max_left _ _), max_lt hρ₁1 hρ₂1, ?_⟩
+  have htend : Filter.Tendsto (fun n : ℕ => Lnorm n) atTop atTop :=
+    Real.tendsto_log_atTop.comp tendsto_natCast_atTop_atTop
+  filter_upwards [hsub, hsup, htend.eventually_ge_atTop 1] with n hsubn hsupn hL1
+  intro w hw m hm hm0 w' hw' p hp habs
+  have hL0 : (0 : ℝ) ≤ Lnorm n := by linarith
+  have hH0 : (0 : ℝ) ≤ Hscale n := by
+    have := MonomialCore.one_le_Hscale hL1
+    linarith
+  have hres : Prop41.resonanceTime n p.1 = ((mIndex n : ℝ) + (p.1 : ℝ)) / 2 := rfl
+  rcases lt_abs.1 habs with hcase | hcase
+  · -- `k > t₀ + 100H`
+    refine le_trans (hsupn w hw m hm hm0 w' hw' p hp (by rw [hres]; linarith)) ?_
+    exact MonomialCore.err_le hC₂ (le_max_right _ _) (lt_min hc₁ hc₂)
+      (min_le_right _ _) hρ₂0 (le_max_right _ _) (max_lt hρ₁1 hρ₂1) hL0 hH0
+  · -- `k < t₀ − 100H`
+    refine le_trans (hsubn w hw m hm hm0 w' hw' p hp (by rw [hres]; linarith)) ?_
+    exact MonomialCore.err_le hC₁ (le_max_left _ _) (lt_min hc₁ hc₂)
+      (min_le_left _ _) hρ₁0 (le_max_left _ _) (max_lt hρ₁1 hρ₂1) hL0 hH0
 
 /-! ## 2. The monomial core, with case 1 discharged
 
