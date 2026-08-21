@@ -4,8 +4,53 @@ import Kwon1002.Section6Skeleton
 /-!
 # §7: stopping, centering, and the master assembly
 
-This module carries out the manuscript's final section over the three
-inputs that are still open, and proves everything else outright.
+This module carries out the manuscript's final section and proves
+`Kwon1002.Erdos1002Conclusion` — Kwon's Theorem 1.1 — from three explicit
+hypotheses.
+
+## The exact list of hypotheses the conditional carries
+
+`erdos1002Conclusion_of (c : ℝ)` takes these and nothing else:
+
+1. `PrincipalCauchyLaw c` — Corollary 5.3, display (43).  Definitionally the
+   statement of `Kwon1002.principal_cauchy_law` (guard at the foot of this
+   file).  Still sorried in `Kwon1002/PoissonLimit.lean`; `Kwon1002/Finale.lean`
+   reduces it to two inputs, `Finale.bulkTerm_covariance_bound` and
+   `Finale.largeJump_weak_limit_compoundPoisson`.
+2. `Prop64Statement` — Proposition 6.4, the bounded-remainder weak law.
+   Definitionally the statement of
+   `Kwon1002.prop_6_4_bounded_remainder_weak_law` (guard at the foot of this
+   file).  This is the manuscript author's current work; §6 is not touched
+   here.
+3. `Section7EndTerms c` — §7's Lemma 7.1 together with the §7/§4 index-set
+   bridge, defined in Part F.  Its two halves are the `O(H)` trimming below
+   `c·H` and the passage between `Marks.bulkIndices c α n` (random, §7) and
+   `Section4.bulkJ n` (deterministic, display (19)).  This is the only one of
+   the three that is not already a named statement elsewhere in `Kwon1002/`;
+   `erdos1002Conclusion_of_section7` records that fact by discharging the
+   other two against the in-tree targets.
+
+The trimming constant `c` is free: the theorem holds for every `c`.
+
+## What is proved here outright (axiom-clean, no hypothesis)
+
+* **Part A** — continuity of `cauchyLimitCDF` and its strict sign behaviour
+  through `1/2`.
+* **Part B** — the exact symmetry `S_N(1-α) = -S_N(α)` for irrational `α`,
+  the invariance of Lebesgue measure on `(0,1)` under `α ↦ 1-α`, and the
+  consequence that the median of the finite-`N` law sits at `0`:
+  `distributionValue N y ≥ 1/2` for `y ≥ 0` and `≤ 1/2` for `y < 0`.
+* **Part C** — `erdos1002Conclusion_of_shifted`: removal of the deterministic
+  centering.  If `X_N - c_N` converges to the Cauchy law of scale `1/(2π)`
+  then `c_N → 0` and `X_N` itself converges.  This is the manuscript's last
+  paragraph, and it is proved with **no** hypothesis at all — and without
+  tightness, subsequences, or a limit-uniqueness argument: Part B pins the
+  median, and Part A makes the limit strictly increasing through `1/2`.
+* **Part D** — `tendsto_cdf_of_perturbation`, Slutsky read on distribution
+  functions, with a continuous limit.  No measurability hypothesis is needed.
+* **Part E** — `normalizedRotationSum_decomp`, the exact §7 decomposition
+  `S_n(α)/L = bulkSum + (1/L)∑_{j ∈ J_n} (−1)^j B_j + (end terms)`,
+  from display (3) (`rotationSum_eq_alternating_sum`) and (11).
 -/
 
 open Filter MeasureTheory Set
