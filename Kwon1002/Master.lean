@@ -39,6 +39,26 @@ hypotheses.
    `erdos1002Conclusion_of_section7` records that fact by discharging the
    other two against the in-tree targets.
 
+   **State of the first half** (Part G below).  Display (46), the pointwise cap
+   `|Φ(x,u)| ≤ 1/(8x) + 1/2`, is proved (`abs_Phi_le`) and read on the Gauss
+   orbit as `|Φ(x_j,u_j)| ≤ a_{j+1}/8 + 5/8` (`abs_Phi_orbit_le`); the trim is
+   proved to carry `O(H)` positions (`card_trimIndices_le`); and
+   `abs_endTerms_le` combines them into
+   `|end terms| ≤ (1/L)[(1/8)Σ_{j<c·H} a_{j+1} + (5/8)(c·H+1)]`.  The second
+   summand is proved to vanish (`tendsto_trim_deterministic`, `H/L = L^{-1/4}`).
+   What is left is exactly the digit sum, and the one input it needs is the
+   uniform tail `P(a_{j+1} > t) ≤ C/t` under **Lebesgue** measure on `(0,1)`
+   and at **every** digit index; the tree currently has it only under the Gauss
+   measure and only at the first digit
+   (`DigitTail.gaussMeasure_firstDigit_ge_le`).
+
+   **State of the second half.**  Untouched.  It needs `τ_n = L/λ + O_ℙ(H)`,
+   i.e. display (20)'s large deviation applied at the two deterministic
+   thresholds `q_j ≤ n/(2(E*+1))` and `q_j > n` that bracket the stopping time.
+   The deterministic side of that bracketing is available
+   (`L2Estimate.stoppingTime_le_log`, the Lamé bound), the probabilistic side
+   is not.
+
 The trimming constant `c` is free: the theorem holds for every `c`.
 
 ## What is proved here outright (axiom-clean, no hypothesis)
@@ -760,6 +780,150 @@ theorem erdos1002Official_of (c : ℝ) (hprincipal : PrincipalCauchyLaw c)
     (hprop64 : Prop64Statement) (hstop : Section7EndTerms c) :
     Erdos1002Official :=
   official_of_conclusion (erdos1002Conclusion_of c hprincipal hprop64 hstop)
+
+/-! ## Part G, the `O(H)` trim of Lemma 7.1
+
+The first of the two halves of `Section7EndTerms`.  Everything deterministic
+about it is proved here; what is left is one named probabilistic input, stated
+on `abs_endTerms_le`.
+-/
+
+lemma abs_Phi_le {x u : ℝ} (hx : 0 < x) (hu0 : 0 ≤ u) (hu1 : u ≤ 1) :
+    |Phi x u| ≤ 1 / (8 * x) + 1 / 2 := by
+  have hnum0 : 0 ≤ u * (1 - u) := mul_nonneg hu0 (by linarith)
+  have hnum1 : u * (1 - u) ≤ 1 / 4 := by nlinarith [sq_nonneg (u - 1 / 2)]
+  have h2x : (0 : ℝ) < 2 * x := by linarith
+  have h8x : (0 : ℝ) < 8 * x := by linarith
+  have hupper : u * (1 - u) / (2 * x) ≤ 1 / (8 * x) := by
+    rw [div_le_div_iff₀ h2x h8x]
+    nlinarith
+  have hlower : 0 ≤ u * (1 - u) / (2 * x) := by positivity
+  have hinv : (0 : ℝ) < 1 / (8 * x) := by positivity
+  rw [abs_le]
+  constructor
+  · unfold Phi; linarith
+  · unfold Phi; linarith
+
+lemma abs_Phi_orbit_le {α : ℝ} (hα : α ∈ Ioo (0 : ℝ) 1) (hirr : Irrational α) (n j : ℕ) :
+    |Phi (gaussIter α j) (carry α n j)| ≤ (digit α j : ℝ) / 8 + 5 / 8 := by
+  have hx := gaussIter_mem_Ioo hα hirr j
+  have hu0 : 0 ≤ carry α n j := Int.fract_nonneg _
+  have hu1 : carry α n j ≤ 1 := (Int.fract_lt_one _).le
+  have h := abs_Phi_le hx.1 hu0 hu1
+  have hsplit := inv_gaussIter_eq hα hirr j
+  have hnext := gaussIter_mem_Ioo hα hirr (j + 1)
+  have hcap : 1 / (8 * gaussIter α j) ≤ ((digit α j : ℝ) + 1) / 8 := by
+    have hinv : 1 / (8 * gaussIter α j) = (gaussIter α j)⁻¹ / 8 := by
+      field_simp
+    rw [hinv, hsplit]
+    have := hnext.2
+    linarith
+  linarith
+
+/-- The index set of the §7 trim: the levels below `c·H`. -/
+def trimIndices (c α : ℝ) (n : ℕ) : Finset ℕ :=
+  (Finset.range (stoppingTime α n)).filter (fun j : ℕ => ¬ (c * Hscale n ≤ (j : ℝ)))
+
+lemma endTerms_eq (c α : ℝ) (n : ℕ) :
+    endTerms c α n = (1 / Lnorm n) *
+      ∑ j ∈ trimIndices c α n, (-1 : ℝ) ^ j * Phi (gaussIter α j) (carry α n j) := rfl
+
+/-- **The trim has `O(H)` positions**, deterministically and with no input from
+the stopping time: every index it carries is below `c·H`. -/
+lemma card_trimIndices_le (c α : ℝ) (n : ℕ) (hc : 0 ≤ c * Hscale n) :
+    (((trimIndices c α n).card : ℕ) : ℝ) ≤ c * Hscale n + 1 := by
+  classical
+  have hsub : trimIndices c α n ⊆ Finset.range ⌈c * Hscale n⌉₊ := by
+    intro j hj
+    simp only [trimIndices, Finset.mem_filter, Finset.mem_range, not_le] at hj
+    rw [Finset.mem_range]
+    have h2 : c * Hscale n ≤ (⌈c * Hscale n⌉₊ : ℝ) := Nat.le_ceil _
+    exact_mod_cast lt_of_lt_of_le hj.2 h2
+  have hcard := Finset.card_le_card hsub
+  rw [Finset.card_range] at hcard
+  have hcast : (((trimIndices c α n).card : ℕ) : ℝ) ≤ ((⌈c * Hscale n⌉₊ : ℕ) : ℝ) := by
+    exact_mod_cast hcard
+  have hceil : ((⌈c * Hscale n⌉₊ : ℕ) : ℝ) < c * Hscale n + 1 := Nat.ceil_lt_add_one hc
+  linarith
+
+/-- **The `O(H)` trim of Lemma 7.1, dominated.**
+
+`|end terms| ≤ (1/L)·[ (1/8)·Σ_{j < c·H} a_{j+1} + (5/8)·(c·H + 1) ]`.
+
+The second summand is deterministic and is `O(H/L) = O(L^{-1/4}) → 0`.  The
+first is the whole remaining content of this half of `Section7EndTerms`: it is
+a sum of `O(H)` continued-fraction digits, each with infinite mean, so it does
+not converge pointwise and the passage to `o(L)` is genuinely probabilistic.
+The manuscript's route is the uniform tail `P(a_{j+1} > t) ≤ C/t` of
+Lemma 2.3(ii) (which in this tree is available only under the Gauss measure and
+only at the first digit, `DigitTail.gaussMeasure_firstDigit_ge_le`): truncate
+at `εL`, so that the expected truncated sum is `O(H log L)`, and apply Markov
+after dividing by `L`, `O(H log L/L) = o(1)`; the untruncated event has
+probability `O(H/L) = o(1)`.
+
+**The residual, exactly.**  Transport of that tail from the Gauss measure at
+the first digit to Lebesgue measure on `(0,1)` at every digit, uniformly in
+`j` — the two measures are mutually absolutely continuous with density between
+`1/(2 log 2)` and `1/log 2`, and `DigitTail.gaussMeasure_preimage` is the
+invariance that makes the digit index immaterial, so the transport is the
+missing step and not the tail itself. -/
+theorem abs_endTerms_le {α : ℝ} (hα : α ∈ Ioo (0 : ℝ) 1) (hirr : Irrational α)
+    (c : ℝ) (n : ℕ) (hL : 0 < Lnorm n) (hc : 0 ≤ c * Hscale n) :
+    |endTerms c α n|
+      ≤ (1 / Lnorm n) *
+          ((1 / 8) * ∑ j ∈ trimIndices c α n, (digit α j : ℝ)
+            + (5 / 8) * (c * Hscale n + 1)) := by
+  classical
+  rw [endTerms_eq, abs_mul, abs_of_nonneg (by positivity : (0 : ℝ) ≤ 1 / Lnorm n)]
+  refine mul_le_mul_of_nonneg_left ?_ (by positivity)
+  have hstep : |∑ j ∈ trimIndices c α n, (-1 : ℝ) ^ j * Phi (gaussIter α j) (carry α n j)|
+      ≤ ∑ j ∈ trimIndices c α n, ((digit α j : ℝ) / 8 + 5 / 8) := by
+    refine (Finset.abs_sum_le_sum_abs _ _).trans (Finset.sum_le_sum fun j _ => ?_)
+    rw [abs_mul, abs_pow, abs_neg, abs_one, one_pow, one_mul]
+    exact abs_Phi_orbit_le hα hirr n j
+  refine hstep.trans ?_
+  rw [Finset.sum_add_distrib, Finset.sum_const, nsmul_eq_mul]
+  have hcard := card_trimIndices_le c α n hc
+  have hdig : ∑ j ∈ trimIndices c α n, (digit α j : ℝ) / 8
+      = (1 / 8) * ∑ j ∈ trimIndices c α n, (digit α j : ℝ) := by
+    rw [Finset.mul_sum]
+    exact Finset.sum_congr rfl fun j _ => by ring
+  rw [hdig]
+  have : (((trimIndices c α n).card : ℕ) : ℝ) * (5 / 8) ≤ (5 / 8) * (c * Hscale n + 1) := by
+    nlinarith
+  linarith
+
+/-- `L = log n → ∞`.  Restated here rather than imported: the tree's copy lives
+in `Kwon1002/TupleMeasure.lean`, which sits above this module. -/
+lemma tendsto_Lnorm_atTop : Tendsto (fun n : ℕ => Lnorm n) atTop atTop :=
+  Real.tendsto_log_atTop.comp tendsto_natCast_atTop_atTop
+
+/-- **The deterministic half of the `O(H)` trim vanishes.**  `H/L = L^{-1/4}`,
+so the `(5/8)(c·H+1)/L` summand of `abs_endTerms_le` tends to `0` for every
+trimming constant `c`.  What is left of that bound is the digit sum alone. -/
+theorem tendsto_trim_deterministic (c : ℝ) :
+    Tendsto (fun n : ℕ => (1 / Lnorm n) * ((5 / 8) * (c * Hscale n + 1))) atTop (𝓝 0) := by
+  have hLtop : Tendsto (fun n : ℕ => Lnorm n) atTop atTop := tendsto_Lnorm_atTop
+  have hHL : Tendsto (fun n : ℕ => Hscale n / Lnorm n) atTop (𝓝 0) := by
+    have h0 : Tendsto (fun n : ℕ => (Lnorm n) ^ (-(1 / 4) : ℝ)) atTop (𝓝 0) :=
+      (tendsto_rpow_neg_atTop (by norm_num : (0 : ℝ) < 1 / 4)).comp hLtop
+    refine h0.congr' ?_
+    filter_upwards [hLtop.eventually_gt_atTop 0] with n hn
+    have h : Hscale n / Lnorm n = (Lnorm n) ^ ((3 / 4 : ℝ) - 1) := by
+      rw [Real.rpow_sub hn, Real.rpow_one, Hscale]
+    rw [h]
+    norm_num
+  have hinv : Tendsto (fun n : ℕ => 1 / Lnorm n) atTop (𝓝 0) :=
+    Filter.Tendsto.div_atTop tendsto_const_nhds hLtop
+  have hsum : Tendsto
+      (fun n : ℕ => (5 / 8) * c * (Hscale n / Lnorm n) + (5 / 8) * (1 / Lnorm n))
+      atTop (𝓝 0) := by
+    have h1 := hHL.const_mul ((5 / 8) * c)
+    have h2 := hinv.const_mul (5 / 8 : ℝ)
+    simpa using h1.add h2
+  refine hsum.congr' ?_
+  filter_upwards [hLtop.eventually_gt_atTop 0] with n hn
+  field_simp
 
 end
 
