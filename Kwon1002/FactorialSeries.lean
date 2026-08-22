@@ -125,14 +125,6 @@ theorem integrableOn_prod_jumpFactor (t c ε : ℝ) (n : ℕ) (S : Finset ℕ) :
   rw [Set.indicator_apply]
   split_ifs <;> simp
 
-/-- Lebesgue-almost every real is irrational. -/
-theorem ae_irrational : ∀ᵐ α : ℝ ∂(volume : Measure ℝ), Irrational α := by
-  have h : {a : ℝ | ¬ Irrational a} = Set.range ((↑) : ℚ → ℝ) := by
-    ext a; simp [Irrational]
-  refine (MeasureTheory.ae_iff).mpr ?_
-  rw [h]
-  exact (Set.countable_range _).measure_zero volume
-
 /-- **The layer decomposition.**  The characteristic-function integral of the
 large-jump sum is the sum of its `n + 2` layers. -/
 theorem integral_exp_largeSum_eq_sum_layers {c ε : ℝ} (hε : 0 < ε) (t : ℝ) (n : ℕ) :
@@ -144,7 +136,7 @@ theorem integral_exp_largeSum_eq_sum_layers {c ε : ℝ} (hε : 0 < ε) (t : ℝ
         fun α : ℝ => ∑ S ∈ (Finset.range (n + 1)).powerset,
           ∏ j ∈ S, jumpFactor t c ε n j α := by
     refine (ae_restrict_iff' measurableSet_Ioo).mpr ?_
-    filter_upwards [ae_irrational] with α hα hmem
+    filter_upwards [LevyExponent.ae_irrational] with α hα hmem
     exact exp_largeSum_powerset_expansion hε t hmem hα n
   rw [integral_congr_ae hae,
     integral_finset_sum _ (fun S _ => integrableOn_prod_jumpFactor t c ε n S),
