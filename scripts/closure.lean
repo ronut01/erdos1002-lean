@@ -31,3 +31,6 @@ def report (root : Name) : MetaM Unit := do
 
 run_meta report ``Kwon1002.CorFinal.principal_cauchy_law_F
 run_meta report ``Kwon1002.Master.erdos1002Conclusion_of_section7
+run_meta report ``Kwon1002.CauchyJoin.principal_cauchy_law_J
+run_meta report ``Kwon1002.CauchyJoin.erdos1002Conclusion_of_section7_J
+run_meta report ``Kwon1002.CauchyJoin.erdos1002Conclusion_final
