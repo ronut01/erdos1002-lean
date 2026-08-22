@@ -703,6 +703,196 @@ theorem norm_stepDefect_at_levelSet {n k : ℕ} (c : ℝ) {M : ℕ} (w : Fin M �
   rw [h1, h2]
   exact norm_stepDefect_le c w hEm n (embTuple (sortEmb hsub hcard))
 
+
+/-! ## Counting the level sets
+
+All four counts run over the **capped** level range `min (n+1) (lameCap n)`,
+which is `O(L)` deterministically; that is what makes a `k`-fold layer bounded
+rather than growing with `n`. -/
+
+/-- The capped level range. -/
+def capRange (n : ℕ) : Finset ℕ := Finset.range (min (n + 1) (lameCap n))
+
+lemma capRange_subset (n : ℕ) : capRange n ⊆ Finset.range (n + 1) := by
+  intro x hx
+  exact Finset.mem_range.mpr (lt_of_lt_of_le (Finset.mem_range.mp hx) (min_le_left _ _))
+
+lemma card_capRange_le {n : ℕ} (hL : 3 ≤ Lnorm n) : ((capRange n).card : ℝ) ≤ 4 * Lnorm n := by
+  rw [capRange, Finset.card_range]
+  refine le_trans ?_ (lameCap_le hL)
+  exact_mod_cast Nat.cast_le.mpr (min_le_right (n + 1) (lameCap n))
+
+/-- Count 1: the total tuple mass of a `k`-layer. -/
+lemma count_tupleBig {c ε C₁ : ℝ} (hε : 0 < ε) (hC₁ : 0 < C₁) {n : ℕ} (k : ℕ)
+    (hL : 3 ≤ Lnorm n)
+    (hrad : ∀ rad : ℕ → ℝ, (∀ j, ε ≤ rad j) → ∀ S : Finset ℕ,
+      unifIoo.real (⋂ j ∈ S, bigEvent c (rad j) n j) ≤ ∏ j ∈ S, (C₁ / (8 * rad j) / Lnorm n)) :
+    (∑ S ∈ Finset.powersetCard k (capRange n), unifIoo.real (tupleBigEvent c ε n S))
+      ≤ (4 * (C₁ / (8 * ε))) ^ k / (Nat.factorial k) := by
+  classical
+  have hL0 : (0:ℝ) < Lnorm n := by linarith
+  have hCε : (0:ℝ) ≤ C₁ / (8 * ε) / Lnorm n := by positivity
+  have hterm : ∀ S ∈ Finset.powersetCard k (capRange n),
+      unifIoo.real (tupleBigEvent c ε n S) ≤ (C₁ / (8 * ε) / Lnorm n) ^ k := by
+    intro S hS
+    have hcard : S.card = k := (Finset.mem_powersetCard.mp hS).2
+    have h := hrad (fun _ => ε) (fun _ => le_refl ε) S
+    rw [Finset.prod_const, hcard] at h
+    exact h
+  refine le_trans (Finset.sum_le_sum hterm) ?_
+  rw [Finset.sum_const, Finset.card_powersetCard, nsmul_eq_mul]
+  have hchoose : (((capRange n).card.choose k : ℕ) : ℝ)
+      ≤ ((capRange n).card : ℝ) ^ k / (Nat.factorial k) := Nat.choose_le_pow_div k _
+  have hfac : (0:ℝ) < (Nat.factorial k) := by exact_mod_cast Nat.factorial_pos k
+  refine le_trans (mul_le_mul_of_nonneg_right hchoose (by positivity)) ?_
+  rw [div_mul_eq_mul_div, div_le_div_iff_of_pos_right hfac]
+  have hkey : ((capRange n).card : ℝ) ^ k * (C₁ / (8 * ε) / Lnorm n) ^ k
+      = (((capRange n).card : ℝ) * (C₁ / (8 * ε) / Lnorm n)) ^ k := by rw [mul_pow]
+  rw [hkey]
+  refine pow_le_pow_left₀ (by positivity) ?_ k
+  have h8 : ((capRange n).card : ℝ) * (C₁ / (8 * ε) / Lnorm n)
+      ≤ (4 * Lnorm n) * (C₁ / (8 * ε) / Lnorm n) :=
+    mul_le_mul_of_nonneg_right (card_capRange_le hL) hCε
+  refine le_trans h8 (le_of_eq ?_)
+  field_simp
+
+/-- Count 2: the total mixed-radius mass of a `k`-layer, with the `R`-tail
+exhibited. -/
+lemma count_mixed {c ε R C₁ : ℝ} (hε : 0 < ε) (hεR : ε ≤ R) (hC₁ : 0 < C₁) {n : ℕ} (k' : ℕ)
+    (hL : 3 ≤ Lnorm n)
+    (hrad : ∀ rad : ℕ → ℝ, (∀ j, ε ≤ rad j) → ∀ S : Finset ℕ,
+      unifIoo.real (⋂ j ∈ S, bigEvent c (rad j) n j) ≤ ∏ j ∈ S, (C₁ / (8 * rad j) / Lnorm n)) :
+    (∑ S ∈ Finset.powersetCard (k' + 1) (capRange n),
+        ∑ i ∈ S, unifIoo.real (mixedEvent c ε R n S i))
+      ≤ 4 ^ (k' + 1) * ((C₁ / (8 * ε)) ^ k' * (C₁ / (8 * R))) / (Nat.factorial k') := by
+  classical
+  have hL0 : (0:ℝ) < Lnorm n := by linarith
+  have hR : (0:ℝ) < R := lt_of_lt_of_le hε hεR
+  rw [← LayerAssembly.sum_powersetCard_sdiff_insert (capRange n) k'
+    (fun S i => unifIoo.real (mixedEvent c ε R n S i))]
+  have hterm : ∀ S ∈ Finset.powersetCard k' (capRange n), ∀ i ∈ capRange n \ S,
+      unifIoo.real (mixedEvent c ε R n (insert i S) i)
+        ≤ (C₁ / (8 * ε) / Lnorm n) ^ k' * (C₁ / (8 * R) / Lnorm n) := by
+    intro S hS i hi
+    have hiS : i ∉ S := (Finset.mem_sdiff.mp hi).2
+    have hcard : S.card = k' := (Finset.mem_powersetCard.mp hS).2
+    set rad : ℕ → ℝ := fun j => if j = i then R else ε with hraddef
+    have hrad0 : ∀ j, ε ≤ rad j := by
+      intro j; simp only [hraddef]; split <;> [exact hεR; exact le_refl ε]
+    have hset : mixedEvent c ε R n (insert i S) i
+        = ⋂ j ∈ insert i S, bigEvent c (rad j) n j := by
+      rw [mixedEvent, Finset.erase_insert hiS, Finset.set_biInter_insert]
+      have hi' : rad i = R := by simp [hraddef]
+      have hS' : (⋂ j ∈ S, bigEvent c (rad j) n j) = ⋂ j ∈ S, bigEvent c ε n j := by
+        refine Set.iInter₂_congr (fun j hj => ?_)
+        have : j ≠ i := fun h => hiS (h ▸ hj)
+        simp [hraddef, this]
+      rw [hi', hS', Set.inter_comm]
+    rw [hset]
+    refine le_trans (hrad rad hrad0 (insert i S)) (le_of_eq ?_)
+    rw [Finset.prod_insert hiS]
+    have hi' : rad i = R := by simp [hraddef]
+    have hS' : (∏ j ∈ S, (C₁ / (8 * rad j) / Lnorm n))
+        = ∏ j ∈ S, (C₁ / (8 * ε) / Lnorm n) := by
+      refine Finset.prod_congr rfl (fun j hj => ?_)
+      have : j ≠ i := fun h => hiS (h ▸ hj)
+      simp [hraddef, this]
+    rw [hi', hS', Finset.prod_const, hcard]
+    ring
+  refine le_trans (Finset.sum_le_sum (fun S hS =>
+    Finset.sum_le_sum (fun i hi => hterm S hS i hi))) ?_
+  have hconst : ∀ S ∈ Finset.powersetCard k' (capRange n),
+      (∑ _i ∈ capRange n \ S, (C₁ / (8 * ε) / Lnorm n) ^ k' * (C₁ / (8 * R) / Lnorm n))
+        ≤ (4 * Lnorm n) * ((C₁ / (8 * ε) / Lnorm n) ^ k' * (C₁ / (8 * R) / Lnorm n)) := by
+    intro S _
+    rw [Finset.sum_const, nsmul_eq_mul]
+    refine mul_le_mul_of_nonneg_right ?_ (by positivity)
+    refine le_trans ?_ (card_capRange_le hL)
+    exact_mod_cast Nat.cast_le.mpr (Finset.card_le_card (Finset.sdiff_subset))
+  refine le_trans (Finset.sum_le_sum hconst) ?_
+  rw [Finset.sum_const, Finset.card_powersetCard, nsmul_eq_mul]
+  have hchoose : (((capRange n).card.choose k' : ℕ) : ℝ)
+      ≤ ((capRange n).card : ℝ) ^ k' / (Nat.factorial k') := Nat.choose_le_pow_div k' _
+  have hfac : (0:ℝ) < (Nat.factorial k') := by exact_mod_cast Nat.factorial_pos k'
+  refine le_trans (mul_le_mul_of_nonneg_right hchoose (by positivity)) ?_
+  rw [div_mul_eq_mul_div, div_le_div_iff_of_pos_right hfac]
+  have hcap : ((capRange n).card : ℝ) ^ k' ≤ (4 * Lnorm n) ^ k' :=
+    pow_le_pow_left₀ (by positivity) (card_capRange_le hL) k'
+  have hnn : (0:ℝ) ≤ (4 * Lnorm n) * ((C₁ / (8 * ε) / Lnorm n) ^ k' * (C₁ / (8 * R) / Lnorm n)) := by
+    positivity
+  refine le_trans (mul_le_mul_of_nonneg_right hcap hnn) (le_of_eq ?_)
+  have hLne : Lnorm n ≠ 0 := ne_of_gt hL0
+  have hcancel : (Lnorm n) ^ k' * ((Lnorm n)⁻¹) ^ k' = 1 := by
+    rw [← mul_pow, mul_inv_cancel₀ hLne, one_pow]
+  field_simp
+  linear_combination (C₁ ^ k' * (ε⁻¹) ^ k' * ((1:ℝ) / 8) ^ k' * 4 ^ k' * 4) * hcancel
+
+/-- Count 3: the near part of the product of one-level means. -/
+lemma count_prod_near {c ε Λ : ℝ} {n k : ℕ}
+    (hmass : (∑ j ∈ Finset.range (n + 1), unifIoo.real (bigEvent c ε n j)) ≤ Λ) :
+    (∑ S ∈ Finset.powersetCard k (capRange n),
+        ∑ i ∈ S, (∏ j ∈ S.erase i, unifIoo.real (bigEvent c ε n j))
+          * unifIoo.real (bigEvent c ε n i))
+      ≤ (k : ℝ) * Real.exp Λ := by
+  classical
+  have hstep : ∀ S ∈ Finset.powersetCard k (capRange n),
+      (∑ i ∈ S, (∏ j ∈ S.erase i, unifIoo.real (bigEvent c ε n j))
+          * unifIoo.real (bigEvent c ε n i))
+        = (k : ℝ) * ∏ j ∈ S, unifIoo.real (bigEvent c ε n j) := by
+    intro S hS
+    have hcard : S.card = k := (Finset.mem_powersetCard.mp hS).2
+    have h : ∀ i ∈ S, (∏ j ∈ S.erase i, unifIoo.real (bigEvent c ε n j))
+        * unifIoo.real (bigEvent c ε n i) = ∏ j ∈ S, unifIoo.real (bigEvent c ε n j) :=
+      fun i hi => Finset.prod_erase_mul S _ hi
+    rw [Finset.sum_congr rfl h, Finset.sum_const, hcard, nsmul_eq_mul]
+  rw [Finset.sum_congr rfl hstep, ← Finset.mul_sum]
+  refine mul_le_mul_of_nonneg_left ?_ (Nat.cast_nonneg k)
+  refine le_trans (LayerAssembly.esymm_le_exp (capRange n) k
+    (fun j => unifIoo.real (bigEvent c ε n j)) (fun j => measureReal_nonneg)) ?_
+  refine Real.exp_le_exp.mpr (le_trans ?_ hmass)
+  exact Finset.sum_le_sum_of_subset_of_nonneg (capRange_subset n)
+    (fun j _ _ => measureReal_nonneg)
+
+/-- Count 4: the far part of the product of one-level means. -/
+lemma count_prod_far {c ε R Λ ΛR : ℝ} {n k' : ℕ}
+    (hmass : (∑ j ∈ Finset.range (n + 1), unifIoo.real (bigEvent c ε n j)) ≤ Λ)
+    (hmassR : (∑ j ∈ Finset.range (n + 1), unifIoo.real (bigEvent c R n j)) ≤ ΛR)
+    (hΛR : 0 ≤ ΛR) :
+    (∑ S ∈ Finset.powersetCard (k' + 1) (capRange n),
+        ∑ i ∈ S, (∏ j ∈ S.erase i, unifIoo.real (bigEvent c ε n j))
+          * unifIoo.real (bigEvent c R n i))
+      ≤ Real.exp Λ * ΛR := by
+  classical
+  rw [← LayerAssembly.sum_powersetCard_sdiff_insert (capRange n) k'
+    (fun S i => (∏ j ∈ S.erase i, unifIoo.real (bigEvent c ε n j))
+      * unifIoo.real (bigEvent c R n i))]
+  have hstep : ∀ S ∈ Finset.powersetCard k' (capRange n),
+      (∑ i ∈ capRange n \ S, (∏ j ∈ (insert i S).erase i, unifIoo.real (bigEvent c ε n j))
+          * unifIoo.real (bigEvent c R n i))
+        ≤ (∏ j ∈ S, unifIoo.real (bigEvent c ε n j)) * ΛR := by
+    intro S hS
+    have h : ∀ i ∈ capRange n \ S,
+        (∏ j ∈ (insert i S).erase i, unifIoo.real (bigEvent c ε n j))
+          * unifIoo.real (bigEvent c R n i)
+        = (∏ j ∈ S, unifIoo.real (bigEvent c ε n j)) * unifIoo.real (bigEvent c R n i) := by
+      intro i hi
+      rw [Finset.erase_insert (Finset.mem_sdiff.mp hi).2]
+    rw [Finset.sum_congr rfl h, ← Finset.mul_sum]
+    refine mul_le_mul_of_nonneg_left ?_
+      (Finset.prod_nonneg (fun j _ =>
+        (measureReal_nonneg : (0:ℝ) ≤ unifIoo.real (bigEvent c ε n j))))
+    refine le_trans ?_ hmassR
+    refine Finset.sum_le_sum_of_subset_of_nonneg ?_ (fun j _ _ => measureReal_nonneg)
+    exact fun x hx => capRange_subset n (Finset.sdiff_subset hx)
+  refine le_trans (Finset.sum_le_sum hstep) ?_
+  rw [← Finset.sum_mul]
+  refine mul_le_mul_of_nonneg_right ?_ hΛR
+  refine le_trans (LayerAssembly.esymm_le_exp (capRange n) k'
+    (fun j => unifIoo.real (bigEvent c ε n j)) (fun j => measureReal_nonneg)) ?_
+  refine Real.exp_le_exp.mpr (le_trans ?_ hmass)
+  exact Finset.sum_le_sum_of_subset_of_nonneg (capRange_subset n)
+    (fun j _ _ => measureReal_nonneg)
+
 end
 
 end QuasiIndep
