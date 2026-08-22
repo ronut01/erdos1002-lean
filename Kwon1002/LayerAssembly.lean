@@ -59,6 +59,30 @@ diagonal, hence bounded by `(∑_j |μ_j|²) · e_k(|μ|)`, and `e_k(|μ|) ≤ e
 uniformly in `k` (`esymm_le_exp`), so a single induction on `k` gives
 `e_k → a^k/k!` with no inclusion-exclusion and no alternating sum anywhere.
 The full Newton identities, which do alternate, are not needed and are not used.
+
+## Record correction: `hp1` is no longer an input
+
+The reduction below leaves two analytic inputs, `hp1` and `hqi`.  `hp1` is now a
+theorem: `Kwon1002.SymbolLimit.sum_mu_tendsto`, axiom-clean, and
+`Kwon1002.SymbolLimit.largeSum_charFun_limit_of_hqi` is the conclusion of
+`largeSum_charFun_limit_of_two_inputs` with `hqi` as its **only** hypothesis.
+
+`hqi` is still open.  What it needs, and what is now available for it: expand the
+step symbol of `SymbolLimit.exists_step_approx` multilinearly across the `k`
+levels — this produces a *different* target at each level, so the per-level forms
+are the currency — and feed
+`Kwon1002.TupleTransfer.multiSet_mark_factorization` (proved, uniform over
+per-level families), `Kwon1002.DetQuasiFamily.exists_det_quasi_independence_family`
+(proved here as of this wave: displays (39)-(40) on the deterministic bulk at a
+per-level family, with the absolute value *inside* the sum over embeddings) and
+`Kwon1002.WindowBridgeFamily.exists_window_bridge_family` (proved here as of this
+wave: the §7/§4 index-set bridge at a per-level family, again with the absolute
+value inside).  What is **not** yet written is the passage from those two to the
+random-bulk quasi-independence at a per-level family — it needs the product
+telescoping `|∏ p − ∏ q| ≤ ∑_ℓ (∏_{ℓ'<ℓ} q)(|p − q|)(∏_{ℓ'>ℓ} p)` summed over
+embeddings against `∑_f ∏_ℓ a_ℓ(f ℓ) ≤ ∏_ℓ ∑_j a_ℓ j` — and the multilinear
+expansion itself, together with the `Finset`-to-embedding reindexing by `k!` and
+the `η`/`R` error control for the `k`-fold products.
 -/
 
 open Filter MeasureTheory Set

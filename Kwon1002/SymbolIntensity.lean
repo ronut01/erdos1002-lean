@@ -43,6 +43,17 @@ and both are metric rather than structural:
 
 Neither is written here.  What is written is the step that needed §4, and the
 two that remain need no further input from §4.
+
+**Record correction (both steps are now written).**  Both are carried out in
+`Kwon1002/SymbolLimit.lean`: the window approximation is
+`SymbolLimit.exists_step_approx` together with `SymbolLimit.norm_levelSymbol_sub_le`,
+and the two tails are `SymbolLimit.eventually_sum_bigEvent_mass` (with the
+constant of `SymbolLimit.exists_tupleBigEvent_bound_uniform`, which exhibits the
+`ε`-dependence `C₀/(8ε)` that `FactorialRoute.exists_tupleBigEvent_bound` hides
+inside an existential) and `SymbolLimit.tendsto_integral_far_density`.
+`SymbolLimit.sum_mu_tendsto` **is** `hp1`, axiom-clean, and
+`SymbolLimit.largeSum_charFun_limit_of_hqi` records inside Lean that `hqi` is
+then the only remaining input to `CorFinal.largeSum_charFun_limit`.
 -/
 
 open Filter MeasureTheory Set
