@@ -115,3 +115,4 @@ import Kwon1002.WindowCovariance
 import Kwon1002.WindowCovJoin
 import Kwon1002.PairLayerCake
 import Kwon1002.DetPairJoin
+import Kwon1002.TailTransferJoin
