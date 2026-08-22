@@ -408,6 +408,301 @@ lemma sum_powersetCard_le_sum_emb {n k : ℕ} {T : Finset ℕ} (hT : T ⊆ Finse
         exact Finset.sum_nonneg (fun f _ => hF f)
     _ = ∑ f, F f := hfib
 
+
+/-! ## The two approximation errors, at a level set
+
+Both swaps — inside the integral and inside the product of means — are the same
+telescoping, `PatternSum.norm_prod_sub_prod_le`, against the majorant
+`5·1{large jump}` per level.  The point of keeping the indicator inside the
+majorant is that the untouched factors then contribute the *tuple* mass, not the
+constant `5`. -/
+
+lemma indicator_mul_indicator (A B : Set ℝ) (α : ℝ) :
+    Set.indicator A (fun _ => (1:ℝ)) α * Set.indicator B (fun _ => (1:ℝ)) α
+      = Set.indicator (A ∩ B) (fun _ => (1:ℝ)) α := by
+  classical
+  by_cases hA : α ∈ A <;> by_cases hB : α ∈ B <;>
+    simp [Set.indicator_of_mem, Set.indicator_of_notMem, hA, hB, Set.mem_inter_iff]
+
+lemma norm_jumpFactor_le_indicator (t c ε : ℝ) (n j : ℕ) (α : ℝ) :
+    ‖jumpFactor t c ε n j α‖ ≤ 5 * Set.indicator (bigEvent c ε n j) (fun _ => (1:ℝ)) α := by
+  classical
+  by_cases h : α ∈ bigEvent c ε n j
+  · rw [Set.indicator_of_mem h]
+    have := norm_jumpFactor_le t c ε n j α
+    linarith
+  · rw [jumpFactor_of_notMem h, norm_zero, Set.indicator_of_notMem h]
+    norm_num
+
+/-- The mixed-radius event of the `R`-tail: all levels of `S` but one are large
+at `ε`, and the remaining one is large at `R`. -/
+def mixedEvent (c ε R : ℝ) (n : ℕ) (S : Finset ℕ) (i : ℕ) : Set ℝ :=
+  (⋂ j ∈ S.erase i, bigEvent c ε n j) ∩ bigEvent c R n i
+
+lemma measurableSet_mixedEvent (c ε R : ℝ) (n : ℕ) (S : Finset ℕ) (i : ℕ) :
+    MeasurableSet (mixedEvent c ε R n S i) :=
+  (MeasurableSet.biInter (S.erase i).countable_toSet
+    (fun j _ => measurableSet_bigEvent c ε n j)).inter (measurableSet_bigEvent c R n i)
+
+/-- The pointwise error of the symbol swap over a level set. -/
+lemma norm_prod_jumpFactor_sub_prod_stepFactor_le {t ε R η : ℝ} (hη0 : 0 ≤ η) (hεR : ε ≤ R)
+    (hη1 : η ≤ 1) {M : ℕ} (w : Fin M → ℂ) (E : Fin M → Set ℝ)
+    (hpt : ∀ x : ℝ, ‖SymbolLimit.psi t ε x - ∑ i, w i * Set.indicator (E i) (fun _ => (1:ℂ)) x‖
+        ≤ η * Set.indicator (PoissonRoute.truncSet ε) (fun _ => (1:ℝ)) x
+          + 2 * Set.indicator (PoissonRoute.truncSet R) (fun _ => (1:ℝ)) x)
+    (c : ℝ) (n : ℕ) (S : Finset ℕ) (α : ℝ) :
+    ‖(∏ j ∈ S, jumpFactor t c ε n j α) - ∏ j ∈ S, stepFactor c w E n j α‖
+      ≤ ∑ i ∈ S, (5:ℝ) ^ (S.card - 1) *
+          (η * Set.indicator (tupleBigEvent c ε n S) (fun _ => (1:ℝ)) α
+            + 2 * Set.indicator (mixedEvent c ε R n S i) (fun _ => (1:ℝ)) α) := by
+  classical
+  have htel := PatternSum.norm_prod_sub_prod_le (K := ℂ) S
+    (fun j => jumpFactor t c ε n j α) (fun j => stepFactor c w E n j α)
+    (fun j => 5 * Set.indicator (bigEvent c ε n j) (fun _ => (1:ℝ)) α)
+    (fun j _ => norm_jumpFactor_le_indicator t c ε n j α)
+    (fun j _ => norm_stepFactor_le hεR hη1 w E hpt c n j α)
+  refine le_trans htel (Finset.sum_le_sum (fun i hi => ?_))
+  have hcard : (S.erase i).card = S.card - 1 := Finset.card_erase_of_mem hi
+  have hprod : (∏ j ∈ S.erase i, 5 * Set.indicator (bigEvent c ε n j) (fun _ => (1:ℝ)) α)
+      = (5:ℝ) ^ (S.card - 1)
+        * Set.indicator (⋂ j ∈ S.erase i, bigEvent c ε n j) (fun _ => (1:ℝ)) α := by
+    rw [Finset.prod_mul_distrib, Finset.prod_const, hcard, prod_indicator_biInter]
+  rw [hprod]
+  have herr := norm_jumpFactor_sub_stepFactor_le hη0 w E hpt c n i α
+  have hind0 : (0:ℝ) ≤ Set.indicator (⋂ j ∈ S.erase i, bigEvent c ε n j) (fun _ => (1:ℝ)) α :=
+    Set.indicator_nonneg (fun _ _ => by norm_num) α
+  have hmul : (5:ℝ) ^ (S.card - 1)
+        * Set.indicator (⋂ j ∈ S.erase i, bigEvent c ε n j) (fun _ => (1:ℝ)) α
+        * ‖jumpFactor t c ε n i α - stepFactor c w E n i α‖
+      ≤ (5:ℝ) ^ (S.card - 1)
+        * Set.indicator (⋂ j ∈ S.erase i, bigEvent c ε n j) (fun _ => (1:ℝ)) α
+        * (η * Set.indicator (bigEvent c ε n i) (fun _ => (1:ℝ)) α
+            + 2 * Set.indicator (bigEvent c R n i) (fun _ => (1:ℝ)) α) := by
+    refine mul_le_mul_of_nonneg_left herr (by positivity)
+  refine le_trans hmul (le_of_eq ?_)
+  have hS : (⋂ j ∈ S.erase i, bigEvent c ε n j) ∩ bigEvent c ε n i = tupleBigEvent c ε n S := by
+    rw [tupleBigEvent]
+    ext β
+    simp only [Set.mem_inter_iff, Set.mem_iInter, Finset.mem_erase]
+    constructor
+    · rintro ⟨h1, h2⟩ j hj
+      by_cases hji : j = i
+      · subst hji; exact h2
+      · exact h1 j ⟨hji, hj⟩
+    · intro h
+      exact ⟨fun j hj => h j hj.2, h i hi⟩
+  calc (5:ℝ) ^ (S.card - 1)
+        * Set.indicator (⋂ j ∈ S.erase i, bigEvent c ε n j) (fun _ => (1:ℝ)) α
+        * (η * Set.indicator (bigEvent c ε n i) (fun _ => (1:ℝ)) α
+            + 2 * Set.indicator (bigEvent c R n i) (fun _ => (1:ℝ)) α)
+      = (5:ℝ) ^ (S.card - 1) *
+          (η * (Set.indicator (⋂ j ∈ S.erase i, bigEvent c ε n j) (fun _ => (1:ℝ)) α
+                * Set.indicator (bigEvent c ε n i) (fun _ => (1:ℝ)) α)
+            + 2 * (Set.indicator (⋂ j ∈ S.erase i, bigEvent c ε n j) (fun _ => (1:ℝ)) α
+                * Set.indicator (bigEvent c R n i) (fun _ => (1:ℝ)) α)) := by ring
+    _ = (5:ℝ) ^ (S.card - 1) *
+          (η * Set.indicator (tupleBigEvent c ε n S) (fun _ => (1:ℝ)) α
+            + 2 * Set.indicator (mixedEvent c ε R n S i) (fun _ => (1:ℝ)) α) := by
+        rw [indicator_mul_indicator, indicator_mul_indicator, hS, mixedEvent]
+
+/-! ## Integrating the two errors -/
+
+lemma norm_stepFactor_le_crude (c : ℝ) {M : ℕ} (w : Fin M → ℂ) (E : Fin M → Set ℝ)
+    (n j : ℕ) (α : ℝ) : ‖stepFactor c w E n j α‖ ≤ ∑ i, ‖w i‖ := by
+  classical
+  refine le_trans (norm_sum_le _ _) (Finset.sum_le_sum (fun i _ => ?_))
+  rw [norm_mul]
+  refine le_trans (mul_le_mul_of_nonneg_left ?_ (norm_nonneg (w i))) (le_of_eq (mul_one _))
+  by_cases h : α ∈ bulkMarkEvent c n (E i) j
+  · rw [Set.indicator_of_mem h, norm_one]
+  · rw [Set.indicator_of_notMem h, norm_zero]; norm_num
+
+lemma integrableOn_prod_stepFactor (c : ℝ) {M : ℕ} (w : Fin M → ℂ) {E : Fin M → Set ℝ}
+    (hE : ∀ i, MeasurableSet (E i)) (n : ℕ) (S : Finset ℕ) :
+    IntegrableOn (fun α : ℝ => ∏ j ∈ S, stepFactor c w E n j α) (Ioo (0:ℝ) 1) volume := by
+  classical
+  have hmeas : Measurable (fun α : ℝ => ∏ j ∈ S, stepFactor c w E n j α) :=
+    Finset.measurable_prod _ (fun j _ => measurable_stepFactor c w hE n j)
+  refine Measure.integrableOn_of_bounded (M := (∑ i, ‖w i‖) ^ S.card) (by simp [Real.volume_Ioo])
+    hmeas.aestronglyMeasurable (Filter.Eventually.of_forall fun α => ?_)
+  rw [norm_prod]
+  refine le_trans (Finset.prod_le_prod (fun j _ => norm_nonneg _)
+    (fun j _ => norm_stepFactor_le_crude c w E n j α)) ?_
+  rw [Finset.prod_const]
+
+lemma integrableOn_error_bound (c ε R η : ℝ) (n : ℕ) (S : Finset ℕ) :
+    IntegrableOn (fun α : ℝ => ∑ i ∈ S, (5:ℝ) ^ (S.card - 1) *
+      (η * Set.indicator (tupleBigEvent c ε n S) (fun _ => (1:ℝ)) α
+        + 2 * Set.indicator (mixedEvent c ε R n S i) (fun _ => (1:ℝ)) α))
+      (Ioo (0:ℝ) 1) volume := by
+  classical
+  refine integrable_finset_sum _ (fun i _ => ?_)
+  refine Integrable.const_mul ?_ _
+  refine Integrable.add (Integrable.const_mul ?_ _) (Integrable.const_mul ?_ _)
+  · exact SymbolLimit.integrableOn_indicator_unifIoo (measurableSet_tupleBigEvent c ε n S)
+  · exact SymbolLimit.integrableOn_indicator_unifIoo (measurableSet_mixedEvent c ε R n S i)
+
+lemma integral_error_bound (c ε R η : ℝ) (n : ℕ) (S : Finset ℕ) :
+    (∫ α in Ioo (0:ℝ) 1, ∑ i ∈ S, (5:ℝ) ^ (S.card - 1) *
+      (η * Set.indicator (tupleBigEvent c ε n S) (fun _ => (1:ℝ)) α
+        + 2 * Set.indicator (mixedEvent c ε R n S i) (fun _ => (1:ℝ)) α))
+      = ∑ i ∈ S, (5:ℝ) ^ (S.card - 1) *
+          (η * unifIoo.real (tupleBigEvent c ε n S)
+            + 2 * unifIoo.real (mixedEvent c ε R n S i)) := by
+  classical
+  rw [integral_finset_sum _ (fun i _ => ?_)]
+  · refine Finset.sum_congr rfl (fun i _ => ?_)
+    rw [integral_const_mul, integral_add (Integrable.const_mul
+        (SymbolLimit.integrableOn_indicator_unifIoo (measurableSet_tupleBigEvent c ε n S)) _)
+      (Integrable.const_mul
+        (SymbolLimit.integrableOn_indicator_unifIoo (measurableSet_mixedEvent c ε R n S i)) _),
+      integral_const_mul, integral_const_mul,
+      SymbolLimit.setIntegral_indicator_unifIoo (measurableSet_tupleBigEvent c ε n S),
+      SymbolLimit.setIntegral_indicator_unifIoo (measurableSet_mixedEvent c ε R n S i)]
+  · refine Integrable.const_mul ?_ _
+    refine Integrable.add (Integrable.const_mul ?_ _) (Integrable.const_mul ?_ _)
+    · exact SymbolLimit.integrableOn_indicator_unifIoo (measurableSet_tupleBigEvent c ε n S)
+    · exact SymbolLimit.integrableOn_indicator_unifIoo (measurableSet_mixedEvent c ε R n S i)
+
+/-- **The symbol swap inside the integral.** -/
+theorem norm_integral_swap_le {t ε R η : ℝ} (hη0 : 0 ≤ η) (hεR : ε ≤ R) (hη1 : η ≤ 1)
+    {M : ℕ} (w : Fin M → ℂ) {E : Fin M → Set ℝ} (hEm : ∀ i, MeasurableSet (E i))
+    (hpt : ∀ x : ℝ, ‖SymbolLimit.psi t ε x - ∑ i, w i * Set.indicator (E i) (fun _ => (1:ℂ)) x‖
+        ≤ η * Set.indicator (PoissonRoute.truncSet ε) (fun _ => (1:ℝ)) x
+          + 2 * Set.indicator (PoissonRoute.truncSet R) (fun _ => (1:ℝ)) x)
+    (c : ℝ) (n : ℕ) (S : Finset ℕ) :
+    ‖(∫ α in Ioo (0:ℝ) 1, ∏ j ∈ S, jumpFactor t c ε n j α)
+        - ∫ α in Ioo (0:ℝ) 1, ∏ j ∈ S, stepFactor c w E n j α‖
+      ≤ ∑ i ∈ S, (5:ℝ) ^ (S.card - 1) *
+          (η * unifIoo.real (tupleBigEvent c ε n S)
+            + 2 * unifIoo.real (mixedEvent c ε R n S i)) := by
+  classical
+  rw [← integral_sub (integrableOn_prod_jumpFactor t c ε n S)
+    (integrableOn_prod_stepFactor c w hEm n S)]
+  refine le_trans (norm_integral_le_of_norm_le (integrableOn_error_bound c ε R η n S)
+    (Filter.Eventually.of_forall (fun α =>
+      norm_prod_jumpFactor_sub_prod_stepFactor_le hη0 hεR hη1 w E hpt c n S α)))
+    (le_of_eq (integral_error_bound c ε R η n S))
+
+
+/-! ## The same swap inside the product of one-level means -/
+
+lemma integrableOn_jumpFactor (t c ε : ℝ) (n j : ℕ) :
+    IntegrableOn (fun α : ℝ => jumpFactor t c ε n j α) (Ioo (0:ℝ) 1) volume := by
+  have h := integrableOn_prod_jumpFactor t c ε n ({j} : Finset ℕ)
+  simpa using h
+
+lemma integrableOn_stepFactor (c : ℝ) {M : ℕ} (w : Fin M → ℂ) {E : Fin M → Set ℝ}
+    (hE : ∀ i, MeasurableSet (E i)) (n j : ℕ) :
+    IntegrableOn (fun α : ℝ => stepFactor c w E n j α) (Ioo (0:ℝ) 1) volume := by
+  have h := integrableOn_prod_stepFactor c w hE n ({j} : Finset ℕ)
+  simpa using h
+
+lemma norm_mu_le_mass (t c ε : ℝ) (n j : ℕ) :
+    ‖LayerAssembly.mu t c ε n j‖ ≤ 5 * unifIoo.real (bigEvent c ε n j) := by
+  have h := norm_integral_le_of_norm_le
+    ((SymbolLimit.integrableOn_indicator_unifIoo (measurableSet_bigEvent c ε n j)).const_mul 5)
+    (Filter.Eventually.of_forall (fun α => norm_jumpFactor_le_indicator t c ε n j α))
+  refine le_trans h (le_of_eq ?_)
+  rw [integral_const_mul, SymbolLimit.setIntegral_indicator_unifIoo
+    (measurableSet_bigEvent c ε n j)]
+
+lemma norm_integral_stepFactor_le_mass {t ε R η : ℝ} (hεR : ε ≤ R) (hη1 : η ≤ 1)
+    {M : ℕ} (w : Fin M → ℂ) (E : Fin M → Set ℝ)
+    (hpt : ∀ x : ℝ, ‖SymbolLimit.psi t ε x - ∑ i, w i * Set.indicator (E i) (fun _ => (1:ℂ)) x‖
+        ≤ η * Set.indicator (PoissonRoute.truncSet ε) (fun _ => (1:ℝ)) x
+          + 2 * Set.indicator (PoissonRoute.truncSet R) (fun _ => (1:ℝ)) x)
+    (c : ℝ) (n j : ℕ) :
+    ‖∫ α in Ioo (0:ℝ) 1, stepFactor c w E n j α‖ ≤ 5 * unifIoo.real (bigEvent c ε n j) := by
+  have h := norm_integral_le_of_norm_le
+    ((SymbolLimit.integrableOn_indicator_unifIoo (measurableSet_bigEvent c ε n j)).const_mul 5)
+    (Filter.Eventually.of_forall (fun α => norm_stepFactor_le hεR hη1 w E hpt c n j α))
+  refine le_trans h (le_of_eq ?_)
+  rw [integral_const_mul, SymbolLimit.setIntegral_indicator_unifIoo
+    (measurableSet_bigEvent c ε n j)]
+
+lemma norm_mu_sub_integral_stepFactor_le {t ε R η : ℝ} (hη0 : 0 ≤ η)
+    {M : ℕ} (w : Fin M → ℂ) {E : Fin M → Set ℝ} (hEm : ∀ i, MeasurableSet (E i))
+    (hpt : ∀ x : ℝ, ‖SymbolLimit.psi t ε x - ∑ i, w i * Set.indicator (E i) (fun _ => (1:ℂ)) x‖
+        ≤ η * Set.indicator (PoissonRoute.truncSet ε) (fun _ => (1:ℝ)) x
+          + 2 * Set.indicator (PoissonRoute.truncSet R) (fun _ => (1:ℝ)) x)
+    (c : ℝ) (n j : ℕ) :
+    ‖LayerAssembly.mu t c ε n j - ∫ α in Ioo (0:ℝ) 1, stepFactor c w E n j α‖
+      ≤ η * unifIoo.real (bigEvent c ε n j) + 2 * unifIoo.real (bigEvent c R n j) := by
+  rw [LayerAssembly.mu, ← integral_sub (integrableOn_jumpFactor t c ε n j)
+    (integrableOn_stepFactor c w hEm n j)]
+  have hint : IntegrableOn (fun α : ℝ =>
+      η * Set.indicator (bigEvent c ε n j) (fun _ => (1:ℝ)) α
+        + 2 * Set.indicator (bigEvent c R n j) (fun _ => (1:ℝ)) α) (Ioo (0:ℝ) 1) volume :=
+    Integrable.add
+      ((SymbolLimit.integrableOn_indicator_unifIoo (measurableSet_bigEvent c ε n j)).const_mul η)
+      ((SymbolLimit.integrableOn_indicator_unifIoo (measurableSet_bigEvent c R n j)).const_mul 2)
+  refine le_trans (norm_integral_le_of_norm_le hint (Filter.Eventually.of_forall
+    (fun α => norm_jumpFactor_sub_stepFactor_le hη0 w E hpt c n j α))) (le_of_eq ?_)
+  rw [integral_add
+      ((SymbolLimit.integrableOn_indicator_unifIoo (measurableSet_bigEvent c ε n j)).const_mul η)
+      ((SymbolLimit.integrableOn_indicator_unifIoo (measurableSet_bigEvent c R n j)).const_mul 2),
+    integral_const_mul, integral_const_mul,
+    SymbolLimit.setIntegral_indicator_unifIoo (measurableSet_bigEvent c ε n j),
+    SymbolLimit.setIntegral_indicator_unifIoo (measurableSet_bigEvent c R n j)]
+
+/-- **The symbol swap inside the product of one-level means.** -/
+theorem norm_prod_mean_swap_le {t ε R η : ℝ} (hη0 : 0 ≤ η) (hεR : ε ≤ R) (hη1 : η ≤ 1)
+    {M : ℕ} (w : Fin M → ℂ) {E : Fin M → Set ℝ} (hEm : ∀ i, MeasurableSet (E i))
+    (hpt : ∀ x : ℝ, ‖SymbolLimit.psi t ε x - ∑ i, w i * Set.indicator (E i) (fun _ => (1:ℂ)) x‖
+        ≤ η * Set.indicator (PoissonRoute.truncSet ε) (fun _ => (1:ℝ)) x
+          + 2 * Set.indicator (PoissonRoute.truncSet R) (fun _ => (1:ℝ)) x)
+    (c : ℝ) (n : ℕ) (S : Finset ℕ) :
+    ‖(∏ j ∈ S, ∫ α in Ioo (0:ℝ) 1, stepFactor c w E n j α)
+        - ∏ j ∈ S, LayerAssembly.mu t c ε n j‖
+      ≤ ∑ i ∈ S, (5:ℝ) ^ (S.card - 1)
+          * (∏ j ∈ S.erase i, unifIoo.real (bigEvent c ε n j))
+          * (η * unifIoo.real (bigEvent c ε n i) + 2 * unifIoo.real (bigEvent c R n i)) := by
+  classical
+  have htel := PatternSum.norm_prod_sub_prod_le (K := ℂ) S
+    (fun j => ∫ α in Ioo (0:ℝ) 1, stepFactor c w E n j α)
+    (fun j => LayerAssembly.mu t c ε n j)
+    (fun j => 5 * unifIoo.real (bigEvent c ε n j))
+    (fun j _ => norm_integral_stepFactor_le_mass hεR hη1 w E hpt c n j)
+    (fun j _ => norm_mu_le_mass t c ε n j)
+  refine le_trans htel (Finset.sum_le_sum (fun i hi => ?_))
+  have hcard : (S.erase i).card = S.card - 1 := Finset.card_erase_of_mem hi
+  have hprod : (∏ j ∈ S.erase i, 5 * unifIoo.real (bigEvent c ε n j))
+      = (5:ℝ) ^ (S.card - 1) * ∏ j ∈ S.erase i, unifIoo.real (bigEvent c ε n j) := by
+    rw [Finset.prod_mul_distrib, Finset.prod_const, hcard]
+  have h5 : (0:ℝ) ≤ (5:ℝ) ^ (S.card - 1) := by positivity
+  have hp0 : (0:ℝ) ≤ ∏ j ∈ S.erase i, unifIoo.real (bigEvent c ε n j) :=
+    Finset.prod_nonneg (fun j _ =>
+      (measureReal_nonneg : (0:ℝ) ≤ unifIoo.real (bigEvent c ε n j)))
+  have h := norm_mu_sub_integral_stepFactor_le hη0 w hEm hpt c n i
+  rw [norm_sub_rev] at h
+  rw [hprod]
+  exact mul_le_mul_of_nonneg_left h (mul_nonneg h5 hp0)
+
+/-! ## The step-symbol defect at a level set, in the pattern currency -/
+
+theorem norm_stepDefect_at_levelSet {n k : ℕ} (c : ℝ) {M : ℕ} (w : Fin M → ℂ)
+    {E : Fin M → Set ℝ} (hEm : ∀ i, MeasurableSet (E i)) {S : Finset ℕ}
+    (hsub : S ⊆ Finset.range (n + 1)) (hcard : S.card = k) :
+    ‖(∫ α in Ioo (0:ℝ) 1, ∏ j ∈ S, stepFactor c w E n j α)
+        - ∏ j ∈ S, ∫ α in Ioo (0:ℝ) 1, stepFactor c w E n j α‖
+      ≤ ∑ u : Fin k → Fin M, (∏ ℓ, ‖w (u ℓ)‖)
+          * |unifIoo.real (⋂ ℓ, bulkMarkEvent c n (E (u ℓ))
+                (embTuple (sortEmb hsub hcard) ℓ))
+              - ∏ ℓ, unifIoo.real (bulkMarkEvent c n (E (u ℓ))
+                  (embTuple (sortEmb hsub hcard) ℓ))| := by
+  classical
+  have h1 : (∫ α in Ioo (0:ℝ) 1, ∏ j ∈ S, stepFactor c w E n j α)
+      = ∫ α in Ioo (0:ℝ) 1, ∏ ℓ, stepFactor c w E n (embTuple (sortEmb hsub hcard) ℓ) α := by
+    refine integral_congr_ae (Filter.Eventually.of_forall (fun α => ?_))
+    exact (prod_orderEmb hcard (fun j => stepFactor c w E n j α)).symm
+  have h2 : (∏ j ∈ S, ∫ α in Ioo (0:ℝ) 1, stepFactor c w E n j α)
+      = ∏ ℓ, ∫ α in Ioo (0:ℝ) 1,
+          stepFactor c w E n (embTuple (sortEmb hsub hcard) ℓ) α :=
+    (prod_orderEmb hcard (fun j => ∫ α in Ioo (0:ℝ) 1, stepFactor c w E n j α)).symm
+  rw [h1, h2]
+  exact norm_stepDefect_le c w hEm n (embTuple (sortEmb hsub hcard))
+
 end
 
 end QuasiIndep
