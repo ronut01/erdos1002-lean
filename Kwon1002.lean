@@ -107,3 +107,4 @@ import Kwon1002.WindowBridgeFamily
 import Kwon1002.DetQuasiFamily
 import Kwon1002.PatternSum
 import Kwon1002.SymbolLimit
+import Kwon1002.StepQuasi
