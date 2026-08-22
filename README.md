@@ -30,20 +30,19 @@ The Lean toolchain, axiom policy, treatment of work-in-progress placeholders, CI
 
 Apache License 2.0. See [LICENSE](LICENSE).
 
-## Current state (2026-08-21)
+## Current state (2026-08-22)
 
 The Lean development builds against Lean v4.27.0 and mathlib pinned in
 `lake-manifest.json`.
 
-**1,821 theorems, 1,641 of them axiom-clean**, under the discipline this
+**2,253 theorems, 2,078 of them axiom-clean**, under the discipline this
 project enforces in CI: axioms exactly `propext`, `Classical.choice`,
 `Quot.sound`, with no `sorry` in any completed result, no `native_decide`,
 and no custom axioms anywhere, including the vendored infrastructure. The
 current measurement reports **zero** theorems on a non-standard axiom. Of
-the theorems still open, 84 carry a placeholder directly; the rest depend
-on one.  (Measurement 2026-08-21, after section 4 closed:
-1,821 / 1,641 / 0, up from 1,742 / 1,560 / 0 when the large-deviation
-chain landed.)
+the theorems still open, 79 carry a placeholder directly; the rest depend
+on one.  Every figure here is reproducible by running
+`lake env lean scripts/sweep.lean`.
 
 **The large-deviation input is closed.** Display (16) is proved
 (`Kwon1002/LDDeviation.lean`, `continuant_large_deviation`): for all
@@ -128,8 +127,26 @@ machine-checked identity guard. The last two steps to fall were the
 Lebesgue-conditional stationary-mean replacement, which turns on the
 observation that the Gauss density ratio is Lipschitz and so constant to
 the order of a retained cylinder's diameter, and the super-resonance
-branch of case 3. The remaining open goals of sections 6 and 7 sit
-downstream of these and are no longer gated by (16)/(20).
+branch of case 3.
+
+**Section 7 is complete**, and the main theorem is proved as a
+conditional. `Section7.section7Bridge_holds` discharges the stopping-time
+and index-set analysis outright, and
+`Master.erdos1002Conclusion_of` assembles Erdős 1002 from its hypotheses,
+axiom-clean. The centering is removed with no hypotheses at all, using
+the exact symmetry `S_N(1−α) = −S_N(α)` against the strict crossing of
+the Cauchy distribution function at one half.
+
+**What remains.** A transitive closure scan over the Lean environment
+shows the main theorem reaches exactly three statements carrying a
+placeholder: `CorFinal.largeSum_charFun_limit` and
+`CorFinal.bulk_offdiagonal_abs_far_sharp` in section 5, and
+Proposition 6.4 in section 6. Everything structural on the route to the
+first is proved — the factorial expansion, the deterministic Lamé cap,
+the `(8C)^k/k!` domination and the series interchange — leaving the
+per-layer limit; and the multi-set tuple factorization it needs is
+proved in `MultiLevel.lean`. Other open goals in the development are
+genuine mathematics but do not lie on that route.
 
 `wang_substrate/` contains Shouqiao Wang's MIT-licensed infrastructure,
 vendored verbatim at commit `d28713ac8245` with a provenance header added to
