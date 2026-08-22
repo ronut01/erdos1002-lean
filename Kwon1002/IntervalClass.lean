@@ -68,7 +68,8 @@ from the `θ`-section back to `TupleFinal.detMarkEvent`.  Both are recorded on
 `TupleFinal.goodSet_mark_factorization_intervals`.
 -/
 
-open Set
+open Set MeasureTheory
+open scoped ENNReal
 
 namespace Kwon1002
 
@@ -317,6 +318,165 @@ theorem markSection_signed_isUnionOfIntervals {m : ℕ} {B : Set ℝ}
   have hval : ∀ θ : ℝ, σ * (a : ℝ) * W θ / L = (σ * (a : ℝ) / L) * W θ := fun θ => by ring
   simp only [hval]
   exact markSection_isUnionOfIntervals hB _
+
+
+/-! ## The band estimate for `W`
+
+The measure of the set on which `W` lies in a thin band.  This is the input
+finding (F7) of `Kwon1002/CovarianceChain.lean` asserts the tree does not
+contain in any form; it is elementary, and it is what excludes (F7)'s
+adversarial law.  See the note on `volume_markBand_le`. -/
+
+lemma W_eq_of_mem_Ico {θ : ℝ} (hθ : θ ∈ Ico (0 : ℝ) 1) : W θ = θ * (1 - θ) / 2 := by
+  rw [W, Int.fract_eq_self.mpr ⟨hθ.1, hθ.2⟩]
+
+/-- The super-level set of `W` on the fundamental cell is an open interval
+symmetric about `1/2`, of length exactly `√(1−8u)`. -/
+lemma setOf_W_gt {u : ℝ} (hu0 : 0 ≤ u) (hu : u < 1 / 8) :
+    {θ : ℝ | θ ∈ Ico (0 : ℝ) 1 ∧ u < W θ}
+      = Ioo ((1 - Real.sqrt (1 - 8 * u)) / 2) ((1 + Real.sqrt (1 - 8 * u)) / 2) := by
+  have hs0 : (0 : ℝ) ≤ 1 - 8 * u := by linarith
+  have hsq : Real.sqrt (1 - 8 * u) ^ 2 = 1 - 8 * u := Real.sq_sqrt hs0
+  have hsnn : (0 : ℝ) ≤ Real.sqrt (1 - 8 * u) := Real.sqrt_nonneg _
+  have hsle : Real.sqrt (1 - 8 * u) ≤ 1 := by nlinarith [hsq, hsnn]
+  ext θ
+  simp only [Set.mem_setOf_eq, Set.mem_Ioo, Set.mem_Ico]
+  constructor
+  · rintro ⟨hθ, hW⟩
+    rw [W_eq_of_mem_Ico ⟨hθ.1, hθ.2⟩] at hW
+    constructor <;> nlinarith [hsq, hsnn, hsle, hθ.1, hθ.2]
+  · rintro ⟨h1, h2⟩
+    have hθ : θ ∈ Ico (0 : ℝ) 1 := ⟨by linarith, by linarith⟩
+    refine ⟨hθ, ?_⟩
+    rw [W_eq_of_mem_Ico hθ]
+    nlinarith [hsq, hsnn, hsle]
+
+lemma volume_W_gt {u : ℝ} (hu0 : 0 ≤ u) (hu : u < 1 / 8) :
+    volume {θ : ℝ | θ ∈ Ico (0 : ℝ) 1 ∧ u < W θ}
+      = ENNReal.ofReal (Real.sqrt (1 - 8 * u)) := by
+  rw [setOf_W_gt hu0 hu, Real.volume_Ioo]
+  congr 1
+  ring
+
+lemma setOf_W_gt_of_ge {u : ℝ} (hu : 1 / 8 ≤ u) :
+    {θ : ℝ | θ ∈ Ico (0 : ℝ) 1 ∧ u < W θ} = ∅ := by
+  ext θ
+  simp only [Set.mem_setOf_eq, Set.mem_empty_iff_false, iff_false, not_and]
+  intro _ hW
+  exact absurd (lt_of_le_of_lt hu hW) (not_lt.mpr (W_le_eighth θ))
+
+/-- **The band estimate for `W`.**  On the fundamental cell the set where `W`
+lies in a band `(v, u]` has Lebesgue measure at most `√(8(u−v))` — the square
+root of the band width, with no dependence on where the band sits. -/
+theorem volume_W_band_le {v u : ℝ} (hv : 0 ≤ v) (hvu : v ≤ u) :
+    (volume {θ : ℝ | θ ∈ Ico (0 : ℝ) 1 ∧ v < W θ ∧ W θ ≤ u}).toReal
+      ≤ Real.sqrt (8 * (u - v)) := by
+  have hu : 0 ≤ u := le_trans hv hvu
+  by_cases hv8 : (1 / 8 : ℝ) ≤ v
+  · have hemp : {θ : ℝ | θ ∈ Ico (0 : ℝ) 1 ∧ v < W θ ∧ W θ ≤ u} = ∅ := by
+      refine Set.subset_empty_iff.mp (fun θ hθ => ?_)
+      exact absurd (lt_of_le_of_lt hv8 hθ.2.1) (not_lt.mpr (W_le_eighth θ))
+    rw [hemp]
+    simpa using Real.sqrt_nonneg (8 * (u - v))
+  replace hv8 : v < 1 / 8 := not_le.mp hv8
+  by_cases hu8 : (1 / 8 : ℝ) ≤ u
+  · have hsub : {θ : ℝ | θ ∈ Ico (0 : ℝ) 1 ∧ v < W θ ∧ W θ ≤ u}
+        ⊆ {θ : ℝ | θ ∈ Ico (0 : ℝ) 1 ∧ v < W θ} := fun θ hθ => ⟨hθ.1, hθ.2.1⟩
+    have h1 : volume {θ : ℝ | θ ∈ Ico (0 : ℝ) 1 ∧ v < W θ ∧ W θ ≤ u}
+        ≤ ENNReal.ofReal (Real.sqrt (1 - 8 * v)) := by
+      rw [← volume_W_gt hv hv8]; exact measure_mono hsub
+    refine le_trans (ENNReal.toReal_le_of_le_ofReal (Real.sqrt_nonneg _) h1) ?_
+    exact Real.sqrt_le_sqrt (by linarith)
+  · replace hu8 : u < 1 / 8 := not_le.mp hu8
+    have hband : {θ : ℝ | θ ∈ Ico (0 : ℝ) 1 ∧ v < W θ ∧ W θ ≤ u}
+        = {θ : ℝ | θ ∈ Ico (0 : ℝ) 1 ∧ v < W θ}
+          \ {θ : ℝ | θ ∈ Ico (0 : ℝ) 1 ∧ u < W θ} := by
+      ext θ
+      simp only [Set.mem_setOf_eq, Set.mem_diff, not_and, not_lt]
+      constructor
+      · rintro ⟨h1, h2, h3⟩; exact ⟨⟨h1, h2⟩, fun _ => h3⟩
+      · rintro ⟨⟨h1, h2⟩, h3⟩; exact ⟨h1, h2, h3 h1⟩
+    have hSU : {θ : ℝ | θ ∈ Ico (0 : ℝ) 1 ∧ u < W θ}
+        ⊆ {θ : ℝ | θ ∈ Ico (0 : ℝ) 1 ∧ v < W θ} :=
+      fun θ hθ => ⟨hθ.1, lt_of_le_of_lt hvu hθ.2⟩
+    have hmeasU : MeasurableSet {θ : ℝ | θ ∈ Ico (0 : ℝ) 1 ∧ u < W θ} := by
+      rw [setOf_W_gt hu hu8]; exact measurableSet_Ioo
+    have hfin : volume {θ : ℝ | θ ∈ Ico (0 : ℝ) 1 ∧ u < W θ} ≠ ⊤ := by
+      rw [volume_W_gt hu hu8]; exact ENNReal.ofReal_ne_top
+    have hmono : Real.sqrt (1 - 8 * u) ≤ Real.sqrt (1 - 8 * v) :=
+      Real.sqrt_le_sqrt (by linarith)
+    rw [hband, measure_diff hSU hmeasU.nullMeasurableSet hfin,
+      volume_W_gt hv hv8, volume_W_gt hu hu8,
+      ← ENNReal.ofReal_sub _ (Real.sqrt_nonneg _),
+      ENNReal.toReal_ofReal (by linarith)]
+    have h1 : Real.sqrt (1 - 8 * u) ^ 2 = 1 - 8 * u := Real.sq_sqrt (by linarith)
+    have h2 : Real.sqrt (8 * (u - v)) ^ 2 = 8 * (u - v) := Real.sq_sqrt (by linarith)
+    have h3 : Real.sqrt (1 - 8 * v) ^ 2 = 1 - 8 * v := Real.sq_sqrt (by linarith)
+    nlinarith [Real.sqrt_nonneg (1 - 8 * u), Real.sqrt_nonneg (8 * (u - v)),
+      Real.sqrt_nonneg (1 - 8 * v),
+      mul_nonneg (Real.sqrt_nonneg (1 - 8 * u)) (Real.sqrt_nonneg (8 * (u - v)))]
+
+/-- **The band estimate for the mark, uniform in the digit.**  For every digit
+`a` and every cutoff `M > 0`, the `θ`-section of the relative band
+`((1−h)M, M]` of `a·W(θ)` has measure at most `√(h/(1−h))`, *with no
+dependence on `a` or on `M`*.
+
+This is the geometric fact finding (F7) did not use.  (F7) argues that a law
+satisfying every display-(15) tail bound could put its whole allowed mass
+`≍ C/(1+εL)` immediately below the cutoff, keeping the band `L¹` cost at a
+constant.  That adversary is excluded here: the mark is `a·W(θ)`, and `W` is a
+fixed sawtooth average whose level sets are intervals of length `√(1−8u)`, so
+the fraction of phase space a band of relative width `h` can occupy is
+`O(√h)` — uniformly in the digit — however the digit mass is arranged. -/
+theorem volume_markBand_le (a : ℕ) {M h : ℝ} (hM : 0 < M) (hh0 : 0 < h) (hh1 : h < 1) :
+    (volume {θ : ℝ | θ ∈ Ico (0 : ℝ) 1 ∧
+        (1 - h) * M < (a : ℝ) * W θ ∧ (a : ℝ) * W θ ≤ M}).toReal
+      ≤ Real.sqrt (h / (1 - h)) := by
+  rcases Nat.eq_zero_or_pos a with rfl | ha
+  · have hemp : {θ : ℝ | θ ∈ Ico (0 : ℝ) 1 ∧
+        (1 - h) * M < ((0 : ℕ) : ℝ) * W θ ∧ ((0 : ℕ) : ℝ) * W θ ≤ M} = ∅ := by
+      refine Set.subset_empty_iff.mp (fun θ hθ => ?_)
+      have := hθ.2.1
+      simp only [Nat.cast_zero, zero_mul] at this
+      nlinarith
+    rw [hemp]
+    simpa using Real.sqrt_nonneg (h / (1 - h))
+  have ha0 : (0 : ℝ) < (a : ℝ) := by exact_mod_cast ha
+  have hrw : {θ : ℝ | θ ∈ Ico (0 : ℝ) 1 ∧
+      (1 - h) * M < (a : ℝ) * W θ ∧ (a : ℝ) * W θ ≤ M}
+      = {θ : ℝ | θ ∈ Ico (0 : ℝ) 1 ∧
+          (1 - h) * (M / (a : ℝ)) < W θ ∧ W θ ≤ M / (a : ℝ)} := by
+    have hd1 : (1 - h) * (M / (a : ℝ)) = ((1 - h) * M) / (a : ℝ) := by ring
+    have hd2 : ∀ y : ℝ, ((1 - h) * M) / (a : ℝ) < y ↔ (1 - h) * M < y * (a : ℝ) :=
+      fun y => div_lt_iff₀ ha0
+    have hd3 : ∀ y : ℝ, y ≤ M / (a : ℝ) ↔ y * (a : ℝ) ≤ M := fun y => le_div_iff₀ ha0
+    ext θ
+    simp only [Set.mem_setOf_eq]
+    constructor
+    · rintro ⟨h1, h2, h3⟩
+      refine ⟨h1, ?_, ?_⟩
+      · rw [hd1, hd2]; linarith [mul_comm (W θ) ((a : ℝ))]
+      · rw [hd3]; linarith [mul_comm (W θ) ((a : ℝ))]
+    · rintro ⟨h1, h2, h3⟩
+      rw [hd1, hd2] at h2
+      rw [hd3] at h3
+      exact ⟨h1, by linarith [mul_comm (W θ) ((a : ℝ))],
+        by linarith [mul_comm (W θ) ((a : ℝ))]⟩
+  rw [hrw]
+  set u : ℝ := M / (a : ℝ) with hudef
+  have hu0 : 0 < u := by rw [hudef]; positivity
+  -- either the band is empty, or `(1−h)u < 1/8`, so `8u < 1/(1−h)`
+  by_cases hbig : (1 / 8 : ℝ) ≤ (1 - h) * u
+  · have hemp : {θ : ℝ | θ ∈ Ico (0 : ℝ) 1 ∧ (1 - h) * u < W θ ∧ W θ ≤ u} = ∅ := by
+      refine Set.subset_empty_iff.mp (fun θ hθ => ?_)
+      exact absurd (lt_of_le_of_lt hbig hθ.2.1) (not_lt.mpr (W_le_eighth θ))
+    rw [hemp]
+    simp [Real.sqrt_nonneg]
+  · replace hbig : (1 - h) * u < 1 / 8 := not_le.mp hbig
+    refine le_trans (volume_W_band_le (by nlinarith) (by nlinarith)) ?_
+    refine Real.sqrt_le_sqrt ?_
+    rw [le_div_iff₀ (by linarith : (0 : ℝ) < 1 - h)]
+    nlinarith
 
 end IntervalClass
 
