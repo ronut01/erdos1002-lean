@@ -34,3 +34,7 @@ run_meta report ``Kwon1002.Master.erdos1002Conclusion_of_section7
 run_meta report ``Kwon1002.CauchyJoin.principal_cauchy_law_J
 run_meta report ``Kwon1002.CauchyJoin.erdos1002Conclusion_of_section7_J
 run_meta report ``Kwon1002.CauchyJoin.erdos1002Conclusion_final
+run_meta report ``Kwon1002.TailTransferCauchy.principal_cauchy_law_T
+run_meta report ``Kwon1002.TailTransferCauchy.erdos1002Conclusion_of_prop64_T
+run_meta report ``Kwon1002.TailTransferCauchy.erdos1002Conclusion_final_T
+run_meta report ``Kwon1002.TailTransferCauchy.erdos1002Official_final_T
