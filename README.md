@@ -4,10 +4,13 @@ This repository is the public workspace for a separate collaborative Lean 4 form
 
 ## Status
 
-Formalization in progress. Sections 2, 3, and 5 are substantially complete,
-and the single analytic input that gated sections 4, 6 and 7 — the
-large-deviation bound for the continuants, displays (16)/(20) — is now
-**proved**. See **Current state** below for figures.
+**Sections 2, 3, 4, 5 and 7 are complete.** Corollary 5.3 is proved
+unconditionally, and Theorem 1.1 — the Cauchy limit law of Erdős Problem
+1002 — is proved from Proposition 6.4 alone, axiom-clean. A transitive
+closure scan over the Lean environment shows the main theorem reaches
+exactly one statement still carrying a placeholder: Proposition 6.4 of
+section 6. See **Current state** below for figures, and run
+`lake env lean scripts/closure.lean` to reproduce the leaf set.
 
 The formalization target is pinned by hash in `manuscript/PROVENANCE.md`.
 
@@ -35,7 +38,7 @@ Apache License 2.0. See [LICENSE](LICENSE).
 The Lean development builds against Lean v4.27.0 and mathlib pinned in
 `lake-manifest.json`.
 
-**2,253 theorems, 2,078 of them axiom-clean**, under the discipline this
+**2,464 theorems, 2,280 of them axiom-clean**, under the discipline this
 project enforces in CI: axioms exactly `propext`, `Classical.choice`,
 `Quot.sound`, with no `sorry` in any completed result, no `native_decide`,
 and no custom axioms anywhere, including the vendored infrastructure. The
@@ -137,16 +140,23 @@ axiom-clean. The centering is removed with no hypotheses at all, using
 the exact symmetry `S_N(1−α) = −S_N(α)` against the strict crossing of
 the Cauchy distribution function at one half.
 
-**What remains.** A transitive closure scan over the Lean environment
-shows the main theorem reaches exactly three statements carrying a
-placeholder: `CorFinal.largeSum_charFun_limit` and
-`CorFinal.bulk_offdiagonal_abs_far_sharp` in section 5, and
-Proposition 6.4 in section 6. Everything structural on the route to the
-first is proved — the factorial expansion, the deterministic Lamé cap,
-the `(8C)^k/k!` domination and the series interchange — leaving the
-per-layer limit; and the multi-set tuple factorization it needs is
-proved in `MultiLevel.lean`. Other open goals in the development are
-genuine mathematics but do not lie on that route.
+**Section 5 is complete.** Corollary 5.3
+(`TailTransferCauchy.principal_cauchy_law_T`, pinned to the canonical
+`Kwon1002.principal_cauchy_law` by a machine-checked identity) is proved
+unconditionally. The route: the characteristic function of the large-jump
+part is expanded by `Finset.prod_add` into layers, each layer's limit
+obtained from a multi-set tuple factorization proved against Proposition
+4.1, with the deterministic Lamé cap supplying a `(8C)^k/k!` domination
+uniform in `n`; a one-sided Beurling–Selberg bracket carries the
+one-level law from the symbol class of display (24) to indicators, which
+that class provably cannot contain; and the off-diagonal covariance is
+transferred from the random stopping-time index set to the deterministic
+bulk by a window bridge in covariance currency, converted from event
+currency by a layer-cake argument.
+
+**What remains.** One statement: Proposition 6.4, in section 6, which is
+the manuscript author's own current work. `lake env lean
+scripts/closure.lean` reports it as the sole leaf of the main theorem.
 
 `wang_substrate/` contains Shouqiao Wang's MIT-licensed infrastructure,
 vendored verbatim at commit `d28713ac8245` with a provenance header added to
