@@ -209,7 +209,6 @@ theorem norm_diagonal_le (T : Finset ℕ) (μ : ℕ → ℂ) (k : ℕ) :
     have hprod : (∏ i ∈ S, ‖μ i‖) = ‖μ j‖ * ∏ i ∈ S.erase j, ‖μ i‖ :=
       (Finset.mul_prod_erase _ _ hj).symm
     rw [norm_mul, norm_prod, hprod]
-    ring_nf
     exact le_of_eq (by ring)
   refine le_trans hterm ?_
   -- reindex the diagonal back down one level
