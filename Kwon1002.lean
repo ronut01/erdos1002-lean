@@ -96,3 +96,4 @@ import Kwon1002.StoppingWindow
 import Kwon1002.Master
 import Kwon1002.Section7Bridge
 import Kwon1002.Section5Join
+import Kwon1002.Section5Intervals
