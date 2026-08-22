@@ -43,6 +43,11 @@ what this module adds:
   `Section5Join` schedule at a free exponent `s` (the fixed exponent `2` there
   is tuned to the single-level budget `o(1/L)`; `r` levels need `o(L^{-r})`,
   so the exponent has to move and `D` with it).
+* `eventually_exists_goodTuple` — **non-vacuity**: `J_n` eventually carries a
+  good `r`-tuple.  `Kwon1002/OneLevelLaw.lean` establishes this only at `r = 1`,
+  where (25) and (26) are vacuous; for `r ≥ 2` nothing in the tree checked that
+  the gap and resonance conditions can be met at once.  Without it every
+  `GoodTuple n r`-quantified statement of §4 is empty for `r ≥ 2`.
 * `multiLevel_transfer` — the **multi-set tuple factorization**: for every
   `r`, every interval count `m` and every rate `A`, uniformly over good tuples
   in `J_n` and over per-level section families,
@@ -859,6 +864,158 @@ theorem multiLevel_transfer_one (m : ℕ) {A : ℝ} (hA : 0 < A) :
   filter_upwards [hev] with n hn j hj B hBm hBi
   have h := hn j hj (fun _ => B) (fun _ => hBm) (fun _ => hBi)
   simpa using h
+
+
+
+/-! ## Non-vacuity: good `r`-tuples exist
+
+Every statement of the form `∀ j, GoodTuple n r j → …` is vacuous if `J_n`
+carries no good `r`-tuple, and `Kwon1002/OneLevelLaw.lean` establishes existence
+only at `r = 1` (`eventually_bulkJ_nonempty`, where (25) and (26) are vacuous).
+For `r ≥ 2` both conditions have content, and nothing in the tree checked that
+they can be met simultaneously.  They can: an arithmetic progression of step
+`300H` started just above the lower trim stays in the lower `O(rH)` of `J_n`,
+which is `Ω(L)` away from every resonance time `(m_n + j_i)/2 ≥ m_n/2`. -/
+
+/-- `L` eventually dominates any fixed multiple of `H`, because
+`L = H·L^{1/4}`. -/
+theorem eventually_const_mul_Hscale_le (c : ℝ) :
+    ∀ᶠ n : ℕ in atTop, 0 < Lnorm n ∧ 1 ≤ Hscale n ∧ c * Hscale n + c ≤ Lnorm n := by
+  have hLtend : Tendsto (fun n : ℕ => Lnorm n) atTop atTop :=
+    Real.tendsto_log_atTop.comp tendsto_natCast_atTop_atTop
+  have hQ : Tendsto (fun n : ℕ => (Lnorm n) ^ (1 / 4 : ℝ)) atTop atTop :=
+    (tendsto_rpow_atTop (by norm_num : (0:ℝ) < 1 / 4)).comp hLtend
+  have hH : Tendsto (fun n : ℕ => Hscale n) atTop atTop := P42Cases.tendsto_Hscale
+  filter_upwards [hLtend.eventually_gt_atTop 0, hH.eventually_ge_atTop 1,
+    hQ.eventually_ge_atTop (2 * |c| + 2)] with n hL0 hH1 hQbig
+  refine ⟨hL0, hH1, ?_⟩
+  have hsplit : Lnorm n = Hscale n * (Lnorm n) ^ (1 / 4 : ℝ) :=
+    OneLevelLaw.Lnorm_eq_Hscale_mul hL0
+  have hc : c ≤ |c| := le_abs_self c
+  have hstep : Hscale n * (2 * |c| + 2) ≤ Hscale n * (Lnorm n) ^ (1 / 4 : ℝ) :=
+    mul_le_mul_of_nonneg_left hQbig (by linarith)
+  nlinarith [hH1, hc, abs_nonneg c]
+
+/-- **Good `r`-tuples exist.**  Eventually in `n`, the deterministic bulk `J_n`
+carries a good `r`-tuple, so `multiLevel_transfer` and every other
+`GoodTuple n r`-quantified statement in §4 has content.  The witness is the
+arithmetic progression `j_ℓ = ⌊200H⌋ + 1 + ℓ·(⌊300H⌋ + 1)`. -/
+theorem eventually_exists_goodTuple (r : ℕ) :
+    ∀ᶠ n : ℕ in atTop, ∃ j : ℕ → ℕ, GoodTuple n r j := by
+  filter_upwards [eventually_const_mul_Hscale_le (3000 * ((r:ℝ) + 1))] with n hn
+  obtain ⟨hL0, hH1, hbig⟩ := hn
+  set H : ℝ := Hscale n with hHdef
+  set L : ℝ := Lnorm n with hLdef
+  have hH0 : (0:ℝ) ≤ H := by linarith
+  have hr0 : (0:ℝ) ≤ (r:ℝ) := Nat.cast_nonneg r
+  have hlamp : (0:ℝ) < lyapunov := OneLevelLaw.lyapunov_pos
+  have hlam2 : lyapunov < 2 := OneLevelLaw.lyapunov_lt_two
+  -- the progression
+  set base : ℕ := ⌊200 * H⌋₊ + 1 with hbdef
+  set K : ℕ := ⌊300 * H⌋₊ + 1 with hKdef
+  have hbaselow : 200 * H ≤ (base : ℝ) := by
+    have := Nat.lt_floor_add_one (200 * H)
+    rw [hbdef]; push_cast; linarith
+  have hbasehigh : (base : ℝ) ≤ 200 * H + 1 := by
+    have := Nat.floor_le (by positivity : (0:ℝ) ≤ 200 * H)
+    rw [hbdef]; push_cast; linarith
+  have hKlow : 300 * H ≤ (K : ℝ) := by
+    have := Nat.lt_floor_add_one (300 * H)
+    rw [hKdef]; push_cast; linarith
+  have hKhigh : (K : ℝ) ≤ 300 * H + 1 := by
+    have := Nat.floor_le (by positivity : (0:ℝ) ≤ 300 * H)
+    rw [hKdef]; push_cast; linarith
+  have hK0 : (0:ℝ) ≤ (K:ℝ) := Nat.cast_nonneg K
+  have hK1 : 1 ≤ K := by rw [hKdef]; omega
+  refine ⟨fun ℓ => if ℓ < r then base + ℓ * K else 0, ?_⟩
+  set j : ℕ → ℕ := fun ℓ => if ℓ < r then base + ℓ * K else 0 with hjdef
+  have hjval : ∀ ℓ, ℓ < r → j ℓ = base + ℓ * K := by
+    intro ℓ hℓ; rw [hjdef]; simp [hℓ]
+  have hjR : ∀ ℓ, ℓ < r → (j ℓ : ℝ) = (base : ℝ) + (ℓ : ℝ) * (K : ℝ) := by
+    intro ℓ hℓ; rw [hjval ℓ hℓ]; push_cast; ring
+  -- the top of the progression
+  have hjub : ∀ ℓ, ℓ < r → (j ℓ : ℝ) ≤ 300 * (r:ℝ) * H + (r:ℝ) := by
+    intro ℓ hℓ
+    have hℓr : (ℓ:ℝ) ≤ (r:ℝ) - 1 := by
+      have : (ℓ:ℝ) + 1 ≤ (r:ℝ) := by exact_mod_cast hℓ
+      linarith
+    have hℓ0 : (0:ℝ) ≤ (ℓ:ℝ) := Nat.cast_nonneg ℓ
+    have hmul : (ℓ:ℝ) * (K:ℝ) ≤ ((r:ℝ) - 1) * (300 * H + 1) := by
+      calc (ℓ:ℝ) * (K:ℝ) ≤ ((r:ℝ) - 1) * (K:ℝ) :=
+            mul_le_mul_of_nonneg_right hℓr hK0
+        _ ≤ ((r:ℝ) - 1) * (300 * H + 1) := by
+            refine mul_le_mul_of_nonneg_left hKhigh (by linarith)
+    rw [hjR ℓ hℓ]
+    nlinarith [hbasehigh, hmul, hH0]
+  have hjlb : ∀ ℓ, ℓ < r → 200 * H ≤ (j ℓ : ℝ) := by
+    intro ℓ hℓ
+    rw [hjR ℓ hℓ]
+    have : (0:ℝ) ≤ (ℓ:ℝ) * (K:ℝ) := by positivity
+    linarith
+  -- the bulk index bound
+  have hmR : L / lyapunov - 1 < (mIndex n : ℝ) := by
+    have h := Nat.lt_floor_add_one (L / lyapunov)
+    rw [mIndex, ← hLdef]
+    linarith
+  have hLlam : L / 2 ≤ L / lyapunov := by
+    rw [div_le_div_iff₀ (by norm_num) hlamp]
+    nlinarith
+  have hmlow : L / 2 - 1 ≤ (mIndex n : ℝ) := by linarith
+  have hroom : ∀ ℓ, ℓ < r → (j ℓ : ℝ) ≤ (mIndex n : ℝ) - 200 * H := by
+    intro ℓ hℓ
+    have h1 := hjub ℓ hℓ
+    nlinarith [hbig, hmlow, hH1, hr0, hH0]
+  have hmemJ : ∀ ℓ, ℓ < r → j ℓ ∈ bulkJ n := by
+    intro ℓ hℓ
+    have hle : (j ℓ : ℝ) ≤ (mIndex n : ℝ) := by
+      have := hroom ℓ hℓ
+      linarith [hH0]
+    have hnat : j ℓ ≤ mIndex n := by exact_mod_cast hle
+    rw [bulkJ, Finset.mem_filter, Finset.mem_range]
+    exact ⟨by omega, hjlb ℓ hℓ, hroom ℓ hℓ⟩
+  refine ⟨⟨?_, ?_, hmemJ⟩, ?_, ?_⟩
+  · intro ℓ hℓ
+    rw [hjdef]; simp [Nat.not_lt.mpr hℓ]
+  · intro ℓ ℓ' hlt hℓ'
+    have hℓ : ℓ < r := lt_trans hlt hℓ'
+    rw [hjval ℓ hℓ, hjval ℓ' hℓ']
+    have : ℓ * K < ℓ' * K := Nat.mul_lt_mul_of_lt_of_le hlt le_rfl (by omega)
+    omega
+  · intro ℓ hℓ
+    have hℓr : ℓ < r := by omega
+    have hℓ1r : ℓ + 1 < r := hℓ
+    rw [hjR (ℓ + 1) hℓ1r, hjR ℓ hℓr]
+    push_cast
+    nlinarith [hKlow, hH0]
+  · intro i ℓ hiℓ hℓr
+    have hir : i < r := lt_trans hiℓ hℓr
+    have hi0 : (0:ℝ) ≤ (j i : ℝ) := Nat.cast_nonneg _
+    have hub := hjub ℓ hℓr
+    have hkey : 200 * H ≤ ((mIndex n : ℝ) + (j i : ℝ)) / 2 - (j ℓ : ℝ) := by
+      nlinarith [hbig, hmlow, hH1, hr0, hH0, hi0, hub]
+    have : 200 * H ≤ |(j ℓ : ℝ) - ((mIndex n : ℝ) + (j i : ℝ)) / 2| := by
+      rw [abs_sub_comm]
+      exact le_trans hkey (le_abs_self _)
+    exact this
+
+
+
+/-- **The multi-set factorization is non-vacuous.**  Combining
+`multiLevel_transfer` with `eventually_exists_goodTuple`: eventually there
+really is a good `r`-tuple for it to speak about. -/
+theorem multiLevel_transfer_nonvacuous (r m : ℕ) {A : ℝ} (hA : 0 < A) :
+    ∃ C : ℝ, 0 < C ∧ ∀ᶠ n : ℕ in atTop, ∃ j : ℕ → ℕ, GoodTuple n r j ∧
+      ∀ Bs : ℕ → ℕ → Set ℝ, (∀ ℓ a, MeasurableSet (Bs ℓ a)) →
+        (∀ ℓ a, IntervalClass.IsUnionOfIntervals m (Bs ℓ a)) →
+        |(∫ α in Ioo (0:ℝ) 1, ∏ ℓ ∈ Finset.range r,
+              indFull (Bs ℓ) (digit α (j ℓ)) (theta α n (j ℓ)))
+            - ∏ ℓ ∈ Finset.range r, stationaryMeanR (indFull (Bs ℓ))|
+          ≤ C * (Lnorm n) ^ (-A) := by
+  obtain ⟨C, hC, hev⟩ := multiLevel_transfer r m hA
+  refine ⟨C, hC, ?_⟩
+  filter_upwards [hev, eventually_exists_goodTuple r] with n hn hex
+  obtain ⟨j, hj⟩ := hex
+  exact ⟨j, hj, hn j hj⟩
 
 
 end
