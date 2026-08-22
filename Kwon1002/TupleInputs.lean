@@ -80,9 +80,13 @@ towards a different one.**  Two further checks are machine-checked here:
   `levyIntensity_split` (also proved) this pins the residual's constant with
   no freedom left.
 
-The one arithmetic step **not** machine-checked here is
-`Λ((u,∞)) = 1/(2π²u)`, i.e. `∫_u^∞ (2π²x²)^{-1} dx = (2π²u)^{-1}`; it is a
-one-line calculus fact and is used only in the commentary, never in a proof.
+The one arithmetic step not machine-checked *in this file* is
+`Λ((u,∞)) = 1/(2π²u)`, i.e. `∫_u^∞ (2π²x²)^{-1} dx = (2π²u)^{-1}`.  **It is
+machine-checked now**, as `Kwon1002.GaussKuzmin.levyIntensity_Ioi`
+(`Kwon1002/GaussKuzmin.lean`), which sits above this module; so is the
+combination `2λ·Λ((u,∞)) = 1/(12 u log 2)`
+(`GaussKuzmin.two_lyapunov_levy_Ioi`).  Nothing here is left substituted by
+hand.
 
 ## Sorried results consumed
 
@@ -142,8 +146,10 @@ theorem integral_W_unit : (∫ t in (0 : ℝ)..1, W t) = 1 / 12 := by
 
 /-- **The per-level constant, checked.**  `2λ·Λ((u,∞)) = E[W]/(u log 2)`:
 the normalisation `2·lyapunov·Λ` that the residual below attaches to one level
-is exactly the Gauss-Kuzmin prediction.  (`Λ((u,∞)) = 1/(2π²u)` is substituted
-by hand, that single calculus step is the only unchecked arithmetic.) -/
+is exactly the Gauss-Kuzmin prediction.  (`Λ((u,∞)) = 1/(2π²u)` was substituted by hand
+when this was written; it is proved in `Kwon1002/GaussKuzmin.lean` as
+`GaussKuzmin.levyIntensity_Ioi`, and this statement composed with it is
+`GaussKuzmin.two_lyapunov_levy_Ioi`.) -/
 theorem perLevel_constant_check (u : ℝ) (hu : 0 < u) :
     2 * lyapunov * (1 / (2 * Real.pi ^ 2 * u))
       = (∫ t in (0 : ℝ)..1, W t) / (u * Real.log 2) := by
@@ -410,16 +416,47 @@ and nothing more.
   `Erdos1002.GaussLebesgueTransfer` / `GaussCylinderContraction` and the
   in-tree `BVMixing.lemma_3_2_BV`, `MixingBV.lem_3_2_conditional_multiblock_mixing'`
   are the modules that would feed it; none of them states it.
-* The genuine obstruction is the **joint** law: the equidistribution of
-  `θ_j = {n β_j}` on the torus, *asymptotically independent of the digit*
-  `a_{j+1}`.  Nothing in `Kwon1002/` or in the substrate states it.  The
-  in-tree material about `theta` is the Lipschitz/BV side
-  (`Bridge.bv_of_firstDigit_step`, `Reciprocity`) and the anti-concentration
-  side (`shrinking_anti_concentration`), both of which are inputs to such a
-  statement rather than the statement itself.
+* The second bullet of this record, as originally written, said that the
+  **joint** law — the equidistribution of `θ_j = {n β_j}` on the torus,
+  asymptotically independent of the digit `a_{j+1}` — is stated nowhere in
+  `Kwon1002/` or in the substrate.  **That is false**, and has been since
+  `Kwon1002/OneLevelLaw.lean` was written: `OneLevelLaw.oneLevel_joint_law`
+  states and proves exactly that law, unconditionally and `#print axioms`
+  clean, for every symbol in the class `IsInPD D L` of display (24), uniformly
+  over `j ∈ bulkJ n`.  The record is corrected here.
 
-Only the second of these is a genuinely new ask; that is the sharpening this
-file's residual records over `Kwon1002.deterministic_oneLevel_intensity`.
+**What actually remains, as of `Kwon1002/GaussKuzmin.lean`.**  Two items, and
+neither is the joint law or the constant.
+
+1. *From the stationary mean to the level-`j` Lebesgue average, at an
+   indicator.*  `Section5Join.oneLevel_indicator_sandwich` does this two-sided
+   and uniformly, and `Section5Join.stationaryMeanR_gap_le` prices it by the
+   jump count of the `θ`-sections; both are proved.  What is not written is the
+   *choice of parameters*: the bracket scale `δ`, the degree `N` and the digit
+   cut `Acut` have to be tied to `L` so that all three of `L·((4m+2)·2δ)`,
+   `L·2·farTail(N,δ)` and `L·C·L^{-A}` vanish while display (24)'s budget
+   `(Acut+1)(2N+1)(1+farTail) ≤ L^D` still holds, together with the two digit
+   tails (Lebesgue: `Kwon1002.digit_tail_product`; stationary:
+   `DigitLocalLaw.gaussMeasure_real_digit_zero_ge`).  This is bookkeeping, but
+   it is not empty bookkeeping.
+2. *From the interval class to an arbitrary measurable `B`.*  The statement
+   below quantifies over every measurable `B` bounded away from `0` and
+   bounded.  `GaussKuzmin` supplies the stationary side at half-lines
+   (`tendsto_scaled_markTailMean`) and hence, by additivity, on the interval
+   class (`tendsto_scaled_markBandMean`) — which is exactly the class the
+   Selberg bracket of item 1 can reach, since `IsUnionOfIntervals` is what
+   `stationaryMeanR_gap_le` consumes.  For a general measurable `B` the
+   `θ`-sections `W^{-1}(L·B/a)` are **not** finite unions of intervals, so the
+   sandwich does not apply directly; one needs a uniform-in-`L`
+   absolute-continuity bound on the level-`j` law (a density `≍ x^{-2}` on
+   `δ ≤ |x| ≤ R`) to approximate `B` by finite unions of intervals with an
+   error independent of `L`.  Nothing in the tree states such a bound.  This
+   is the genuinely open item.
+
+**The constant is not among the residuals any more.**
+`GaussKuzmin.markTailMean_bounds` proves, for every `M > 0`,
+`(1/12 − 1/(32M))/log 2 ≤ M·stationaryMeanR(1[M < a·W θ]) ≤ (1/12)/log 2`,
+so `L·stationaryMeanR → 2λ·Λ((u,∞))` at `M = uL`, unconditionally.
 
 **What is no longer part of it.**  Display (39) at `r = 1`, the level count
 `#J_n = (1+o(1))L/λ` and the parity balance, which the previous residual

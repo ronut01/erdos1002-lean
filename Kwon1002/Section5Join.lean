@@ -97,13 +97,34 @@ one-level law read **at the indicator itself**, two-sided, and
 alone.  Both are `#print axioms` clean.
 
 So the sentence "the tree contains no such pair", written before this pass,
-is no longer true, and neither is "one genuinely open analytic step".  What
-remains of the three §5 residuals below is **not** the one-sidedness: it is,
-for (35), the Gauss–Kuzmin *normalisation* — the identification of
-`stationaryMeanR` of the mark indicator with `2λ·Λ`, an infinite digit sum
-against the exact `ν_G(a₁ = a) ≍ 1/(a² log 2)` compared with
-`∫₀^{1/8} vol{W > s} ds = E[W] = 1/12` — and, for residual 2a and (F7), the
-`k`-level and pair-level bookkeeping on top of it.
+is no longer true, and neither is "one genuinely open analytic step".
+
+**The Gauss-Kuzmin normalisation named here is now closed too, and this
+paragraph is corrected accordingly.**  It used to read that what remains of
+(35) is "the Gauss-Kuzmin *normalisation* — the identification of
+`stationaryMeanR` of the mark indicator with `2λ·Λ`".
+`Kwon1002/GaussKuzmin.lean` proves that identification outright:
+`M·stationaryMeanR(1[M < a·W θ])` is trapped between
+`(1/12 − 1/(32M))/log 2` and `(1/12)/log 2` for every `M > 0`, hence
+`L·stationaryMeanR → 2λ·Λ((u,∞))` at `M = uL`, with
+`Λ((u,∞)) = 1/(2π²u)` machine-checked (`GaussKuzmin.levyIntensity_Ioi`) and
+not substituted.  Part E below carries the `rfl` guards.  The route is not the
+one this paragraph anticipated: swapping the digit and phase integrals
+replaces the infinite digit sum by the *exact* Gauss-Kuzmin tail
+`γ{a₁ ≥ K} = log(1+1/K)/log 2` at `K = ⌊M/W θ⌋+1`, and
+`x/(1+x) ≤ log(1+x) ≤ x` then pins the answer uniformly in the phase, with
+`∫₀¹ W = 1/12` supplying the `1/12`.  No Riemann sum is needed, and
+`IntervalClass.volume_W_gt` is not used.
+
+What remains of (35) after Parts D and E is therefore neither the
+one-sidedness nor the constant.  It is (i) the *choice of bracket parameters*
+`(Acut, N, δ)` against `L`, together with the two digit tails, and (ii) the
+passage from the interval class — where both the bracket and the normalisation
+live — to the arbitrary measurable `B` the residual is stated for.  Item (ii)
+needs a uniform-in-`L` density bound on the level-`j` law and is the one
+genuinely open item; see the corrected obstruction record on
+`TupleInputs.oneLevel_gaussKuzmin_intensity`.  For residual 2a and (F7) the
+`k`-level and pair-level bookkeeping sits on top of the same two items.
 
 ## Finding (F7) is refuted, conditionally on that gate
 
