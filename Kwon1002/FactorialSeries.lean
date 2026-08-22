@@ -113,18 +113,31 @@ from the layer limit itself, and none of them is closed:
 1. the per-level intensity for the **complex** symbol
    `x ↦ (e^{itx} − 1)1{|x| > ε}` rather than an indicator — a simple-function
    approximation inside a truncation window `(ε, R]`, plus the `R → ∞` tail;
-2. `Kwon1002.nonGood_tuple_count` (`Kwon1002/Section4.lean`), still sorried:
-   the layer runs over *all* `k`-subsets of the capped level range, and
-   `multiLevel_transfer` speaks only about **good** tuples;
-3. the `k`-level index-set bridge between the random bulk
-   `Marks.bulkIndices c α n` (which `bigEvent` uses) and the deterministic
-   `bulkJ n` (which §4 uses).  `Kwon1002.bulk_window_bridge_oneLevel` is proved
-   at one level; its `k`-level analogue is not;
+2. ~~`Kwon1002.nonGood_tuple_count`~~ — **this item was wrong.**  The count is
+   proved and axiom-clean as `Kwon1002.TupleCount.nonGood_tuple_count`, restated
+   verbatim and cited as `Kwon1002.nonGood_tuple_count'` in
+   `Kwon1002/Discharge.lean`.  Only the below-declaration copy
+   `Kwon1002.Section4.nonGood_tuple_count` still carries a `sorry`, for the
+   import-direction reason that module documents.  Checked by an `example` at
+   the foot of `Kwon1002/LayerAssembly.lean`;
+3. ~~the `k`-level index-set bridge~~ — **this item was wrong too.**  The bridge
+   between the random bulk `Marks.bulkIndices c α n` and the deterministic
+   `bulkJ n` is `Kwon1002.TupleFinal.bulk_window_bridge_tuple`, proved and
+   axiom-clean at every `k`; the sentence above was written while its proof was
+   still open.  Also checked by an `example` in `Kwon1002/LayerAssembly.lean`.
+   What it supplies is the bridge for **one** set `B` at every level, so a
+   per-level (multi-set) bridge is still owed, and that is part of item 1;
 4. the passage from `∑_{|S| = k} ∏_{j ∈ S} (per-level mean)` to `Λ̂^k/k!` —
-   an elementary-symmetric versus power-sum comparison, plus the even/odd
-   split the sign `(−1)^j` forces.
+   **closed** in `Kwon1002/LayerAssembly.lean`
+   (`LayerAssembly.tendsto_esymm`, `LayerAssembly.layerSum_tendsto_of_inputs`,
+   both axiom-clean).  The anticipated even/odd split is not needed: the
+   recursion used carries no alternating sign.  That module also *proves*, and
+   does not assume, the two size conditions the argument needs
+   (`sum_norm_mu_le`, `sum_norm_mu_sq_le`), so what is left of the layer limit
+   is exactly the two analytic inputs `hp1` and `hqi` of
+   `layerSum_tendsto_of_inputs`, both about the complex symbol.
 
-None of the four is a residual of `TupleInputs`, `Section5Intervals` or
+None of these is a residual of `TupleInputs`, `Section5Intervals` or
 `Section5Join`.
 -/
 

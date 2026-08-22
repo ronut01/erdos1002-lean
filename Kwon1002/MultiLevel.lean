@@ -68,16 +68,20 @@ The limit itself additionally needs, and this module does not supply:
 1. the per-level intensity for the **complex** symbol
    `x ↦ (e^{itx} − 1)1{|x| > ε}` rather than an indicator (a simple-function
    approximation inside the truncation window, plus its tail);
-2. the count of **non-good** tuples, `Kwon1002.nonGood_tuple_count`, still
-   sorried in `Kwon1002/Section4.lean`;
-3. the `r`-level index-set bridge between the random bulk
-   `Marks.bulkIndices c α n` and the deterministic `bulkJ n`
-   (`bulk_window_bridge_oneLevel` is proved at one level;
-   `TupleFinal.bulk_window_bridge_tuple` is not);
-4. the passage from the per-level products to `Λ̂^k/k!`, i.e. the elementary
-   symmetric / power sum comparison.
+2. ~~the count of **non-good** tuples~~ — **wrong**: it is proved and
+   axiom-clean as `Kwon1002.TupleCount.nonGood_tuple_count`, cited verbatim as
+   `Kwon1002.nonGood_tuple_count'` in `Kwon1002/Discharge.lean`.  Only the
+   below-declaration copy in `Kwon1002/Section4.lean` carries a `sorry`;
+3. ~~the `r`-level index-set bridge~~ — **wrong too**:
+   `TupleFinal.bulk_window_bridge_tuple` is proved and axiom-clean at every `k`.
+   It is stated for one set `B` at every level, so a per-level version is still
+   owed, and that belongs to item 1;
+4. the passage from the per-level products to `Λ̂^k/k!` — **closed** in
+   `Kwon1002/LayerAssembly.lean`, with no alternating sum and hence no even/odd
+   split.
 
-These four are named, not hidden, and none of them is closed below.
+Items 2, 3 and 4 above are therefore not open; item 1 is.  The `example`s at the
+foot of `Kwon1002/LayerAssembly.lean` carry out the checks for 2 and 3.
 -/
 
 open MeasureTheory Set Filter
