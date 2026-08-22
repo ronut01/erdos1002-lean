@@ -893,6 +893,392 @@ lemma count_prod_far {c ε R Λ ΛR : ℝ} {n k' : ℕ}
   exact Finset.sum_le_sum_of_subset_of_nonneg (capRange_subset n)
     (fun j _ _ => measureReal_nonneg)
 
+
+/-! ## Padding the cell family, and a uniform interval count -/
+
+lemma exists_uniform_interval_count {M : ℕ} (E : Fin M → Set ℝ)
+    (h : ∀ i, IntervalClass.IsFiniteUnionOfIntervals (E i)) :
+    ∃ m : ℕ, ∀ i, IntervalClass.IsUnionOfIntervals m (E i) := by
+  classical
+  choose mm hmm using h
+  exact ⟨Finset.univ.sup mm, fun i => (hmm i).mono (Finset.le_sup (Finset.mem_univ i))⟩
+
+lemma sum_cons_step {M : ℕ} (w : Fin M → ℂ) (E : Fin M → Set ℝ) (x : ℝ) :
+    (∑ i : Fin (M + 1), (Fin.cons (0:ℂ) w : Fin (M + 1) → ℂ) i
+        * Set.indicator ((Fin.cons (∅ : Set ℝ) E : Fin (M + 1) → Set ℝ) i) (fun _ => (1:ℂ)) x)
+      = ∑ i : Fin M, w i * Set.indicator (E i) (fun _ => (1:ℂ)) x := by
+  rw [Fin.sum_univ_succ]
+  simp
+
+/-! ## The subset quasi-independence of the complex symbol -/
+
+/-- **`hqi` for the symbol `x ↦ (e^{itx} − 1)1{|x| > ε}`.**
+
+For every `k`, the `k`-subset quasi-independence defect of the large-jump
+factors tends to `0`.  The three errors are, in order: the mesh `η` and the
+truncation `R` of the step approximation, both paid against the tuple masses of
+`Kwon1002.QuasiIndep.exists_tuple_bound_radii`; and the quasi-independence of
+the step symbol itself, paid by
+`Kwon1002.StepQuasi.exists_bulk_quasi_pattern` once per cell pattern. -/
+theorem hqi (c : ℝ) {ε : ℝ} (hε : 0 < ε) (t : ℝ) (k : ℕ) :
+    Tendsto (fun n : ℕ =>
+        ∑ S ∈ Finset.powersetCard k (Finset.range (n + 1)),
+          ‖(∫ α in Ioo (0:ℝ) 1, ∏ j ∈ S, jumpFactor t c ε n j α)
+              - ∏ j ∈ S, LayerAssembly.mu t c ε n j‖) atTop (𝓝 0) := by
+  classical
+  obtain _ | k' := k
+  · -- the empty layer contributes nothing
+    have hzero : ∀ n : ℕ, (∑ S ∈ Finset.powersetCard 0 (Finset.range (n + 1)),
+        ‖(∫ α in Ioo (0:ℝ) 1, ∏ j ∈ S, jumpFactor t c ε n j α)
+            - ∏ j ∈ S, LayerAssembly.mu t c ε n j‖) = 0 := by
+      intro n
+      rw [Finset.powersetCard_zero]
+      simp only [Finset.sum_singleton, Finset.prod_empty]
+      rw [setIntegral_const]
+      simp
+    simpa [hzero] using tendsto_const_nhds (α := ℕ) (x := (0:ℝ))
+  obtain ⟨C₀, hC₀, hbnd⟩ := SymbolLimit.exists_tupleBigEvent_bound_uniform c
+  obtain ⟨C₁, hC₁, hradAll⟩ := exists_tuple_bound_radii c
+  set Λ : ℝ := C₀ / (2 * ε) with hΛ
+  set Cε : ℝ := C₁ / (8 * ε) with hCε
+  set P : ℝ := (5:ℝ) ^ k' with hP
+  set K1 : ℝ := P * ((k' + 1 : ℝ) * ((4 * Cε) ^ (k' + 1) / (Nat.factorial (k' + 1))
+    + Real.exp Λ)) with hK1def
+  set K2 : ℝ := P * 2 * (4 ^ (k' + 1) * (Cε ^ k' * (C₁ / 8)) / (Nat.factorial k')
+    + Real.exp Λ * (C₀ / 2)) with hK2def
+  have hP0 : 0 < P := by rw [hP]; positivity
+  have hCε0 : 0 < Cε := by rw [hCε]; positivity
+  have hK10 : 0 < K1 := by
+    rw [hK1def]
+    have : (0:ℝ) < (4 * Cε) ^ (k' + 1) / (Nat.factorial (k' + 1)) := by
+      have : (0:ℝ) < (Nat.factorial (k' + 1)) := by exact_mod_cast Nat.factorial_pos _
+      positivity
+    have hexp : (0:ℝ) < Real.exp Λ := Real.exp_pos _
+    have hk1 : (0:ℝ) < (k' + 1 : ℝ) := by positivity
+    positivity
+  have hK20 : 0 ≤ K2 := by
+    rw [hK2def]
+    have hfac : (0:ℝ) < (Nat.factorial k') := by exact_mod_cast Nat.factorial_pos _
+    have hexp : (0:ℝ) < Real.exp Λ := Real.exp_pos _
+    positivity
+  rw [Metric.tendsto_atTop]
+  intro γ hγ
+  -- the truncation radius
+  obtain ⟨R, hR1, hR2⟩ : ∃ R : ℝ, ε < R ∧ K2 / R < γ / 3 := by
+    refine ⟨max (ε + 1) (3 * K2 / γ + 1), ?_, ?_⟩
+    · exact lt_of_lt_of_le (by linarith) (le_max_left _ _)
+    · have hR0 : (0:ℝ) < max (ε + 1) (3 * K2 / γ + 1) :=
+        lt_of_lt_of_le (by linarith) (le_max_left _ _)
+      rw [div_lt_iff₀ hR0]
+      have h1 : 3 * K2 / γ + 1 ≤ max (ε + 1) (3 * K2 / γ + 1) := le_max_right _ _
+      have h2 : K2 = γ / 3 * (3 * K2 / γ) := by field_simp
+      nlinarith [le_of_lt hγ, hK20]
+  -- the mesh
+  obtain ⟨η, hη0, hη1, hη2⟩ : ∃ η : ℝ, 0 < η ∧ η ≤ 1 ∧ K1 * η < γ / 3 := by
+    refine ⟨min 1 (γ / (6 * K1)), lt_min (by norm_num) (by positivity), min_le_left _ _, ?_⟩
+    have h1 : min 1 (γ / (6 * K1)) ≤ γ / (6 * K1) := min_le_right _ _
+    have h2 : K1 * (γ / (6 * K1)) = γ / 6 := by field_simp
+    nlinarith [le_of_lt hγ, le_of_lt hK10]
+  -- the step approximation, padded to a nonempty cell family
+  obtain ⟨M, w, E, hEm, hEsub, hEi, hpt⟩ := SymbolLimit.exists_step_approx t hε hR1 hη0
+  set w' : Fin (M + 1) → ℂ := (Fin.cons (0:ℂ) w : Fin (M + 1) → ℂ) with hw'
+  set E' : Fin (M + 1) → Set ℝ := (Fin.cons (∅ : Set ℝ) E : Fin (M + 1) → Set ℝ) with hE'
+  have hpt' : ∀ x : ℝ,
+      ‖SymbolLimit.psi t ε x - ∑ i, w' i * Set.indicator (E' i) (fun _ => (1:ℂ)) x‖
+        ≤ η * Set.indicator (PoissonRoute.truncSet ε) (fun _ => (1:ℝ)) x
+          + 2 * Set.indicator (PoissonRoute.truncSet R) (fun _ => (1:ℝ)) x := by
+    intro x
+    rw [hw', hE', sum_cons_step w E x]
+    exact hpt x
+  have hEm' : ∀ i, MeasurableSet (E' i) := by
+    intro i
+    refine Fin.cases ?_ ?_ i
+    · simpa [hE'] using MeasurableSet.empty
+    · intro j; simpa [hE'] using hEm j
+  have hEi' : ∀ i, IntervalClass.IsFiniteUnionOfIntervals (E' i) := by
+    intro i
+    refine Fin.cases ?_ ?_ i
+    · simpa [hE'] using (IntervalClass.isUnionOfIntervals_empty 0).finite
+    · intro j; simpa [hE'] using hEi j
+  have hEδ : ∀ i, ∀ y ∈ E' i, ε ≤ |y| := by
+    intro i
+    refine Fin.cases ?_ ?_ i
+    · simp [hE']
+    · intro j y hy
+      have := hEsub j (by simpa [hE'] using hy)
+      exact le_of_lt this.1
+  obtain ⟨m, hm⟩ := exists_uniform_interval_count E' hEi'
+  set W : ℝ := ∑ i, ‖w' i‖ with hW
+  have hW0 : 0 ≤ W := Finset.sum_nonneg (fun i _ => norm_nonneg _)
+  obtain ⟨majB, hmajBlim, hmajB⟩ :=
+    StepQuasi.exists_bulk_quasi_pattern c m (k' + 1) (M + 1) hε (Nat.succ_pos M)
+  -- the eventual estimate
+  have hmain : ∀ᶠ n : ℕ in atTop,
+      (∑ S ∈ Finset.powersetCard (k' + 1) (Finset.range (n + 1)),
+        ‖(∫ α in Ioo (0:ℝ) 1, ∏ j ∈ S, jumpFactor t c ε n j α)
+            - ∏ j ∈ S, LayerAssembly.mu t c ε n j‖)
+        ≤ K1 * η + K2 / R + W ^ (k' + 1) * majB n := by
+    filter_upwards [eventually_ge_atTop 1,
+      TupleMeasure.tendsto_Lnorm_atTop.eventually_ge_atTop (3:ℝ),
+      hradAll ε hε, SymbolLimit.eventually_sum_bigEvent_mass c hbnd hC₀ hε,
+      SymbolLimit.eventually_sum_bigEvent_mass c hbnd hC₀ (lt_trans hε hR1), hmajB]
+      with n hn1 hLn hradn hmassε hmassR hmajBn
+    -- only the capped level range contributes
+    have hcapeq : (∑ S ∈ Finset.powersetCard (k' + 1) (Finset.range (n + 1)),
+        ‖(∫ α in Ioo (0:ℝ) 1, ∏ j ∈ S, jumpFactor t c ε n j α)
+            - ∏ j ∈ S, LayerAssembly.mu t c ε n j‖)
+        = ∑ S ∈ Finset.powersetCard (k' + 1) (capRange n),
+            ‖(∫ α in Ioo (0:ℝ) 1, ∏ j ∈ S, jumpFactor t c ε n j α)
+              - ∏ j ∈ S, LayerAssembly.mu t c ε n j‖ := by
+      refine (Finset.sum_subset ?_ ?_).symm
+      · intro S hS
+        rw [Finset.mem_powersetCard] at hS ⊢
+        exact ⟨fun x hx => capRange_subset n (hS.1 hx), hS.2⟩
+      · intro S hS hSnot
+        rw [Finset.mem_powersetCard] at hS
+        have hnsub : ¬ S ⊆ capRange n := fun hsub =>
+          hSnot (Finset.mem_powersetCard.mpr ⟨hsub, hS.2⟩)
+        obtain ⟨j, hjS, hj⟩ := Finset.not_subset.mp hnsub
+        have hjn : j < n + 1 := Finset.mem_range.mp (hS.1 hjS)
+        have hjc : lameCap n ≤ j := by
+          rw [capRange, Finset.mem_range, not_lt] at hj
+          omega
+        rw [integral_prod_jumpFactor_eq_zero_of_lameCap t c ε hn1 S hjS hjc,
+          Finset.prod_eq_zero hjS (LayerAssembly.mu_eq_zero_of_lameCap t c ε hn1 hjc)]
+        simp
+    rw [hcapeq]
+    -- the three-term split at each level set
+    have hsplit : ∀ S ∈ Finset.powersetCard (k' + 1) (capRange n),
+        ‖(∫ α in Ioo (0:ℝ) 1, ∏ j ∈ S, jumpFactor t c ε n j α)
+            - ∏ j ∈ S, LayerAssembly.mu t c ε n j‖
+        ≤ (∑ i ∈ S, (5:ℝ) ^ (S.card - 1) * (η * unifIoo.real (tupleBigEvent c ε n S)
+              + 2 * unifIoo.real (mixedEvent c ε R n S i)))
+          + ‖(∫ α in Ioo (0:ℝ) 1, ∏ j ∈ S, stepFactor c w' E' n j α)
+              - ∏ j ∈ S, ∫ α in Ioo (0:ℝ) 1, stepFactor c w' E' n j α‖
+          + (∑ i ∈ S, (5:ℝ) ^ (S.card - 1)
+              * (∏ j ∈ S.erase i, unifIoo.real (bigEvent c ε n j))
+              * (η * unifIoo.real (bigEvent c ε n i)
+                  + 2 * unifIoo.real (bigEvent c R n i))) := by
+      intro S _
+      have h1 := norm_integral_swap_le hη0.le (le_of_lt hR1) hη1 w' hEm' hpt' c n S
+      have h3 := norm_prod_mean_swap_le hη0.le (le_of_lt hR1) hη1 w' hEm' hpt' c n S
+      have hdec : (∫ α in Ioo (0:ℝ) 1, ∏ j ∈ S, jumpFactor t c ε n j α)
+            - ∏ j ∈ S, LayerAssembly.mu t c ε n j
+          = ((∫ α in Ioo (0:ℝ) 1, ∏ j ∈ S, jumpFactor t c ε n j α)
+              - ∫ α in Ioo (0:ℝ) 1, ∏ j ∈ S, stepFactor c w' E' n j α)
+            + ((∫ α in Ioo (0:ℝ) 1, ∏ j ∈ S, stepFactor c w' E' n j α)
+              - ∏ j ∈ S, ∫ α in Ioo (0:ℝ) 1, stepFactor c w' E' n j α)
+            + ((∏ j ∈ S, ∫ α in Ioo (0:ℝ) 1, stepFactor c w' E' n j α)
+              - ∏ j ∈ S, LayerAssembly.mu t c ε n j) := by ring
+      rw [hdec]
+      refine le_trans (norm_add₃_le) ?_
+      linarith
+    refine le_trans (Finset.sum_le_sum hsplit) ?_
+    rw [Finset.sum_add_distrib, Finset.sum_add_distrib]
+    -- the three aggregate bounds
+    have hAeq : (∑ S ∈ Finset.powersetCard (k' + 1) (capRange n),
+          ∑ i ∈ S, (5:ℝ) ^ (S.card - 1) * (η * unifIoo.real (tupleBigEvent c ε n S)
+            + 2 * unifIoo.real (mixedEvent c ε R n S i)))
+        = P * η * (k' + 1 : ℝ)
+            * (∑ S ∈ Finset.powersetCard (k' + 1) (capRange n),
+                unifIoo.real (tupleBigEvent c ε n S))
+          + P * 2 * (∑ S ∈ Finset.powersetCard (k' + 1) (capRange n),
+              ∑ i ∈ S, unifIoo.real (mixedEvent c ε R n S i)) := by
+      have hterm : ∀ S ∈ Finset.powersetCard (k' + 1) (capRange n),
+          (∑ i ∈ S, (5:ℝ) ^ (S.card - 1) * (η * unifIoo.real (tupleBigEvent c ε n S)
+              + 2 * unifIoo.real (mixedEvent c ε R n S i)))
+            = P * η * (k' + 1 : ℝ) * unifIoo.real (tupleBigEvent c ε n S)
+              + P * 2 * ∑ i ∈ S, unifIoo.real (mixedEvent c ε R n S i) := by
+        intro S hS
+        have hcard : S.card = k' + 1 := (Finset.mem_powersetCard.mp hS).2
+        have hpow : (5:ℝ) ^ (S.card - 1) = P := by rw [hcard, Nat.add_sub_cancel, hP]
+        have hstep : ∀ i ∈ S, (5:ℝ) ^ (S.card - 1) * (η * unifIoo.real (tupleBigEvent c ε n S)
+              + 2 * unifIoo.real (mixedEvent c ε R n S i))
+            = P * η * unifIoo.real (tupleBigEvent c ε n S)
+              + P * 2 * unifIoo.real (mixedEvent c ε R n S i) := by
+          intro i _; rw [hpow]; ring
+        rw [Finset.sum_congr rfl hstep, Finset.sum_add_distrib, Finset.sum_const, hcard,
+          nsmul_eq_mul, ← Finset.mul_sum]
+        push_cast
+        ring
+      rw [Finset.sum_congr rfl hterm, Finset.sum_add_distrib, ← Finset.mul_sum, ← Finset.mul_sum]
+    have hCeq : (∑ S ∈ Finset.powersetCard (k' + 1) (capRange n),
+          ∑ i ∈ S, (5:ℝ) ^ (S.card - 1)
+            * (∏ j ∈ S.erase i, unifIoo.real (bigEvent c ε n j))
+            * (η * unifIoo.real (bigEvent c ε n i) + 2 * unifIoo.real (bigEvent c R n i)))
+        = P * η * (∑ S ∈ Finset.powersetCard (k' + 1) (capRange n),
+              ∑ i ∈ S, (∏ j ∈ S.erase i, unifIoo.real (bigEvent c ε n j))
+                * unifIoo.real (bigEvent c ε n i))
+          + P * 2 * (∑ S ∈ Finset.powersetCard (k' + 1) (capRange n),
+              ∑ i ∈ S, (∏ j ∈ S.erase i, unifIoo.real (bigEvent c ε n j))
+                * unifIoo.real (bigEvent c R n i)) := by
+      have hterm : ∀ S ∈ Finset.powersetCard (k' + 1) (capRange n),
+          (∑ i ∈ S, (5:ℝ) ^ (S.card - 1)
+              * (∏ j ∈ S.erase i, unifIoo.real (bigEvent c ε n j))
+              * (η * unifIoo.real (bigEvent c ε n i) + 2 * unifIoo.real (bigEvent c R n i)))
+            = P * η * (∑ i ∈ S, (∏ j ∈ S.erase i, unifIoo.real (bigEvent c ε n j))
+                * unifIoo.real (bigEvent c ε n i))
+              + P * 2 * (∑ i ∈ S, (∏ j ∈ S.erase i, unifIoo.real (bigEvent c ε n j))
+                * unifIoo.real (bigEvent c R n i)) := by
+        intro S hS
+        have hcard : S.card = k' + 1 := (Finset.mem_powersetCard.mp hS).2
+        have hpow : (5:ℝ) ^ (S.card - 1) = P := by rw [hcard, Nat.add_sub_cancel, hP]
+        have hstep : ∀ i ∈ S, (5:ℝ) ^ (S.card - 1)
+              * (∏ j ∈ S.erase i, unifIoo.real (bigEvent c ε n j))
+              * (η * unifIoo.real (bigEvent c ε n i) + 2 * unifIoo.real (bigEvent c R n i))
+            = P * η * ((∏ j ∈ S.erase i, unifIoo.real (bigEvent c ε n j))
+                * unifIoo.real (bigEvent c ε n i))
+              + P * 2 * ((∏ j ∈ S.erase i, unifIoo.real (bigEvent c ε n j))
+                * unifIoo.real (bigEvent c R n i)) := by
+          intro i _; rw [hpow]; ring
+        rw [Finset.sum_congr rfl hstep, Finset.sum_add_distrib, ← Finset.mul_sum, ← Finset.mul_sum]
+      rw [Finset.sum_congr rfl hterm, Finset.sum_add_distrib, ← Finset.mul_sum, ← Finset.mul_sum]
+    rw [hAeq, hCeq]
+    -- the four counts and the pattern bound
+    have hcount1 := count_tupleBig (c := c) hε hC₁ (k' + 1) hLn hradn
+    have hcount2 := count_mixed (c := c) hε (le_of_lt hR1) hC₁ k' hLn hradn
+    have hcount3 := count_prod_near (c := c) (ε := ε) (Λ := Λ) (n := n) (k := k' + 1) hmassε
+    have hcount4 := count_prod_far (c := c) (ε := ε) (R := R) (Λ := Λ) (ΛR := C₀ / (2 * R))
+      (n := n) (k' := k') hmassε hmassR
+      (div_nonneg hC₀.le (by linarith [lt_trans hε hR1]))
+    have hB : (∑ S ∈ Finset.powersetCard (k' + 1) (capRange n),
+        ‖(∫ α in Ioo (0:ℝ) 1, ∏ j ∈ S, stepFactor c w' E' n j α)
+            - ∏ j ∈ S, ∫ α in Ioo (0:ℝ) 1, stepFactor c w' E' n j α‖)
+        ≤ W ^ (k' + 1) * majB n := by
+      have hstep := sum_powersetCard_le_sum_emb (k := k' + 1) (capRange_subset n)
+        (fun S => ‖(∫ α in Ioo (0:ℝ) 1, ∏ j ∈ S, stepFactor c w' E' n j α)
+            - ∏ j ∈ S, ∫ α in Ioo (0:ℝ) 1, stepFactor c w' E' n j α‖)
+        (fun f => ∑ u : Fin (k' + 1) → Fin (M + 1), (∏ ℓ, ‖w' (u ℓ)‖)
+          * |unifIoo.real (⋂ ℓ, bulkMarkEvent c n (E' (u ℓ)) (embTuple f ℓ))
+              - ∏ ℓ, unifIoo.real (bulkMarkEvent c n (E' (u ℓ)) (embTuple f ℓ))|)
+        (fun f => Finset.sum_nonneg (fun u _ =>
+          mul_nonneg (Finset.prod_nonneg (fun ℓ _ => norm_nonneg _)) (abs_nonneg _)))
+        (fun S hS => by
+          refine ⟨sortEmb (fun x hx => capRange_subset n
+              ((Finset.mem_powersetCard.mp hS).1 hx)) (Finset.mem_powersetCard.mp hS).2,
+            image_embTuple_sortEmb _ _, ?_⟩
+          exact norm_stepDefect_at_levelSet c w' hEm' _ _)
+      refine le_trans hstep ?_
+      rw [Finset.sum_comm]
+      have hpat : ∀ u : Fin (k' + 1) → Fin (M + 1),
+          (∑ f : Fin (k' + 1) ↪ (Finset.range (n + 1) : Finset ℕ), (∏ ℓ, ‖w' (u ℓ)‖)
+            * |unifIoo.real (⋂ ℓ, bulkMarkEvent c n (E' (u ℓ)) (embTuple f ℓ))
+                - ∏ ℓ, unifIoo.real (bulkMarkEvent c n (E' (u ℓ)) (embTuple f ℓ))|)
+            ≤ (∏ ℓ, ‖w' (u ℓ)‖) * majB n := by
+        intro u
+        rw [← Finset.mul_sum]
+        refine mul_le_mul_of_nonneg_left ?_ (Finset.prod_nonneg (fun ℓ _ => norm_nonneg _))
+        exact hmajBn E' hEm' hm hEδ u
+      refine le_trans (Finset.sum_le_sum (fun u _ => hpat u)) (le_of_eq ?_)
+      rw [← Finset.sum_mul, hW, ← Fintype.piFinset_univ,
+        ← Finset.prod_univ_sum (fun _ : Fin (k' + 1) => (Finset.univ : Finset (Fin (M + 1))))
+          (fun _ i => ‖w' i‖),
+        Finset.prod_const, Finset.card_univ, Fintype.card_fin]
+    -- assembling
+    have hΛR : C₀ / (2 * R) = (C₀ / 2) / R := by rw [div_div]
+    have hCR : C₁ / (8 * R) = (C₁ / 8) / R := by rw [div_div]
+    have hRpos : (0:ℝ) < R := lt_trans hε hR1
+    have hid : P * η * (k' + 1 : ℝ) * ((4 * Cε) ^ (k' + 1) / (Nat.factorial (k' + 1)))
+          + P * 2 * (4 ^ (k' + 1) * (Cε ^ k' * (C₁ / (8 * R))) / (Nat.factorial k'))
+          + (P * η * ((k' + 1 : ℝ) * Real.exp Λ)
+            + P * 2 * (Real.exp Λ * (C₀ / (2 * R))))
+        = K1 * η + K2 / R := by
+      rw [hK1def, hK2def, hΛR, hCR]
+      field_simp
+      ring
+    have hn1' : (0:ℝ) ≤ P * η := by positivity
+    have hn2' : (0:ℝ) ≤ P * 2 := by positivity
+    have hmul1 : P * η * (k' + 1 : ℝ)
+        * (∑ S ∈ Finset.powersetCard (k' + 1) (capRange n),
+            unifIoo.real (tupleBigEvent c ε n S))
+        ≤ P * η * (k' + 1 : ℝ) * ((4 * Cε) ^ (k' + 1) / (Nat.factorial (k' + 1))) := by
+      refine mul_le_mul_of_nonneg_left hcount1 (by positivity)
+    have hmul2 : P * 2 * (∑ S ∈ Finset.powersetCard (k' + 1) (capRange n),
+          ∑ i ∈ S, unifIoo.real (mixedEvent c ε R n S i))
+        ≤ P * 2 * (4 ^ (k' + 1) * (Cε ^ k' * (C₁ / (8 * R))) / (Nat.factorial k')) :=
+      mul_le_mul_of_nonneg_left hcount2 hn2'
+    have hmul3 : P * η * (∑ S ∈ Finset.powersetCard (k' + 1) (capRange n),
+          ∑ i ∈ S, (∏ j ∈ S.erase i, unifIoo.real (bigEvent c ε n j))
+            * unifIoo.real (bigEvent c ε n i))
+        ≤ P * η * ((k' + 1 : ℝ) * Real.exp Λ) := by
+      refine mul_le_mul_of_nonneg_left ?_ hn1'
+      exact_mod_cast hcount3
+    have hmul4 : P * 2 * (∑ S ∈ Finset.powersetCard (k' + 1) (capRange n),
+          ∑ i ∈ S, (∏ j ∈ S.erase i, unifIoo.real (bigEvent c ε n j))
+            * unifIoo.real (bigEvent c R n i))
+        ≤ P * 2 * (Real.exp Λ * (C₀ / (2 * R))) :=
+      mul_le_mul_of_nonneg_left hcount4 hn2'
+    linarith
+  -- and the conclusion
+  have hlim : Tendsto (fun n : ℕ => K1 * η + K2 / R + W ^ (k' + 1) * majB n) atTop
+      (𝓝 (K1 * η + K2 / R + W ^ (k' + 1) * 0)) :=
+    tendsto_const_nhds.add ((hmajBlim.const_mul (W ^ (k' + 1))))
+  rw [mul_zero, add_zero] at hlim
+  have hev := (Metric.tendsto_atTop.mp hlim) (γ / 3) (by linarith)
+  obtain ⟨N, hN⟩ := hev
+  rw [Filter.eventually_atTop] at hmain
+  obtain ⟨N', hN'⟩ := hmain
+  refine ⟨max N N', fun n hn => ?_⟩
+  have h1 := hN n (le_trans (le_max_left _ _) hn)
+  have h2 := hN' n (le_trans (le_max_right _ _) hn)
+  have hnn : (0:ℝ) ≤ ∑ S ∈ Finset.powersetCard (k' + 1) (Finset.range (n + 1)),
+      ‖(∫ α in Ioo (0:ℝ) 1, ∏ j ∈ S, jumpFactor t c ε n j α)
+          - ∏ j ∈ S, LayerAssembly.mu t c ε n j‖ :=
+    Finset.sum_nonneg (fun S _ => norm_nonneg _)
+  rw [Real.dist_eq, abs_of_nonneg (by linarith : (0:ℝ) ≤ _ - 0)]
+  rw [Real.dist_eq] at h1
+  have h3 : W ^ (k' + 1) * majB n < γ / 3 := by
+    have habs := abs_lt.mp h1
+    linarith [habs.2]
+  linarith
+
+
+/-! ## `CorFinal.largeSum_charFun_limit`, unconditionally
+
+`SymbolLimit.largeSum_charFun_limit_of_hqi` carries the conclusion of
+`Kwon1002.CorFinal.largeSum_charFun_limit` with `hqi` as its single hypothesis,
+`hp1` having been discharged by `SymbolLimit.sum_mu_tendsto`.  With `hqi` proved
+the statement is unconditional.
+
+The `sorry` at `Kwon1002.CorFinal.largeSum_charFun_limit` itself cannot be shed:
+`Kwon1002/FactorialRoute.lean` — and therefore the whole factorial route,
+including this module — *imports* `Kwon1002/CorFinal.lean`, so the canonical
+declaration sits strictly below its own proof.  The two anonymous `example`s
+below are the guard: they carry one and the same statement text, and are closed
+respectively by the canonical (sorried) declaration and by the theorem proved
+here, so the two statements agree token for token. -/
+
+/-- **DEBT 1, discharged.**  The fixed-`ε` large-jump characteristic-function
+limit, with no hypotheses. -/
+theorem largeSum_charFun_limit (c ε : ℝ) (hε0 : 0 < ε) (hε1 : ε < 1) (t : ℝ) :
+    Tendsto (fun n : ℕ => ∫ α in Ioo (0 : ℝ) 1,
+        Complex.exp ((t : ℂ) * (Assembly5.largeSum c ε α n : ℂ) * Complex.I)) atTop
+      (𝓝 (Complex.exp (∫ x in {x : ℝ | ε < |x|},
+          (Complex.exp ((t : ℂ) * (x : ℂ) * Complex.I) - 1)
+            * (levyIntensityDensity x : ℂ)))) :=
+  SymbolLimit.largeSum_charFun_limit_of_hqi c ε hε0 hε1 t (fun k => hqi c hε0 t k)
+
+/-- Statement guard, half one: the text below is the statement of
+`Kwon1002.CorFinal.largeSum_charFun_limit`.  The `example` mentions a sorried
+declaration, so it is anonymous. -/
+example : ∀ (c ε : ℝ), 0 < ε → ε < 1 → ∀ t : ℝ,
+    Filter.Tendsto (fun n : ℕ => ∫ α in Set.Ioo (0 : ℝ) 1,
+        Complex.exp ((t : ℂ) * (Kwon1002.Assembly5.largeSum c ε α n : ℂ) * Complex.I)) Filter.atTop
+      (nhds (Complex.exp (∫ x in {x : ℝ | ε < |x|},
+          (Complex.exp ((t : ℂ) * (x : ℂ) * Complex.I) - 1)
+            * (Kwon1002.levyIntensityDensity x : ℂ)))) :=
+  @Kwon1002.CorFinal.largeSum_charFun_limit
+
+/-- Statement guard, half two: the same text, closed by the theorem proved in
+this module. -/
+example : ∀ (c ε : ℝ), 0 < ε → ε < 1 → ∀ t : ℝ,
+    Filter.Tendsto (fun n : ℕ => ∫ α in Set.Ioo (0 : ℝ) 1,
+        Complex.exp ((t : ℂ) * (Kwon1002.Assembly5.largeSum c ε α n : ℂ) * Complex.I)) Filter.atTop
+      (nhds (Complex.exp (∫ x in {x : ℝ | ε < |x|},
+          (Complex.exp ((t : ℂ) * (x : ℂ) * Complex.I) - 1)
+            * (Kwon1002.levyIntensityDensity x : ℂ)))) :=
+  @Kwon1002.QuasiIndep.largeSum_charFun_limit
+
 end
 
 end QuasiIndep
