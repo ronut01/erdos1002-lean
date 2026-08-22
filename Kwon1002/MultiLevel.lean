@@ -63,19 +63,34 @@ Nothing here is sorried and nothing here consumes a `sorry`.
 ## What this does *not* close
 
 `multiLevel_transfer` is the *factorization* half of the multi-set tuple limit.
-The limit itself additionally needs, and this module does not supply:
+`Kwon1002/TupleTransfer.lean` spends it: it turns this module's section-level
+statement into the multi-set factorization **at the mark event**
+(`multiSet_mark_factorization`), which is residual 2a of
+`Kwon1002/TupleFinal.lean` in per-level form, and through that closes the whole
+of §5's tuple chain on the interval class, unconditionally
+(`tuple_measure_convergence_intervals` and its neighbours).  The limit itself
+additionally needs, and this module does not supply:
 
 1. the per-level intensity for the **complex** symbol
    `x ↦ (e^{itx} − 1)1{|x| > ε}` rather than an indicator (a simple-function
-   approximation inside the truncation window, plus its tail);
+   approximation inside the truncation window, plus its tail).  Half of this is
+   now written: `SymbolIntensity.sum_levelSymbol_step_tendsto` proves the
+   one-level limit for **every step symbol** built from the interval class,
+   axiom-clean.  What is left of item 1 is the two metric estimates — the
+   uniform approximation of `e^{itx}−1` on `{ε < |x| ≤ R}` and the `|x| > R`
+   tail — and neither needs any further input from §4;
 2. ~~the count of **non-good** tuples~~ — **wrong**: it is proved and
    axiom-clean as `Kwon1002.TupleCount.nonGood_tuple_count`, cited verbatim as
    `Kwon1002.nonGood_tuple_count'` in `Kwon1002/Discharge.lean`.  Only the
    below-declaration copy in `Kwon1002/Section4.lean` carries a `sorry`;
 3. ~~the `r`-level index-set bridge~~ — **wrong too**:
    `TupleFinal.bulk_window_bridge_tuple` is proved and axiom-clean at every `k`.
-   It is stated for one set `B` at every level, so a per-level version is still
-   owed, and that belongs to item 1;
+   It is stated for one set `B` at every level; the per-level *factorization* it
+   was owed is now supplied — `TupleTransfer.multiSet_mark_factorization` gives
+   it at the deterministic mark event, uniformly over every per-level family of
+   interval targets, from `multiLevel_transfer` alone — so what remains owed
+   here is only the per-level form of the **bridge** itself, from the
+   deterministic bulk to the random one;
 4. the passage from the per-level products to `Λ̂^k/k!` — **closed** in
    `Kwon1002/LayerAssembly.lean`, with no alternating sum and hence no even/odd
    split.

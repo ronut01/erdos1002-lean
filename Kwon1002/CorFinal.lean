@@ -414,11 +414,21 @@ stopping-time analysis, which is proved).
   is proved outright as `Kwon1002.bulk_window_bridge_oneLevel`.  What is left
   for `k ≥ 2` is a cardinality count for embeddings with a coordinate
   constraint — combinatorics, not analysis; see that docstring.
-* `TupleFinal.goodSet_mark_factorization_intervals`, the Jackson step.  Step 1
-  (the good set) is `IntervalClass.exists_goodSet` and the sorting bijection is
-  `JacksonGate.exists_goodTuple_of_sepGoodSet`, both proved; the kernel and its
-  three estimates are `Kwon1002/Fejer.lean`, proved.  The `k`-level bookkeeping
-  is what is missing.
+* `TupleFinal.goodSet_mark_factorization_intervals`, the Jackson step —
+  **no longer open.**  Step 1 (the good set) is `IntervalClass.exists_goodSet`
+  and the sorting bijection is `JacksonGate.exists_goodTuple_of_sepGoodSet`,
+  both proved; the kernel and its three estimates are `Kwon1002/Fejer.lean`,
+  proved; and the `k`-level bookkeeping, recorded here as what was missing, is
+  carried out in `Kwon1002/TupleTransfer.lean` as
+  `TupleTransfer.goodSet_mark_factorization_intervals`, token for token and
+  axiom-clean, from `MultiLevel.multiLevel_transfer` alone.  The declaration in
+  `Kwon1002/TupleFinal.lean` keeps its `sorry` only because it is declared below
+  the modules its proof consumes — the import-direction reason this file's
+  header records — not for a mathematical one.  What the proof actually needs is
+  weaker than what was expected: the transfer holds at every rate `A > 0`, so
+  the residual's `C·L^{-(k+1)}` is had by taking `A = k + 1`, and the product of
+  the true level masses is compared with the product of the stationary means one
+  level at a time.
 * `FiveFinal.deterministic_oneLevel_intensity`, display (35).  Its two
   classical inputs are now proved: `OneLevelLaw.oneLevel_gaussKuzmin` (the
   level-`j` digit law with the exact `a^{-2}` decay, to `O_{D,A}(L^{-A})`) and

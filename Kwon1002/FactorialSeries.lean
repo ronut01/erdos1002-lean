@@ -95,6 +95,21 @@ axiom-clean.  What (B) got right is narrower and still stands: the multi-set
 *limit* is not in the tree, and it is not obtained by widening a symbol class.
 `multiLevel_transfer` is its *factorization* half only.
 
+**(B″) The factorization half now reaches the mark event, and with it the whole
+of §5's tuple chain on the interval class.**
+`Kwon1002/TupleTransfer.lean` proves `multiSet_mark_factorization` — the
+per-level form of `TupleFinal.goodSet_mark_factorization_intervals`, uniformly
+over every family of interval targets — from `multiLevel_transfer`, and with it
+`det_quasi_independence_intervals`, `det_tuple_measure_convergence_intervals`,
+`oneLevel_intensity_limit_intervals`, `tuple_measure_convergence_intervals` and
+`tuple_quasi_independence_intervals`, all axiom-clean.  So the sentence in (A)
+that the closure scan does not *reach* residual 2a still describes the scan
+correctly, but it should not be read as saying residual 2a is not needed: a
+`sorry` absorbs its dependencies, and any genuine route to the layer limit
+brings it back on route.  The interval hypothesis is not a restriction here —
+`IntervalClass.isUnionOfIntervals_truncation` puts every instantiation the §5
+chain makes inside the class.
+
 **(C) `TupleMeasure.tuple_measure_le` cannot dominate a series as stated.**  It
 reads `∀ k, ∃ C, ∀ᶠ n, …`, so both the constant and the eventual-`n` threshold
 may depend on `k`, and a bound of that shape is useless against a sum over `k`.
@@ -112,7 +127,13 @@ from the layer limit itself, and none of them is closed:
 
 1. the per-level intensity for the **complex** symbol
    `x ↦ (e^{itx} − 1)1{|x| > ε}` rather than an indicator — a simple-function
-   approximation inside a truncation window `(ε, R]`, plus the `R → ∞` tail;
+   approximation inside a truncation window `(ε, R]`, plus the `R → ∞` tail.
+   The simple-function half is now proved:
+   `SymbolIntensity.sum_levelSymbol_step_tendsto` gives the one-level limit at
+   every step symbol from the interval class, and
+   `SymbolIntensity.mu_eq_levelSymbol` checks that `LayerAssembly.mu` is the
+   same currency.  What remains is the two metric estimates, neither of which
+   needs §4 again;
 2. ~~`Kwon1002.nonGood_tuple_count`~~ — **this item was wrong.**  The count is
    proved and axiom-clean as `Kwon1002.TupleCount.nonGood_tuple_count`, restated
    verbatim and cited as `Kwon1002.nonGood_tuple_count'` in

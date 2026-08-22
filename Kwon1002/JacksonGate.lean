@@ -59,6 +59,23 @@ carries positive measure the rate can be made slower than any prescribed
 sequence.  Note also that `volume (frontier B) = 0` would *not* repair this: it
 gives qualitative approximability, not a rate.
 
+**Verdict as of this file, and how it was settled.**  The verdict below stands:
+the residual is not provable by the route its own docstring names under the
+hypotheses it carried, and the split into an interval case and an approximation
+case is the right repair.  The interval case is now a **theorem**:
+`Kwon1002/TupleTransfer.lean` proves
+`TupleFinal.goodSet_mark_factorization_intervals` token for token and
+axiom-clean.  The route it takes is not Jackson approximation of `1_B` at all —
+that is what Part 2 below shows is impossible inside `P_D(L)` — but the Selberg
+bracket of `Kwon1002/Selberg.lean`, carried to `r` levels by
+`MultiLevel.multiLevel_transfer` and read at the mark event through
+`Section5Intervals.signedSection`.  The budget arithmetic below (`η_L =
+O(L^{-2})`, `D > 2`) is therefore superseded rather than met: the transfer holds
+at every rate `A > 0`, so the residual's `C·L^{-(k+1)}` is arranged by choosing
+`A = k + 1` and costs nothing.  What the interval hypothesis is really needed
+for is exactly what Part 3 below says — the uniform jump count of the
+`θ`-section — and that is where it is spent, once.
+
 **Verdict, and what was done about it.**  `goodSet_mark_factorization` is not
 provable by the route its own docstring names under the hypotheses it carried.
 It needs a boundary-regularity hypothesis on `B` — a finite union of intervals,

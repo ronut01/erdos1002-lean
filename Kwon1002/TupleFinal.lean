@@ -988,8 +988,15 @@ the whole `L^D` allowance and the Jackson factor must be placed in `P_{D'}(L)`
 for a strictly larger `D'`.  The `D` of the class and the `D` of the digit cut
 are different constants, and `Fejer.isInPD_fejerPoly` keeps them apart.
 
-**What remains, exactly.**  Two instantiation steps, neither of which is a
-kernel construction any more.
+**Nothing remains: this residual is proved.**  `Kwon1002/TupleTransfer.lean`
+proves this statement, token for token and axiom-clean, from
+`MultiLevel.multiLevel_transfer`; the declaration here keeps its `sorry` only
+because it sits below the modules that proof consumes (the import direction this
+file's header records).  Both instantiation steps recorded below as remaining
+are done — step 1 by `IntervalClass.exists_goodSet`, step 2 by the transfer,
+which supersedes the `η_L = O(L^{-2})` budget accounting entirely: the transfer
+holds at **every** rate `A > 0`, so the residual's `C·L^{-(k+1)}` costs nothing
+to arrange.  The two steps as they were foreseen:
 
 1. *The good set.*  **Done.**  `Fejer.fejerPoly_L1_error_le` runs against an
    explicit set `G` of points that do not move under translations of size at
