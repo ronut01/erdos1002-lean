@@ -46,10 +46,21 @@ closure of every `R` misses every `P`:
 | `CovarianceChain`   | no        | no        | no     | no    | no          | no            |
 | `Assembly5`, `Finale`, `OffDiagonal`, `OffDiagFinal`, `L2Estimate`, `TupleMeasure`, `LevyExponent`, `SmallJumps`: all no. |
 
-and none of the `P` imports any of the `R` either, so the two families are
-*incomparable*, not ordered.  (`IntervalClass` is the single exception:
-`TupleFinal` does reach it, which is why the good-set construction could be
-placed where it is used.)
+(`IntervalClass` is the single exception: `TupleFinal` does reach it, which is
+why the good-set construction could be placed where it is used.)
+
+**Correction, this pass.**  The sentence that used to follow — "and none of
+the `P` imports any of the `R` either, so the two families are *incomparable*,
+not ordered" — is **false**.  `Prop41Unconditional`, `Prop42Unconditional`,
+`LDMain`, `OneLevelLaw` and `NonzeroMode` all import `FiveFinal` and
+`TupleFinal`, and through them `Assembly5`, `OffDiagonal`, `L2Estimate`,
+`TupleMeasure`, `LevyExponent` and `SmallJumps`.  The families are *ordered*,
+with §4 strictly above most of §5.  The consequence below is unaffected — the
+residuals still cannot shed `sorryAx` where they are declared — but the reason
+is one-directional, and the join is cheaper than this header supposed: only
+`CorFinal`, `CovarianceChain` and `JacksonGate` sit outside the closure of
+`OneLevelLaw`.  The join module is `Kwon1002/Section5Join.lean`; it compiles,
+which is the proof that no cycle arises.
 
 **Consequence.**  `largeSum_charFun_limit` and `bulk_offdiagonal_abs_far_sharp`
 can never shed `sorryAx` *where they are declared*, for exactly the reason
@@ -70,15 +81,34 @@ proved today, is two things and only two:
   `Fejer.isInPD_fejerPoly`, `IntervalClass.markSection_isUnionOfIntervals`
   (the uniform `2m` jump count), `IntervalClass.exists_goodSet` and
   `JacksonGate.exists_goodTuple_of_sepGoodSet` (the sorting bijection) — and
-  what is missing is the `k`-level bookkeeping that assembles them into
-  `TupleFinal.goodSet_mark_factorization_intervals`, together with display
-  (35) `FiveFinal.deterministic_oneLevel_intensity`, whose two classical
-  inputs (`OneLevelLaw.oneLevel_gaussKuzmin` for the exact `a^{-2}` digit law
-  and `OneLevelLaw.oneLevel_phase_equidistribution` for `θ`) are now proved;
+  what is missing is **not** the `k`-level bookkeeping, contrary to what this
+  paragraph used to say.  It is *one-sidedness*:
+  `Fejer.fejerPoly_L1_error_le` measures the approximation error in `L¹` of the
+  `θ`-variable under Lebesgue on the cell, while the argument must control it
+  under the law of `(a_{j+1}(α), θ_j(α))` induced by Lebesgue in `α` — the very
+  object being computed.  Closing that loop needs approximants bracketing the
+  indicator from both sides (trapezoidal majorant/minorant, or
+  Beurling–Selberg); Fejér means are not one-sided and the tree contains no
+  such pair.  `Section5Join.oneLevel_fejer_law` shows the two halves that *do*
+  exist compose cleanly, which isolates exactly this step.  Display (35) is no
+  longer a separate item: `Kwon1002.deterministic_oneLevel_intensity` is
+  **proved** in `Kwon1002/TupleInputs.lean` from the strictly weaker per-level
+  `TupleInputs.oneLevel_gaussKuzmin_intensity`, and that residual is the same
+  gate again;
 * **the `L¹` band-mass estimate** of finding (F7),
-  `CovarianceChain.truncatedMark_sub_lipTrunc_L1_of_band`, which is the one
-  input the tree does *not* contain in any form and which (F7) shows is not
-  derivable from the display-(15) tails.  This one gates residual 2 only.
+  `CovarianceChain.truncatedMark_sub_lipTrunc_L1_of_band`.  This one gates
+  residual 2 only.
+
+  **(F7) is refuted, this pass** — see the header of
+  `Kwon1002/Section5Join.lean`.  It is *not* "the one input the tree does not
+  contain in any form": its two quantitative halves are now proved
+  (`IntervalClass.volume_markBand_le`, the `√(h/(1−h))` cap on the `θ`-section
+  of the band uniformly in the digit and the cutoff, off the exact level set
+  `vol{θ : u < W θ} = √(1−8u)`; and `Section5Join.markBand_digit_gt`, which
+  puts the band above digit `8(1−h)εL` where `digit_tail_product` caps it), and
+  what remains of it is the *same* joint-law gate as the Jackson item above.
+  (F7)'s adversarial law — full allowed mass parked below the cutoff — cannot
+  exist, because the mark is `a·W(θ)` and `W`'s level sets are intervals.
 
 The §7 factor that used to be the third item on that list is gone:
 `Kwon1002/StoppingWindow.lean` proves `τ_n = m_n + O(H)` off a set of measure

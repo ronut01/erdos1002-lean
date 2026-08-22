@@ -727,6 +727,23 @@ inputs reach, and pins the half they cannot.
   so the manuscript's cut `A_L = L^D`, `D > 2`, costs `o(L^{-2})` and
   survives the `O(L²)` pair count.  Proved from `digit_tail_product`.
 
+**Finding (F7) — SUPERSEDED, see `Kwon1002/Section5Join.lean`.**  What is
+recorded below about *tails* is correct and stays.  What is wrong is the
+conclusion drawn from it, that a band-mass bound is unobtainable: the
+adversarial law described below cannot exist, because the mark is
+`a_{j+1}·W(θ_j)` with `W` a fixed sawtooth average whose level sets are
+intervals.  `Kwon1002.IntervalClass.volume_markBand_le` caps the `θ`-section
+of the relative band `((1−h)M, M]` at `√(h/(1−h))` for **every** digit and
+cutoff, and `Section5Join.markBand_digit_gt` puts the band above digit
+`8(1−h)εL`, where `digit_tail_product` caps the digit mass at
+`O(1/((1−h)εL))`.  Against the joint law those give band mass
+`O(√h/((1−h)εL))`, i.e. the `o(1/(εL))` the interface needs.  The exact
+`a^{-2}` digit law is not required — the display-(15) tail suffices once the
+`θ`-geometry is used, so `Kwon1002/DigitLocalLaw.lean`'s closing note
+over-attributes the gain.  What genuinely remains is the level-`j` joint law
+at an indicator, the same gate as `TupleFinal.goodSet_mark_factorization_intervals`
+and `TupleInputs.oneLevel_gaussKuzmin_intensity`.  Original text follows.
+
 **Finding (F7): the tail input caps the surrogate distance at a constant.**
 `truncatedMark_sub_lipTrunc_L1` bounds the `L¹` distance by `C/(1−h)` out of
 the uniform mark tail `P(Z > t) ≤ C/(1+t)` (`L2Estimate.mark_tail_bound`,
