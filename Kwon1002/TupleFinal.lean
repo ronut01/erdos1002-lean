@@ -558,6 +558,109 @@ lemma sepGoodSet_of_sepGood {k n : ℕ} (f : Fin k ↪ (Finset.range (n + 1) : F
     obtain ⟨q, rfl⟩ := hmem y hy
     exact hsep.2 p q (fun hpq => hxy (by rw [hpq]))
 
+/-! ### The `k`-level index-set bridge
+
+`Kwon1002.bulk_window_bridge_oneLevel` is the `k = 1` case; what follows lifts
+it to `k`-tuples.  The three inputs beyond the one-level proof are a decay
+lemma for `L^k e^{-c√L}` and two cardinality bounds for embeddings with a
+coordinate constraint. -/
+
+lemma tendsto_pow_Lnorm_mul_exp_neg_sqrt {cs : ℝ} (hcs : 0 < cs) (k : ℕ) :
+    Tendsto (fun n : ℕ => (Lnorm n) ^ k * Real.exp (-cs * Real.sqrt (Lnorm n)))
+      atTop (𝓝 0) := by
+  have hbase : Tendsto (fun x : ℝ => x ^ (2 * k) * Real.exp (-x)) atTop (𝓝 0) :=
+    Real.tendsto_pow_mul_exp_neg_atTop_nhds_zero (2 * k)
+  have hu : Tendsto (fun n : ℕ => cs * Real.sqrt (Lnorm n)) atTop atTop :=
+    (Real.tendsto_sqrt_atTop.comp tendsto_Lnorm_atTop).const_mul_atTop hcs
+  have h := (hbase.comp hu).const_mul (1 / cs ^ (2 * k))
+  rw [mul_zero] at h
+  refine h.congr' ?_
+  filter_upwards [tendsto_Lnorm_atTop.eventually_ge_atTop (0 : ℝ)] with n hL
+  have hsq : Real.sqrt (Lnorm n) ^ 2 = Lnorm n := Real.sq_sqrt hL
+  have hcs0 : cs ≠ 0 := ne_of_gt hcs
+  have hpk : Real.sqrt (Lnorm n) ^ (2 * k) = (Lnorm n) ^ k := by rw [pow_mul, hsq]
+  simp only [Function.comp_apply]
+  rw [mul_pow, hpk, neg_mul]
+  field_simp
+
+/-- Embeddings all of whose values sit below the cap `T`. -/
+def lowEmb (n k T : ℕ) : Finset (Fin k ↪ (Finset.range (n + 1) : Finset ℕ)) :=
+  Finset.univ.filter (fun f => ∀ i, embTuple f i < T)
+
+/-- Embeddings below the cap with at least one value in the window `Dw`. -/
+def windowEmb (Dw : Finset ℕ) (n k T : ℕ) :
+    Finset (Fin k ↪ (Finset.range (n + 1) : Finset ℕ)) :=
+  Finset.univ.filter (fun f => (∀ i, embTuple f i < T) ∧ ∃ i, embTuple f i ∈ Dw)
+
+lemma mem_lowEmb {n k T : ℕ} (f : Fin k ↪ (Finset.range (n + 1) : Finset ℕ)) :
+    f ∈ lowEmb n k T ↔ ∀ i, embTuple f i < T :=
+  ⟨fun h => (Finset.mem_filter.mp h).2,
+   fun h => Finset.mem_filter.mpr ⟨Finset.mem_univ _, h⟩⟩
+
+lemma mem_windowEmb {Dw : Finset ℕ} {n k T : ℕ}
+    (f : Fin k ↪ (Finset.range (n + 1) : Finset ℕ)) :
+    f ∈ windowEmb Dw n k T ↔
+      ((∀ i, embTuple f i < T) ∧ ∃ i, embTuple f i ∈ Dw) :=
+  ⟨fun h => (Finset.mem_filter.mp h).2,
+   fun h => Finset.mem_filter.mpr ⟨Finset.mem_univ _, h⟩⟩
+
+lemma windowEmb_subset_lowEmb (Dw : Finset ℕ) (n k T : ℕ) :
+    windowEmb Dw n k T ⊆ lowEmb n k T := fun f hf =>
+  (mem_lowEmb f).mpr ((mem_windowEmb f).mp hf).1
+
+lemma card_lowEmb_le (n k T : ℕ) : (lowEmb n k T).card ≤ T ^ k := by
+  classical
+  have h : (lowEmb n k T).card
+      ≤ (Fintype.piFinset (fun _ : Fin k => Finset.range T)).card := by
+    refine Finset.card_le_card_of_injOn embTuple ?_ ?_
+    · intro f hf
+      exact Fintype.mem_piFinset.mpr
+        (fun i => Finset.mem_range.mpr ((mem_lowEmb f).mp hf i))
+    · intro f _ g _ h; exact embTuple_injective h
+  simpa [Fintype.card_piFinset] using h
+
+lemma card_windowEmb_le (Dw : Finset ℕ) (n k T : ℕ) :
+    (windowEmb Dw n k T).card ≤ k * (Dw.card * T ^ (k - 1)) := by
+  classical
+  set coord : Fin k → Finset (Fin k ↪ (Finset.range (n + 1) : Finset ℕ)) :=
+    fun i₀ => Finset.univ.filter
+      (fun f => (∀ i, embTuple f i < T) ∧ embTuple f i₀ ∈ Dw) with hcoord
+  have hsub : windowEmb Dw n k T ⊆ Finset.univ.biUnion coord := by
+    intro f hf
+    obtain ⟨hlow, i₀, hi₀⟩ := (mem_windowEmb f).mp hf
+    exact Finset.mem_biUnion.mpr ⟨i₀, Finset.mem_univ _,
+      Finset.mem_filter.mpr ⟨Finset.mem_univ _, hlow, hi₀⟩⟩
+  have hco : ∀ i₀ : Fin k, (coord i₀).card ≤ Dw.card * T ^ (k - 1) := by
+    intro i₀
+    have h : (coord i₀).card
+        ≤ (Fintype.piFinset
+            (fun i : Fin k => if i = i₀ then Dw else Finset.range T)).card := by
+      refine Finset.card_le_card_of_injOn embTuple ?_ ?_
+      · intro f hf
+        obtain ⟨hlow, hin⟩ : (∀ i, embTuple f i < T) ∧ embTuple f i₀ ∈ Dw :=
+          (Finset.mem_filter.mp hf).2
+        refine Fintype.mem_piFinset.mpr (fun i => ?_)
+        by_cases hi : i = i₀
+        · subst hi; simpa using hin
+        · simp only [if_neg hi]; exact Finset.mem_range.mpr (hlow i)
+      · intro f _ g _ h; exact embTuple_injective h
+    refine le_trans h (le_of_eq ?_)
+    rw [Fintype.card_piFinset,
+      ← Finset.mul_prod_erase Finset.univ _ (Finset.mem_univ i₀)]
+    have hrest : ∀ i ∈ Finset.univ.erase i₀,
+        ((if i = i₀ then Dw else Finset.range T)).card = T := by
+      intro i hi
+      rw [if_neg (Finset.ne_of_mem_erase hi), Finset.card_range]
+    rw [Finset.prod_congr rfl hrest, Finset.prod_const,
+      Finset.card_erase_of_mem (Finset.mem_univ i₀), Finset.card_univ,
+      Fintype.card_fin, if_pos rfl]
+  calc (windowEmb Dw n k T).card ≤ (Finset.univ.biUnion coord).card :=
+        Finset.card_le_card hsub
+    _ ≤ ∑ i₀ : Fin k, (coord i₀).card := Finset.card_biUnion_le
+    _ ≤ ∑ _i₀ : Fin k, Dw.card * T ^ (k - 1) := Finset.sum_le_sum (fun i _ => hco i)
+    _ = k * (Dw.card * T ^ (k - 1)) := by
+        rw [Finset.sum_const, Finset.card_univ, Fintype.card_fin, smul_eq_mul]
+
 /-- **Residual 1: the §7/§4 index-set bridge, at the level of `k`-tuples.**
 
 The ordered-distinct-tuple sums attached to the *random* bulk
@@ -569,29 +672,35 @@ and (38) without comment; `Kwon1002.bulk_window_bridge_oneLevel` isolates the
 `k = 1` case, and this statement is the one (38)-(40) actually needs.  The
 `k = 1` case is *derived* from it below, so the two bridges collapse to one.
 
-**State (obstruction narrowed).**  The §7 stopping-time analysis this needed is
-now proved: `Kwon1002/StoppingWindow.lean` puts `τ_n` inside `m_n ± A_n` with
-`A_n = H + O(1)` off a set of measure `O(e^{−c√L})`
-(`StopWin.stopBad_measure_le`), and therefore makes the two index sets agree
-outside the deterministic `O(H)` window `StopWin.diffWindow c n`
-(`StopWin.mem_bulkIndices_iff`).  The `k = 1` case **is proved** with exactly
-that input — `Kwon1002.bulk_window_bridge_oneLevel` of
-`Kwon1002/FiveFinal.lean`, axiom-clean — so the analytic content of this
-statement is discharged.
+**PROVED**, and it needs no §4 input: everything it consumes already lives
+below this module.  The analytic half is `Kwon1002/StoppingWindow.lean`, which
+puts `τ_n` inside `m_n ± A_n` with `A_n = H + O(1)` off a set of measure
+`O(e^{−c√L})` (`StopWin.stopBad_measure_le`) and therefore makes the two index
+sets agree outside the deterministic `O(H)` window `StopWin.diffWindow c n`
+(`StopWin.mem_bulkIndices_iff`).  The combinatorial half, the only thing the
+`k = 1` proof did not already supply, is the pair of embedding counts
 
-What is left is purely combinatorial, and only for `k ≥ 2`: at `k = 1` the
-index set of the sum is a `Finset ℕ`, and the two error terms are counted by
-`#diffWindow ≤ 2D_n + 2A_n + 1 = O(H)` and by the Lamé cap
-`StopWin.Tcap n = O(L)`.  For general `k` the sum runs over
-`Fin k ↪ ↥(range (n+1))`, and the same split needs
+* `card_lowEmb_le`:    `#{f : ∀ i, f i < Tcap n} ≤ (Tcap n)^k = O(L^k)`;
+* `card_windowEmb_le`: `#{f : (∀ i, f i < Tcap n) ∧ ∃ i, f i ∈ diffWindow c n}
+                        ≤ k·#diffWindow·(Tcap n)^{k−1} = O(H·L^{k−1})`,
 
-* `#{f : ∀ i, f i < Tcap n} ≤ (Tcap n)^k = O(L^k)`, against `O(e^{−c√L})`; and
-* `#{f : ∀ i, f i < Tcap n ∧ ∃ i, f i ∈ diffWindow c n} ≤ k·#diffWindow·(Tcap n)^{k−1}`,
-  against the uniform `(C/L)^k` of `TupleMeasure.tuple_measure_le`,
+both obtained by pushing forward along `embTuple_injective` into
+`Fintype.piFinset`.  The three-way split is then the `k`-level analogue of the
+one-level proof: above the Lamé cap `Tcap n` *both* tuple events are null
+(the bulk side by `StopWin.unifIoo_bulkMarkEvent_eq_zero`, the deterministic
+side because `detMarkEvent` is empty off `bulkJ n`); on the window the two are
+separately bounded by the uniform `(C/L)^k` of `TupleMeasure.tuple_measure_le`
+and `det_tuple_measure_le`, and `O(H·L^{k−1})·(C/L)^k = O(H/L) → 0`; off the
+window the two events differ only inside `StopWin.stopBad n`, and
+`O(L^k)·O(e^{−c√L}) → 0` by `tendsto_pow_Lnorm_mul_exp_neg_sqrt`.
 
-i.e. cardinality bounds for embeddings with a coordinate constraint, obtained
-by pushing forward along `Function.Embedding.coeFn_injective` into
-`Fintype.piFinset`.  Nothing analytic remains. -/
+Note the `(C/L)^k` tuple bound, not the one-level `C/L`, is what makes the
+window term summable: a per-coordinate bound would leave `O(H·L^{k−2})`, which
+diverges for `k ≥ 3`.  This is why the count has to be sharp in the exponent.
+
+The `k = 1` case `Kwon1002.bulk_window_bridge_oneLevel` (`Kwon1002/FiveFinal.lean`)
+is independent and stays as it is; `oneLevel_intensity_limit` below derives it
+from this statement, so the two bridges do collapse to one. -/
 theorem bulk_window_bridge_tuple (c : ℝ) (B : Set ℝ) (_hB : MeasurableSet B)
     (_hB0 : ∃ δ > 0, ∀ x ∈ B, δ ≤ |x|) (_hBbd : ∃ R : ℝ, ∀ x ∈ B, |x| ≤ R) (k : ℕ) :
     Tendsto (fun n : ℕ =>
@@ -600,7 +709,233 @@ theorem bulk_window_bridge_tuple (c : ℝ) (B : Set ℝ) (_hB : MeasurableSet B)
           - ∑ f : Fin k ↪ (Finset.range (n + 1) : Finset ℕ),
               unifIoo.real (Erdos1002.tupleEvent (detMarkEvent n B) f))
       atTop (𝓝 0) := by
-  sorry
+  classical
+  obtain ⟨δ, hδ, hB0⟩ := _hB0
+  rcases Nat.eq_zero_or_pos k with rfl | hk
+  · have hz : (fun n : ℕ =>
+        (∑ f : Fin 0 ↪ (Finset.range (n + 1) : Finset ℕ),
+            unifIoo.real (Erdos1002.tupleEvent (bulkMarkEvent c n B) f))
+          - ∑ f : Fin 0 ↪ (Finset.range (n + 1) : Finset ℕ),
+              unifIoo.real (Erdos1002.tupleEvent (detMarkEvent n B) f))
+        = fun _ : ℕ => (0 : ℝ) := by
+      funext n
+      have heq : ∀ f : Fin 0 ↪ (Finset.range (n + 1) : Finset ℕ),
+          Erdos1002.tupleEvent (bulkMarkEvent c n B) f
+            = Erdos1002.tupleEvent (detMarkEvent n B) f := by
+        intro f; simp [Erdos1002.tupleEvent]
+      simp only [heq, sub_self]
+    rw [hz]; exact tendsto_const_nhds
+  obtain ⟨m, rfl⟩ : ∃ m, k = m + 1 := ⟨k - 1, (Nat.succ_pred_eq_of_pos hk).symm⟩
+  obtain ⟨C₁, hC₁, hC₁le⟩ := TupleMeasure.tuple_measure_le c B hδ hB0 (m + 1)
+  obtain ⟨C₂, hC₂, hC₂le⟩ := det_tuple_measure_le B hδ hB0 (m + 1)
+  obtain ⟨Cs, cs, hCs, hcs, hbad⟩ := StopWin.stopBad_measure_le
+  set C : ℝ := max C₁ C₂ with hCdef
+  have hC0 : 0 < C := lt_of_lt_of_le hC₁ (le_max_left _ _)
+  set K1 : ℝ := 2 * ((m : ℝ) + 1) * 6 ^ m * C ^ (m + 1) with hK1
+  set K2 : ℝ := 6 ^ (m + 1) * Cs with hK2
+  have hmajzero : Tendsto (fun n : ℕ =>
+      K1 * ((2 * (StopWin.bdryLen c n : ℝ) + 2 * (StopWin.trimAmt n : ℝ) + 1) / Lnorm n)
+        + K2 * ((Lnorm n) ^ (m + 1) * Real.exp (-cs * Real.sqrt (Lnorm n))))
+      atTop (𝓝 0) := by
+    simpa using ((StopWin.tendsto_windowCard_div_Lnorm c).const_mul K1).add
+      ((tendsto_pow_Lnorm_mul_exp_neg_sqrt hcs (m + 1)).const_mul K2)
+  refine squeeze_zero_norm' ?_ hmajzero
+  filter_upwards [hC₁le, hC₂le, hbad, StopWin.eventually_stop_room,
+    tendsto_Lnorm_atTop.eventually_ge_atTop (1 : ℝ)] with n h1n h2n hbadn hroom hL1
+  obtain ⟨hn, hL0, hH0, hAm, hone, hle2m⟩ := hroom
+  set Tc : ℕ := StopWin.Tcap n with hTc
+  set Dw : Finset ℕ := StopWin.diffWindow c n with hDw
+  set a : (Fin (m + 1) ↪ (Finset.range (n + 1) : Finset ℕ)) → ℝ :=
+    fun f => unifIoo.real (Erdos1002.tupleEvent (bulkMarkEvent c n B) f) with hadef
+  set b : (Fin (m + 1) ↪ (Finset.range (n + 1) : Finset ℕ)) → ℝ :=
+    fun f => unifIoo.real (Erdos1002.tupleEvent (detMarkEvent n B) f) with hbdef
+  set P : ℝ := unifIoo.real (StopWin.stopBad n) with hPdef
+  have hPnn : 0 ≤ P := measureReal_nonneg
+  have hPle : P ≤ Cs * Real.exp (-cs * Real.sqrt (Lnorm n)) := by
+    refine le_trans ?_ hbadn
+    have hfin : volume (StopWin.stopBad n) ≠ ⊤ := by
+      refine ne_top_of_le_ne_top ?_ (measure_mono (fun x hx => hx.1))
+      rw [Real.volume_Ioo]; exact ENNReal.ofReal_ne_top
+    rw [hPdef, Measure.real, unifIoo, Measure.restrict_apply' measurableSet_Ioo]
+    exact ENNReal.toReal_mono hfin (measure_mono Set.inter_subset_left)
+  -- Step C: above the Lamé cap both tuple events are null
+  have hvan : ∀ f, f ∉ lowEmb n (m + 1) Tc → a f - b f = 0 := by
+    intro f hf
+    rw [mem_lowEmb] at hf
+    push_neg at hf
+    obtain ⟨i, hi⟩ := hf
+    have hja : a f = 0 := by
+      have hsub : Erdos1002.tupleEvent (bulkMarkEvent c n B) f
+          ⊆ bulkMarkEvent c n B (embTuple f i) := Set.iInter_subset _ i
+      have h0 := StopWin.unifIoo_bulkMarkEvent_eq_zero c B hn hi
+      have hle : a f ≤ unifIoo.real (bulkMarkEvent c n B (embTuple f i)) :=
+        measureReal_mono hsub
+      rw [h0] at hle
+      exact le_antisymm hle measureReal_nonneg
+    have hjb : b f = 0 := by
+      have hnb : (embTuple f i) ∉ bulkJ n := StopWin.not_mem_bulkJ_of_Tcap_le hL0 hi
+      have hsub : Erdos1002.tupleEvent (detMarkEvent n B) f ⊆ ∅ := by
+        rw [← detMarkEvent_of_not_mem hnb B]
+        exact Set.iInter_subset _ i
+      rw [hbdef]
+      simp only
+      rw [Set.subset_empty_iff.mp hsub]
+      simp
+    rw [hja, hjb]; ring
+  -- the exceptional-set comparison, used off the window
+  have hstep : ∀ S U : Set ℝ,
+      S ⊆ U ∪ StopWin.stopBad n ∪ {x : ℝ | x ∉ Ioo (0 : ℝ) 1} →
+      unifIoo.real S ≤ unifIoo.real U + P := by
+    intro S U hSU
+    calc unifIoo.real S
+        ≤ unifIoo.real (U ∪ StopWin.stopBad n ∪ {x : ℝ | x ∉ Ioo (0 : ℝ) 1}) :=
+          measureReal_mono hSU
+      _ ≤ unifIoo.real (U ∪ StopWin.stopBad n)
+            + unifIoo.real {x : ℝ | x ∉ Ioo (0 : ℝ) 1} := measureReal_union_le _ _
+      _ ≤ (unifIoo.real U + unifIoo.real (StopWin.stopBad n))
+            + unifIoo.real {x : ℝ | x ∉ Ioo (0 : ℝ) 1} := by
+          gcongr; exact measureReal_union_le _ _
+      _ = unifIoo.real U + P := by rw [StopWin.unifIoo_real_not_mem_Ioo, hPdef]; ring
+  have hoff : ∀ f ∈ lowEmb n (m + 1) Tc \ windowEmb Dw n (m + 1) Tc, |a f - b f| ≤ P := by
+    intro f hf
+    rw [Finset.mem_sdiff] at hf
+    have hlow := (mem_lowEmb f).mp hf.1
+    have hnw : ∀ i, embTuple f i ∉ Dw := fun i hi =>
+      hf.2 ((mem_windowEmb f).mpr ⟨hlow, ⟨i, hi⟩⟩)
+    have hAD : Erdos1002.tupleEvent (bulkMarkEvent c n B) f
+        ⊆ Erdos1002.tupleEvent (detMarkEvent n B) f ∪ StopWin.stopBad n
+          ∪ {x : ℝ | x ∉ Ioo (0 : ℝ) 1} := by
+      intro α hα
+      by_cases hαI : α ∈ Ioo (0 : ℝ) 1
+      · by_cases hg : α ∈ StopWin.stopBad n
+        · exact Or.inl (Or.inr hg)
+        · refine Or.inl (Or.inl (Set.mem_iInter.mpr (fun i => ?_)))
+          have hi := Set.mem_iInter.mp hα i
+          exact ⟨(StopWin.mem_bulkIndices_iff c n hH0 hg hαI (hnw i)).mp hi.1, hi.2⟩
+      · exact Or.inr hαI
+    have hDA : Erdos1002.tupleEvent (detMarkEvent n B) f
+        ⊆ Erdos1002.tupleEvent (bulkMarkEvent c n B) f ∪ StopWin.stopBad n
+          ∪ {x : ℝ | x ∉ Ioo (0 : ℝ) 1} := by
+      intro α hα
+      by_cases hαI : α ∈ Ioo (0 : ℝ) 1
+      · by_cases hg : α ∈ StopWin.stopBad n
+        · exact Or.inl (Or.inr hg)
+        · refine Or.inl (Or.inl (Set.mem_iInter.mpr (fun i => ?_)))
+          have hi := Set.mem_iInter.mp hα i
+          exact ⟨(StopWin.mem_bulkIndices_iff c n hH0 hg hαI (hnw i)).mpr hi.1, hi.2⟩
+      · exact Or.inr hαI
+    have h1 := hstep _ _ hAD
+    have h2 := hstep _ _ hDA
+    rw [abs_le]
+    constructor <;> [linarith; linarith]
+  have hwin : ∀ f ∈ windowEmb Dw n (m + 1) Tc,
+      |a f - b f| ≤ 2 * (C / Lnorm n) ^ (m + 1) := by
+    intro f _
+    have ha := h1n f
+    have hb := h2n f
+    have hann : 0 ≤ a f := measureReal_nonneg
+    have hbnn : 0 ≤ b f := measureReal_nonneg
+    have hm1 : (C₁ / Lnorm n) ^ (m + 1) ≤ (C / Lnorm n) ^ (m + 1) :=
+      pow_le_pow_left₀ (by positivity) (by gcongr; exact le_max_left _ _) _
+    have hm2 : (C₂ / Lnorm n) ^ (m + 1) ≤ (C / Lnorm n) ^ (m + 1) :=
+      pow_le_pow_left₀ (by positivity) (by gcongr; exact le_max_right _ _) _
+    rw [abs_le]
+    constructor <;> linarith
+
+  -- Step E: cardinalities and summation
+  have hLne : Lnorm n ≠ 0 := ne_of_gt hL0
+  set Wn : ℝ := 2 * (StopWin.bdryLen c n : ℝ) + 2 * (StopWin.trimAmt n : ℝ) + 1 with hWn
+  have hWn0 : 0 ≤ Wn := by
+    rw [hWn]; positivity
+  have hTle : (Tc : ℝ) ≤ 6 * Lnorm n := by
+    have h := StopWin.Tcap_le n hL0.le
+    rw [hTc]; linarith
+  have hT0 : (0 : ℝ) ≤ (Tc : ℝ) := Nat.cast_nonneg _
+  have hDwle : ((Dw.card : ℕ) : ℝ) ≤ Wn := by
+    have h := StopWin.card_diffWindow_le c n
+    rw [← hDw] at h
+    have h2 : ((Dw.card : ℕ) : ℝ)
+        ≤ ((2 * StopWin.bdryLen c n + 2 * StopWin.trimAmt n + 1 : ℕ) : ℝ) := by
+      exact_mod_cast h
+    rw [hWn]; push_cast at h2 ⊢; linarith
+  have hwc : ((windowEmb Dw n (m + 1) Tc).card : ℝ)
+      ≤ ((m : ℝ) + 1) * (Wn * (6 * Lnorm n) ^ m) := by
+    have h := card_windowEmb_le Dw n (m + 1) Tc
+    simp only [Nat.add_sub_cancel] at h
+    have hcast : (((windowEmb Dw n (m + 1) Tc).card : ℕ) : ℝ)
+        ≤ ((m : ℝ) + 1) * ((Dw.card : ℝ) * (Tc : ℝ) ^ m) := by
+      have h3 := (Nat.cast_le (α := ℝ)).mpr h
+      push_cast at h3
+      linarith
+    refine le_trans hcast ?_
+    have hTm : (Tc : ℝ) ^ m ≤ (6 * Lnorm n) ^ m := pow_le_pow_left₀ hT0 hTle m
+    have hd0 : (0 : ℝ) ≤ (Dw.card : ℝ) := Nat.cast_nonneg _
+    have h6 : (0 : ℝ) ≤ (6 * Lnorm n) ^ m := by positivity
+    have hin : (Dw.card : ℝ) * (Tc : ℝ) ^ m ≤ Wn * (6 * Lnorm n) ^ m := by
+      calc (Dw.card : ℝ) * (Tc : ℝ) ^ m ≤ (Dw.card : ℝ) * (6 * Lnorm n) ^ m := by gcongr
+        _ ≤ Wn * (6 * Lnorm n) ^ m := by gcongr
+    have hm0 : (0 : ℝ) ≤ (m : ℝ) + 1 := by positivity
+    exact mul_le_mul_of_nonneg_left hin hm0
+  have hlc : ((lowEmb n (m + 1) Tc).card : ℝ) ≤ (6 * Lnorm n) ^ (m + 1) := by
+    have h := card_lowEmb_le n (m + 1) Tc
+    have h2 : (((lowEmb n (m + 1) Tc).card : ℕ) : ℝ) ≤ ((Tc : ℝ)) ^ (m + 1) := by
+      have h3 := (Nat.cast_le (α := ℝ)).mpr h
+      push_cast at h3
+      linarith
+    exact le_trans h2 (pow_le_pow_left₀ hT0 hTle _)
+  have hsplit : ∑ f : (Fin (m + 1) ↪ (Finset.range (n + 1) : Finset ℕ)), |a f - b f|
+      = ∑ f ∈ lowEmb n (m + 1) Tc, |a f - b f| :=
+    (Finset.sum_subset (Finset.subset_univ _)
+      (fun f _ hf => by rw [hvan f hf, abs_zero])).symm
+  have hbound : ∑ f ∈ lowEmb n (m + 1) Tc, |a f - b f|
+      ≤ ((windowEmb Dw n (m + 1) Tc).card : ℝ) * (2 * (C / Lnorm n) ^ (m + 1))
+        + ((lowEmb n (m + 1) Tc).card : ℝ) * P := by
+    rw [← Finset.sum_sdiff (windowEmb_subset_lowEmb Dw n (m + 1) Tc)]
+    have h1 : ∑ f ∈ windowEmb Dw n (m + 1) Tc, |a f - b f|
+        ≤ ((windowEmb Dw n (m + 1) Tc).card : ℝ) * (2 * (C / Lnorm n) ^ (m + 1)) := by
+      calc ∑ f ∈ windowEmb Dw n (m + 1) Tc, |a f - b f|
+          ≤ ∑ _f ∈ windowEmb Dw n (m + 1) Tc, (2 * (C / Lnorm n) ^ (m + 1)) :=
+            Finset.sum_le_sum hwin
+        _ = _ := by rw [Finset.sum_const, nsmul_eq_mul]
+    have h2 : ∑ f ∈ lowEmb n (m + 1) Tc \ windowEmb Dw n (m + 1) Tc, |a f - b f|
+        ≤ ((lowEmb n (m + 1) Tc).card : ℝ) * P := by
+      calc ∑ f ∈ lowEmb n (m + 1) Tc \ windowEmb Dw n (m + 1) Tc, |a f - b f|
+          ≤ ∑ _f ∈ lowEmb n (m + 1) Tc \ windowEmb Dw n (m + 1) Tc, P :=
+            Finset.sum_le_sum hoff
+        _ = ((lowEmb n (m + 1) Tc \ windowEmb Dw n (m + 1) Tc).card : ℝ) * P := by
+            rw [Finset.sum_const, nsmul_eq_mul]
+        _ ≤ ((lowEmb n (m + 1) Tc).card : ℝ) * P := by
+            have hcc : ((lowEmb n (m + 1) Tc \ windowEmb Dw n (m + 1) Tc).card : ℝ)
+                ≤ ((lowEmb n (m + 1) Tc).card : ℝ) := by
+              exact_mod_cast Finset.card_le_card Finset.sdiff_subset
+            exact mul_le_mul_of_nonneg_right hcc hPnn
+    linarith
+  have hkey : ((windowEmb Dw n (m + 1) Tc).card : ℝ) * (2 * (C / Lnorm n) ^ (m + 1))
+        + ((lowEmb n (m + 1) Tc).card : ℝ) * P
+      ≤ K1 * (Wn / Lnorm n)
+        + K2 * ((Lnorm n) ^ (m + 1) * Real.exp (-cs * Real.sqrt (Lnorm n))) := by
+    have hp1 : (0 : ℝ) ≤ 2 * (C / Lnorm n) ^ (m + 1) := by positivity
+    have e1 : ((windowEmb Dw n (m + 1) Tc).card : ℝ) * (2 * (C / Lnorm n) ^ (m + 1))
+        ≤ (((m : ℝ) + 1) * (Wn * (6 * Lnorm n) ^ m)) * (2 * (C / Lnorm n) ^ (m + 1)) :=
+      mul_le_mul_of_nonneg_right hwc hp1
+    have h6 : (0 : ℝ) ≤ (6 * Lnorm n) ^ (m + 1) := by positivity
+    have e2 : ((lowEmb n (m + 1) Tc).card : ℝ) * P
+        ≤ (6 * Lnorm n) ^ (m + 1) * (Cs * Real.exp (-cs * Real.sqrt (Lnorm n))) :=
+      le_trans (mul_le_mul_of_nonneg_right hlc hPnn) (mul_le_mul_of_nonneg_left hPle h6)
+    have eeq : (((m : ℝ) + 1) * (Wn * (6 * Lnorm n) ^ m)) * (2 * (C / Lnorm n) ^ (m + 1))
+          + (6 * Lnorm n) ^ (m + 1) * (Cs * Real.exp (-cs * Real.sqrt (Lnorm n)))
+        = K1 * (Wn / Lnorm n)
+          + K2 * ((Lnorm n) ^ (m + 1) * Real.exp (-cs * Real.sqrt (Lnorm n))) := by
+      rw [hK1, hK2, mul_pow, mul_pow, div_pow, pow_succ, pow_succ]
+      field_simp
+    linarith
+  rw [Real.norm_eq_abs, ← Finset.sum_sub_distrib]
+  calc |∑ f : (Fin (m + 1) ↪ (Finset.range (n + 1) : Finset ℕ)), (a f - b f)|
+      ≤ ∑ f : (Fin (m + 1) ↪ (Finset.range (n + 1) : Finset ℕ)), |a f - b f| :=
+        Finset.abs_sum_le_sum_abs _ _
+    _ = ∑ f ∈ lowEmb n (m + 1) Tc, |a f - b f| := hsplit
+    _ ≤ _ := hbound
+    _ ≤ _ := hkey
 
 /-- **Residual 2a: Proposition 4.1 for the mark event, at the class the
 Jackson step actually admits.**
