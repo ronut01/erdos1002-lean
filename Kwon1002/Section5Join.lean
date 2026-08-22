@@ -7,6 +7,7 @@ import Kwon1002.Prop42Unconditional
 import Kwon1002.LDMain
 import Kwon1002.Fejer
 import Kwon1002.JacksonGate
+import Kwon1002.Selberg
 
 /-!
 # The §4/§5 join
@@ -75,16 +76,33 @@ from the Fejér approximant back to the indicator.
 
 **That passage is not bookkeeping, and the record should not say it is.**
 `CorFinal`'s header lists the Jackson instantiation as needing only "the
-`k`-level bookkeeping".  The missing step is one-sidedness.
+`k`-level bookkeeping".  The missing step was one-sidedness.
 `Fejer.fejerPoly_L1_error_le` measures `‖σ_N f − f‖` in `L¹` *of the
 `θ`-variable under Lebesgue on the cell*, whereas what the argument has to
 control is the error under the law of `(a_{j+1}(α), θ_j(α))` induced by
 Lebesgue in `α` — which is the very object being computed.  Closing that loop
 needs approximants that bracket the indicator from **both sides**, so that the
-error never has to be measured against the unknown law: a trapezoidal
-majorant/minorant pair, or Beurling–Selberg polynomials.  Fejér means are not
-one-sided and the tree contains no such pair.  That, and not the `k`-level
-bookkeeping, is the one genuinely open analytic step of §5.
+error never has to be measured against the unknown law.
+
+**That step is now done, and the record is updated accordingly.**
+`Kwon1002/Selberg.lean` builds the trapezoidal (Vaaler-style)
+majorant/minorant pair: trigonometric polynomials `S⁻ ≤ 1_B ≤ S⁺` of degree
+`N`, one-sided **pointwise on all of `ℝ`**, with `ℓ¹` coefficient mass
+`(2N+1)(1+η)` and `L¹` gap `(4m+2)·2δ + 2η(N,δ)` for a union of `m` intervals,
+`η(N,δ) = 1/(4(N+1)δ²)`.  Part D below composes it with
+`OneLevelLaw.oneLevel_joint_law`: `oneLevel_indicator_sandwich` is §4's
+one-level law read **at the indicator itself**, two-sided, and
+`stationaryMeanR_gap_le` bounds what the sandwich costs by the jump count
+alone.  Both are `#print axioms` clean.
+
+So the sentence "the tree contains no such pair", written before this pass,
+is no longer true, and neither is "one genuinely open analytic step".  What
+remains of the three §5 residuals below is **not** the one-sidedness: it is,
+for (35), the Gauss–Kuzmin *normalisation* — the identification of
+`stationaryMeanR` of the mark indicator with `2λ·Λ`, an infinite digit sum
+against the exact `ν_G(a₁ = a) ≍ 1/(a² log 2)` compared with
+`∫₀^{1/8} vol{W > s} ds = E[W] = 1/12` — and, for residual 2a and (F7), the
+`k`-level and pair-level bookkeeping on top of it.
 
 ## Finding (F7) is refuted, conditionally on that gate
 
@@ -244,6 +262,356 @@ theorem tendsto_bandBound_zero :
   have := hc.continuousWithinAt (s := Ioo (0 : ℝ) 1)
   rw [ContinuousWithinAt, h0] at this
   exact this
+
+/-! ## Part D, the gate, closed at the indicator
+
+Part B reads §4's one-level law on a Fejér approximant.  That is not enough,
+for the reason this file's header records: the Fejér mean approximates in `L¹`
+of the phase under **Lebesgue on the cell**, while the residual needs the error
+under the law of `(a_{j+1}(α), θ_j(α))`, which is the object being computed.
+
+`Kwon1002/Selberg.lean` removes the circularity by bracketing: it builds
+trigonometric polynomials `S⁻ ≤ 1_B ≤ S⁺` of degree `N`, pointwise on all of
+`ℝ`, with an `L¹` gap measured against Lebesgue alone.  Composed with
+`OneLevelLaw.oneLevel_joint_law`, which applies to each of `S⁺` and `S⁻`
+because `Selberg.isInPD_majSymbol` and `Selberg.isInPD_minSymbol` place them in
+display (24)'s class, this gives a **two-sided** estimate for the α-average of
+the *indicator itself* — the statement the three §5 residuals were reduced to.
+
+The pointwise bracket needs no hypothesis on `B` beyond measurability; the
+hypotheses of display (24) are the three budget conditions, exactly the ones
+`Fejer.isInPD_fejerPoly` keeps apart.  The size of the gap is what carries the
+interval structure, and that is `Selberg.integral_upInd_sub_downInd_le`. -/
+
+/-- The stationary mean of a **real** symbol.  `stationaryMean` of display (27)
+is complex, because display (24)'s class is; the bracket is an inequality
+between real numbers, so this is the form the sandwich is stated in. -/
+def stationaryMeanR (f : ℕ → ℝ → ℝ) : ℝ :=
+  ∫ x, (∫ θ in Ioo (0 : ℝ) 1, f (digit x 0) θ) ∂Erdos1002.gaussMeasure
+
+/-- The two agree on a real symbol.  Both steps are `integral_complex_ofReal`,
+which needs no integrability hypothesis. -/
+theorem stationaryMean_ofReal (f : ℕ → ℝ → ℝ) :
+    stationaryMean (fun a θ => ((f a θ : ℝ) : ℂ)) = ((stationaryMeanR f : ℝ) : ℂ) := by
+  unfold stationaryMean stationaryMeanR
+  rw [← integral_complex_ofReal]
+  congr 1
+  funext x
+  rw [integral_complex_ofReal]
+
+/-- The digit-cut majorant family. -/
+def majCut (N Acut : ℕ) (δ : ℝ) (Bs : ℕ → Set ℝ) : ℕ → ℝ → ℝ :=
+  fun a θ => if a ≤ Acut then
+    Selberg.realConv N (Selberg.majSymbol N δ (Selberg.upInd δ (Bs a))) θ else 0
+
+/-- The digit-cut minorant family. -/
+def minCut (N Acut : ℕ) (δ : ℝ) (Bs : ℕ → Set ℝ) : ℕ → ℝ → ℝ :=
+  fun a θ => if a ≤ Acut then
+    Selberg.realConv N (Selberg.minSymbol N δ (Selberg.downInd δ (Bs a))) θ else 0
+
+/-- The digit-cut indicator family: the object the residuals need, and the
+object display (24)'s class provably excludes. -/
+def indCut (Acut : ℕ) (Bs : ℕ → Set ℝ) : ℕ → ℝ → ℝ :=
+  fun a θ => if a ≤ Acut then Selberg.perInd (Bs a) θ else 0
+
+theorem minCut_le_indCut {N Acut : ℕ} {δ : ℝ} (hδ : 0 < δ) (Bs : ℕ → Set ℝ) (a : ℕ) (θ : ℝ) :
+    minCut N Acut δ Bs a θ ≤ indCut Acut Bs a θ := by
+  unfold minCut indCut
+  by_cases hc : a ≤ Acut
+  · simp only [if_pos hc]
+    exact Selberg.realConv_minSymbol_le N hδ (Selberg.isPerBddR_downInd δ (Bs a))
+      (Selberg.downInd_le_one δ (Bs a)) (Selberg.perInd_nonneg (Bs a)) θ
+      (fun t ht => Selberg.downInd_shift_le_perInd (Bs a) θ ht)
+  · simp [hc]
+
+theorem indCut_le_majCut {N Acut : ℕ} {δ : ℝ} (hδ : 0 < δ) (Bs : ℕ → Set ℝ) (a : ℕ) (θ : ℝ) :
+    indCut Acut Bs a θ ≤ majCut N Acut δ Bs a θ := by
+  unfold indCut majCut
+  by_cases hc : a ≤ Acut
+  · simp only [if_pos hc]
+    exact Selberg.le_realConv_majSymbol N hδ (Selberg.isPerBddR_upInd δ (Bs a))
+      (Selberg.upInd_nonneg δ (Bs a)) (Selberg.perInd_nonneg (Bs a))
+      (Selberg.perInd_le_one (Bs a)) θ
+      (fun t ht => Selberg.perInd_le_upInd_shift (Bs a) θ ht)
+  · simp [hc]
+
+/-- The majorant family lies in display (24)'s class. -/
+theorem isInPD_majCut (D L : ℝ) (Acut N : ℕ) (δ : ℝ) (Bs : ℕ → Set ℝ)
+    (hAle : (Acut : ℝ) ≤ L ^ D) (hNle : (N : ℝ) ≤ L ^ D)
+    (hbudget : ((Acut : ℝ) + 1) * ((2 * (N : ℝ) + 1) * (1 + Selberg.farTail N δ)) ≤ L ^ D) :
+    IsInPD D L (fun a θ => ((majCut N Acut δ Bs a θ : ℝ) : ℂ)) := by
+  have hfun : (fun a θ => ((majCut N Acut δ Bs a θ : ℝ) : ℂ))
+      = fun a θ => if a ≤ Acut then
+          Fejer.fejerPoly N
+            (fun x => ((Selberg.majSymbol N δ (Selberg.upInd δ (Bs a)) x : ℝ) : ℂ)) θ else 0 := by
+    funext a θ
+    unfold majCut
+    by_cases hc : a ≤ Acut
+    · simp only [if_pos hc]
+      rw [Selberg.majSymbol_eq_fejerPoly]
+    · simp [hc]
+  rw [hfun]
+  exact Selberg.isInPD_majSymbol D L Acut N δ 1 (fun a => Selberg.upInd δ (Bs a))
+    (fun a => Selberg.isPerBddR_upInd δ (Bs a)) hAle hNle hbudget
+
+/-- The minorant family lies in display (24)'s class. -/
+theorem isInPD_minCut (D L : ℝ) (Acut N : ℕ) (δ : ℝ) (Bs : ℕ → Set ℝ)
+    (hAle : (Acut : ℝ) ≤ L ^ D) (hNle : (N : ℝ) ≤ L ^ D)
+    (hbudget : ((Acut : ℝ) + 1) * ((2 * (N : ℝ) + 1) * (1 + Selberg.farTail N δ)) ≤ L ^ D) :
+    IsInPD D L (fun a θ => ((minCut N Acut δ Bs a θ : ℝ) : ℂ)) := by
+  have hfun : (fun a θ => ((minCut N Acut δ Bs a θ : ℝ) : ℂ))
+      = fun a θ => if a ≤ Acut then
+          Fejer.fejerPoly N
+            (fun x => ((Selberg.minSymbol N δ (Selberg.downInd δ (Bs a)) x : ℝ) : ℂ)) θ else 0 := by
+    funext a θ
+    unfold minCut
+    by_cases hc : a ≤ Acut
+    · simp only [if_pos hc]
+      rw [Selberg.minSymbol_eq_fejerPoly]
+    · simp [hc]
+  rw [hfun]
+  exact Selberg.isInPD_minSymbol D L Acut N δ 1 (fun a => Selberg.downInd δ (Bs a))
+    (fun a => Selberg.isPerBddR_downInd δ (Bs a)) hAle hNle hbudget
+
+/-! ### Measurability and integrability of the three families -/
+
+lemma measurable_majCut (N Acut : ℕ) (δ : ℝ) (Bs : ℕ → Set ℝ) (a : ℕ) :
+    Measurable (majCut N Acut δ Bs a) := by
+  unfold majCut
+  by_cases hc : a ≤ Acut
+  · simp only [if_pos hc]
+    exact (Selberg.continuous_realConv
+      (Selberg.isPerBddR_majSymbol (Selberg.isPerBddR_upInd δ (Bs a)) N δ) N).measurable
+  · simp only [if_neg hc]
+    exact measurable_const
+
+lemma measurable_minCut (N Acut : ℕ) (δ : ℝ) (Bs : ℕ → Set ℝ) (a : ℕ) :
+    Measurable (minCut N Acut δ Bs a) := by
+  unfold minCut
+  by_cases hc : a ≤ Acut
+  · simp only [if_pos hc]
+    exact (Selberg.continuous_realConv
+      (Selberg.isPerBddR_minSymbol (Selberg.isPerBddR_downInd δ (Bs a)) N δ) N).measurable
+  · simp only [if_neg hc]
+    exact measurable_const
+
+lemma measurable_indCut (Acut : ℕ) {Bs : ℕ → Set ℝ} (hBs : ∀ a, MeasurableSet (Bs a)) (a : ℕ) :
+    Measurable (indCut Acut Bs a) := by
+  unfold indCut
+  by_cases hc : a ≤ Acut
+  · simp only [if_pos hc]; exact Selberg.measurable_perInd (hBs a)
+  · simp only [if_neg hc]; exact measurable_const
+
+lemma abs_majCut_le (N Acut : ℕ) (δ : ℝ) (Bs : ℕ → Set ℝ) (a : ℕ) (θ : ℝ) :
+    |majCut N Acut δ Bs a θ| ≤ 1 + Selberg.farTail N δ := by
+  unfold majCut
+  by_cases hc : a ≤ Acut
+  · simp only [if_pos hc]
+    exact Selberg.abs_realConv_le
+      (Selberg.isPerBddR_majSymbol (Selberg.isPerBddR_upInd δ (Bs a)) N δ) N θ
+  · simp only [if_neg hc, abs_zero]
+    have := Selberg.farTail_nonneg N δ
+    linarith
+
+lemma abs_minCut_le (N Acut : ℕ) (δ : ℝ) (Bs : ℕ → Set ℝ) (a : ℕ) (θ : ℝ) :
+    |minCut N Acut δ Bs a θ| ≤ 1 + Selberg.farTail N δ := by
+  unfold minCut
+  by_cases hc : a ≤ Acut
+  · simp only [if_pos hc]
+    exact Selberg.abs_realConv_le
+      (Selberg.isPerBddR_minSymbol (Selberg.isPerBddR_downInd δ (Bs a)) N δ) N θ
+  · simp only [if_neg hc, abs_zero]
+    have := Selberg.farTail_nonneg N δ
+    linarith
+
+lemma abs_indCut_le (Acut : ℕ) (Bs : ℕ → Set ℝ) (a : ℕ) (θ : ℝ) :
+    |indCut Acut Bs a θ| ≤ 1 := by
+  unfold indCut
+  by_cases hc : a ≤ Acut
+  · simp only [if_pos hc]
+    rw [abs_of_nonneg (Selberg.perInd_nonneg (Bs a) θ)]
+    exact Selberg.perInd_le_one (Bs a) θ
+  · simp [hc]
+
+/-- Composing a digit-indexed symbol with `(a_{j+1}, θ_j)` is measurable: the
+digit takes countably many values, so `measurable_from_prod_countable_right`
+applies to the pair `(digit ·, theta ·)`, which is measurable by
+`Kwon1002.measurable_digit` and `Kwon1002.measurable_theta`. -/
+lemma measurable_symbol_comp {f : ℕ → ℝ → ℝ} (hf : ∀ a, Measurable (f a)) (n j : ℕ) :
+    Measurable fun α : ℝ => f (digit α j) (theta α n j) := by
+  have hpair : Measurable fun α : ℝ => (digit α j, theta α n j) :=
+    (measurable_digit j).prodMk (measurable_theta n j)
+  exact (measurable_from_prod_countable_right (f := fun p : ℕ × ℝ => f p.1 p.2)
+    (fun a => hf a)).comp hpair
+
+lemma integrableOn_symbol_comp {f : ℕ → ℝ → ℝ} (hf : ∀ a, Measurable (f a)) {M : ℝ}
+    (hb : ∀ a θ, |f a θ| ≤ M) (n j : ℕ) :
+    IntegrableOn (fun α : ℝ => f (digit α j) (theta α n j)) (Ioo (0 : ℝ) 1) := by
+  refine Measure.integrableOn_of_bounded (M := M) (by simp [Real.volume_Ioo])
+    (measurable_symbol_comp hf n j).aestronglyMeasurable
+    (Filter.Eventually.of_forall fun α => ?_)
+  rw [Real.norm_eq_abs]
+  exact hb _ _
+
+/-- **The gate, closed: §4's one-level law read at an indicator.**
+
+For every level of the deterministic bulk, the `α`-average of the digit-cut
+*indicator* of an arbitrary measurable `θ`-section family is trapped between
+the stationary means of the two members of the Selberg pair, up to the
+one-level error `O_{D,A}(L^{-A})` on each side — uniformly in the level, in the
+digit cut, in the degree, in the bracketing scale and in the family.
+
+This is what Part B could not give.  The Fejér mean of Part B approximates in
+`L¹` under Lebesgue on the cell and therefore leaves an error that has to be
+weighed against the law being computed; the pair here is *pointwise* one-sided,
+so no such weighing occurs, and the whole cost of the passage from the
+indicator to the class is the single number
+`stationaryMeanR (majCut) − stationaryMeanR (minCut)`, which
+`Selberg.integral_upInd_sub_downInd_le` bounds by the jump count of the
+sections.
+
+Proved by applying `OneLevelLaw.oneLevel_joint_law` twice — once to the
+majorant family and once to the minorant family, both placed in display (24)'s
+class by `isInPD_majCut`/`isInPD_minCut` — and inserting the pointwise
+inequalities `minCut ≤ indCut ≤ majCut` of `minCut_le_indCut` and
+`indCut_le_majCut`. -/
+theorem oneLevel_indicator_sandwich (D A : ℝ) (hD : 0 < D) (hA : 0 < A) :
+    ∃ C : ℝ, 0 < C ∧ ∀ᶠ n : ℕ in atTop, ∀ j ∈ bulkJ n,
+      ∀ (Acut N : ℕ) (δ : ℝ), 0 < δ → ∀ Bs : ℕ → Set ℝ, (∀ a, MeasurableSet (Bs a)) →
+        (Acut : ℝ) ≤ (Lnorm n) ^ D → (N : ℝ) ≤ (Lnorm n) ^ D →
+        ((Acut : ℝ) + 1) * ((2 * (N : ℝ) + 1) * (1 + Selberg.farTail N δ)) ≤ (Lnorm n) ^ D →
+        stationaryMeanR (minCut N Acut δ Bs) - C * (Lnorm n) ^ (-A)
+              ≤ (∫ α in Ioo (0 : ℝ) 1, indCut Acut Bs (digit α j) (theta α n j))
+          ∧ (∫ α in Ioo (0 : ℝ) 1, indCut Acut Bs (digit α j) (theta α n j))
+              ≤ stationaryMeanR (majCut N Acut δ Bs) + C * (Lnorm n) ^ (-A) := by
+  obtain ⟨C, hC, hev⟩ := OneLevelLaw.oneLevel_joint_law D A hD hA
+  refine ⟨C, hC, ?_⟩
+  filter_upwards [hev] with n hn j hj Acut N δ hδ Bs hBs hAle hNle hbud
+  -- the three integrands
+  have hindI : IntegrableOn
+      (fun α : ℝ => indCut Acut Bs (digit α j) (theta α n j)) (Ioo (0 : ℝ) 1) :=
+    integrableOn_symbol_comp (measurable_indCut Acut hBs) (abs_indCut_le Acut Bs) n j
+  have hmajI : IntegrableOn
+      (fun α : ℝ => majCut N Acut δ Bs (digit α j) (theta α n j)) (Ioo (0 : ℝ) 1) :=
+    integrableOn_symbol_comp (measurable_majCut N Acut δ Bs) (abs_majCut_le N Acut δ Bs) n j
+  have hminI : IntegrableOn
+      (fun α : ℝ => minCut N Acut δ Bs (digit α j) (theta α n j)) (Ioo (0 : ℝ) 1) :=
+    integrableOn_symbol_comp (measurable_minCut N Acut δ Bs) (abs_minCut_le N Acut δ Bs) n j
+  -- the one-level law on each member of the pair, in real form
+  have hreal : ∀ f : ℕ → ℝ → ℝ, IsInPD D (Lnorm n) (fun a θ => ((f a θ : ℝ) : ℂ)) →
+      |(∫ α in Ioo (0 : ℝ) 1, f (digit α j) (theta α n j)) - stationaryMeanR f|
+        ≤ C * (Lnorm n) ^ (-A) := by
+    intro f hf
+    have h := hn j hj _ hf
+    rw [stationaryMean_ofReal] at h
+    have hint : (∫ α in Ioo (0 : ℝ) 1, ((f (digit α j) (theta α n j) : ℝ) : ℂ))
+        = ((∫ α in Ioo (0 : ℝ) 1, f (digit α j) (theta α n j) : ℝ) : ℂ) :=
+      integral_complex_ofReal
+    rw [hint, ← Complex.ofReal_sub, Complex.norm_real, Real.norm_eq_abs] at h
+    exact h
+  have hmaj := hreal _ (isInPD_majCut D (Lnorm n) Acut N δ Bs hAle hNle hbud)
+  have hmin := hreal _ (isInPD_minCut D (Lnorm n) Acut N δ Bs hAle hNle hbud)
+  have hle1 : (∫ α in Ioo (0 : ℝ) 1, minCut N Acut δ Bs (digit α j) (theta α n j))
+      ≤ ∫ α in Ioo (0 : ℝ) 1, indCut Acut Bs (digit α j) (theta α n j) :=
+    setIntegral_mono_on hminI hindI measurableSet_Ioo
+      (fun α _ => minCut_le_indCut hδ Bs _ _)
+  have hle2 : (∫ α in Ioo (0 : ℝ) 1, indCut Acut Bs (digit α j) (theta α n j))
+      ≤ ∫ α in Ioo (0 : ℝ) 1, majCut N Acut δ Bs (digit α j) (theta α n j) :=
+    setIntegral_mono_on hindI hmajI measurableSet_Ioo
+      (fun α _ => indCut_le_majCut hδ Bs _ _)
+  have habs1 := abs_le.mp hmaj
+  have habs2 := abs_le.mp hmin
+  exact ⟨by linarith [habs2.2], by linarith [habs1.1]⟩
+
+/-! ### The size of the gate, from the jump count
+
+The sandwich costs `stationaryMeanR (majCut) − stationaryMeanR (minCut)`.  That
+number is bounded *uniformly in the digit* by the `L¹` gap of the pair, because
+the stationary mean averages the digit against a probability measure; and the
+`L¹` gap is the jump count, `Selberg.integral_upInd_sub_downInd_le`. -/
+
+/-- The per-digit mean of a symbol over the fundamental cell. -/
+def innerMean (f : ℕ → ℝ → ℝ) (a : ℕ) : ℝ := ∫ θ in Ioo (0 : ℝ) 1, f a θ
+
+lemma stationaryMeanR_eq (f : ℕ → ℝ → ℝ) :
+    stationaryMeanR f = ∫ x, innerMean f (digit x 0) ∂Erdos1002.gaussMeasure := rfl
+
+lemma integrable_innerMean_comp (f : ℕ → ℝ → ℝ) {K : ℝ} (hK : ∀ a, |innerMean f a| ≤ K) :
+    Integrable (fun x : ℝ => innerMean f (digit x 0)) Erdos1002.gaussMeasure := by
+  have hm : Measurable fun x : ℝ => innerMean f (digit x 0) :=
+    (measurable_of_countable (innerMean f)).comp (measurable_digit 0)
+  refine Integrable.mono' (integrable_const K) hm.aestronglyMeasurable
+    (Filter.Eventually.of_forall fun x => ?_)
+  rw [Real.norm_eq_abs]; exact hK _
+
+lemma abs_innerMean_majCut_le (N Acut : ℕ) (δ : ℝ) (Bs : ℕ → Set ℝ) (a : ℕ) :
+    |innerMean (majCut N Acut δ Bs) a| ≤ 1 + Selberg.farTail N δ := by
+  unfold innerMean
+  have hI : (volume : Measure ℝ).real (Ioo (0 : ℝ) 1) = 1 := by
+    simp [Measure.real, Real.volume_Ioo]
+  have h := norm_setIntegral_le_of_norm_le_const
+    (C := 1 + Selberg.farTail N δ) (s := Ioo (0 : ℝ) 1)
+    (measure_Ioo_lt_top (μ := (volume : Measure ℝ)) (a := 0) (b := 1))
+    (fun θ _ => by rw [Real.norm_eq_abs]; exact abs_majCut_le N Acut δ Bs a θ)
+  rw [hI, mul_one, Real.norm_eq_abs] at h
+  exact h
+
+lemma abs_innerMean_minCut_le (N Acut : ℕ) (δ : ℝ) (Bs : ℕ → Set ℝ) (a : ℕ) :
+    |innerMean (minCut N Acut δ Bs) a| ≤ 1 + Selberg.farTail N δ := by
+  unfold innerMean
+  have hI : (volume : Measure ℝ).real (Ioo (0 : ℝ) 1) = 1 := by
+    simp [Measure.real, Real.volume_Ioo]
+  have h := norm_setIntegral_le_of_norm_le_const
+    (C := 1 + Selberg.farTail N δ) (s := Ioo (0 : ℝ) 1)
+    (measure_Ioo_lt_top (μ := (volume : Measure ℝ)) (a := 0) (b := 1))
+    (fun θ _ => by rw [Real.norm_eq_abs]; exact abs_minCut_le N Acut δ Bs a θ)
+  rw [hI, mul_one, Real.norm_eq_abs] at h
+  exact h
+
+/-- **The gap of the gate, uniformly in the digit.**  When every `θ`-section is
+a union of at most `m` intervals, the sandwich costs at most
+`(4m+2)·2δ + 2η(N,δ)` — the pair's `L¹` gap, and nothing that depends on the
+law of `(a_{j+1}, θ_j)`. -/
+theorem stationaryMeanR_gap_le {m : ℕ} (N Acut : ℕ) {δ : ℝ} (hδ : 0 < δ)
+    (Bs : ℕ → Set ℝ) (hBs : ∀ a, IntervalClass.IsUnionOfIntervals m (Bs a)) :
+    stationaryMeanR (majCut N Acut δ Bs) - stationaryMeanR (minCut N Acut δ Bs)
+      ≤ (4 * (m : ℝ) + 2) * (2 * δ) + 2 * Selberg.farTail N δ := by
+  set Γ : ℝ := (4 * (m : ℝ) + 2) * (2 * δ) + 2 * Selberg.farTail N δ with hΓ
+  have hΓ0 : 0 ≤ Γ := by
+    rw [hΓ]
+    have := Selberg.farTail_nonneg N δ
+    positivity
+  have hpt : ∀ a : ℕ,
+      innerMean (majCut N Acut δ Bs) a - innerMean (minCut N Acut δ Bs) a ≤ Γ := by
+    intro a
+    by_cases hc : a ≤ Acut
+    · have h := (Selberg.bracket_intervals (hBs a) hδ N).2.2
+      have he1 : innerMean (majCut N Acut δ Bs) a
+          = ∫ θ in Ioo (0 : ℝ) 1,
+              Selberg.realConv N (Selberg.majSymbol N δ (Selberg.upInd δ (Bs a))) θ := by
+        unfold innerMean majCut; simp only [if_pos hc]
+      have he2 : innerMean (minCut N Acut δ Bs) a
+          = ∫ θ in Ioo (0 : ℝ) 1,
+              Selberg.realConv N (Selberg.minSymbol N δ (Selberg.downInd δ (Bs a))) θ := by
+        unfold innerMean minCut; simp only [if_pos hc]
+      rw [he1, he2, hΓ]
+      exact h
+    · have he1 : innerMean (majCut N Acut δ Bs) a = 0 := by
+        unfold innerMean majCut; simp only [if_neg hc]; simp
+      have he2 : innerMean (minCut N Acut δ Bs) a = 0 := by
+        unfold innerMean minCut; simp only [if_neg hc]; simp
+      rw [he1, he2, sub_zero]
+      exact hΓ0
+  have hIm := integrable_innerMean_comp (majCut N Acut δ Bs) (abs_innerMean_majCut_le N Acut δ Bs)
+  have hIn := integrable_innerMean_comp (minCut N Acut δ Bs) (abs_innerMean_minCut_le N Acut δ Bs)
+  rw [stationaryMeanR_eq, stationaryMeanR_eq, ← integral_sub hIm hIn]
+  calc (∫ x, (innerMean (majCut N Acut δ Bs) (digit x 0)
+          - innerMean (minCut N Acut δ Bs) (digit x 0)) ∂Erdos1002.gaussMeasure)
+      ≤ ∫ _x, Γ ∂Erdos1002.gaussMeasure :=
+        integral_mono (hIm.sub hIn) (integrable_const _) (fun x => hpt _)
+    _ = Γ := by
+        rw [integral_const]
+        simp
 
 end
 

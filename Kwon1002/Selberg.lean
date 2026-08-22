@@ -326,6 +326,23 @@ theorem fejerPoly_ofReal {u : ℝ → ℝ} {M : ℝ} (hu : IsPerBddR u M) (N : �
   push_cast
   ring
 
+/-- The Fejér mean of a real symbol is continuous, being the real part of a
+trigonometric polynomial. -/
+theorem continuous_realConv {u : ℝ → ℝ} {M : ℝ} (hu : IsPerBddR u M) (N : ℕ) :
+    Continuous (realConv N u) := by
+  have h : realConv N u = fun θ => (Fejer.fejerPoly N (fun x => ((u x : ℝ) : ℂ)) θ).re := by
+    funext θ
+    rw [fejerPoly_ofReal hu N θ, Complex.ofReal_re]
+  rw [h]
+  exact Complex.continuous_re.comp (Fejer.continuous_fejerPoly N _)
+
+/-- The Fejér mean of a real symbol obeys the same bound as the symbol. -/
+theorem abs_realConv_le {u : ℝ → ℝ} {M : ℝ} (hu : IsPerBddR u M) (N : ℕ) (θ : ℝ) :
+    |realConv N u θ| ≤ M := by
+  have h := Fejer.norm_fejerPoly_le hu.toC N θ
+  rw [fejerPoly_ofReal hu N θ, Complex.norm_real, Real.norm_eq_abs] at h
+  exact h
+
 /-- **The Fejér mean has the same mean as the symbol.**  Integrating the
 coefficient list over the fundamental cell kills every nonzero mode and the
 weight of the zero mode is `1`. -/
@@ -536,6 +553,18 @@ lemma upInd_nonneg (δ : ℝ) (B : Set ℝ) (θ : ℝ) : 0 ≤ upInd δ B θ := 
 lemma downInd_le_one (δ : ℝ) (B : Set ℝ) (θ : ℝ) : downInd δ B θ ≤ 1 := indicator_le_one' _ θ
 lemma downInd_nonneg (δ : ℝ) (B : Set ℝ) (θ : ℝ) : 0 ≤ downInd δ B θ := indicator_nonneg_one _ θ
 lemma upInd_le_one (δ : ℝ) (B : Set ℝ) (θ : ℝ) : upInd δ B θ ≤ 1 := indicator_le_one' _ θ
+
+lemma measurableSet_perSet {B : Set ℝ} (hB : MeasurableSet B) : MeasurableSet (perSet B) :=
+  hB.preimage measurable_fract
+
+lemma measurable_perInd {B : Set ℝ} (hB : MeasurableSet B) : Measurable (perInd B) :=
+  measurable_const.indicator (measurableSet_perSet hB)
+
+lemma measurable_upInd (δ : ℝ) (B : Set ℝ) : Measurable (upInd δ B) :=
+  measurable_const.indicator Metric.isClosed_cthickening.measurableSet
+
+lemma measurable_downInd (δ : ℝ) (B : Set ℝ) : Measurable (downInd δ B) :=
+  measurable_const.indicator Metric.isClosed_cthickening.measurableSet.compl
 
 lemma mem_perSet_iff {B : Set ℝ} {x : ℝ} (hx : x ∈ Ioo (0 : ℝ) 1) : x ∈ perSet B ↔ x ∈ B := by
   have : Int.fract x = x := Int.fract_eq_self.2 ⟨hx.1.le, hx.2⟩
