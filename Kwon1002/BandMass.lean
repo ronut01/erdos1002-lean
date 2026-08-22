@@ -417,12 +417,19 @@ owed is short and specific:
    off the bulk.  Nothing in this module supplies that analogue, and nothing
    in the tree does either.
 
-   The per-level families now available (`WindowBridgeFamily.exists_window_bridge_family`,
-   `DetQuasiFamily.exists_det_quasi_independence_family`) are stated in the same
-   event currency, and `PatternSum.sum_emb_pattern_le` converts a per-level
-   family bound into a per-position pattern bound *inside that currency*; none
-   of them changes the currency, so the analogue is a genuine piece of new
-   mathematics rather than a rearrangement of existing statements.
+   The per-level families now available are of no help here for the same
+   reason.  `WindowBridgeFamily.exists_window_bridge_family`,
+   `DetQuasiFamily.exists_det_quasi_independence_family`,
+   `StepQuasi.exists_bulk_quasi_pattern` and `QuasiIndep.exists_tuple_bound_radii`
+   are all stated in `unifIoo.real` of an event; `MultiLevel.multiLevel_transfer`
+   is stated in the α-average of a *product of indicators* over good tuples,
+   which is one step closer but still not the centred observable.
+   `PatternSum.sum_emb_pattern_le` and `PatternSum.norm_prod_sub_prod_le` are
+   currency-agnostic devices — a nonnegative-summand averaging step and a
+   per-factor telescoping — but they consume inputs, and there is no
+   covariance-currency input in the tree for them to consume.  So the analogue
+   is a genuine piece of new mathematics rather than a rearrangement of
+   existing statements.
 
 3. **The digit cut and the pair count**, both already proved
    (`CovarianceChain.truncatedMark_digitCut_L1`,
@@ -431,6 +438,15 @@ owed is short and specific:
 
 So `CorFinal.bulk_offdiagonal_abs_far_sharp` remains open, and item 2 above is
 the one part of it that is not present in the tree in any currency.
+
+**One correction to the record.**  `CorFinal.bulk_offdiagonal_abs_far_sharp` is
+a bare `sorry` of its own; it does not *rest* on
+`FiveIndep.bulk_offdiagonal_abs_far` (also a bare `sorry`) in the closure
+sense.  The relation between them runs the other way and is proved:
+`CorFinal.abs_far_sharp_of_abs_far` takes the `FiveIndep`-shaped statement as
+an explicit hypothesis and derives the sharpened one, and that implication is
+axiom-clean.  Discharging either name discharges the other; neither is a
+sorry-leaf of the other.
 -/
 
 end
