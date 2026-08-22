@@ -1102,23 +1102,19 @@ theorem goodSet_mark_factorization_truncation (ε R : ℝ)
 
 /-! ## Part G, the deterministic quasi-independence, proved from the residual -/
 
-/-- **The manuscript's steps 2 and 3, on the deterministic side.**
-
-`∑_f P(⋂_ℓ X_{n,f ℓ} ∈ B) - ∑_f ∏_ℓ P(X_{n,f ℓ} ∈ B) → 0`, the sums over
-ordered distinct `k`-tuples of levels.
-
-Proved from `goodSet_mark_factorization` (residual 2) **and nothing else
-sorried**:
-
-* tuples with a level outside the bulk contribute `0` exactly;
-* tuples inside the bulk failing the separation are `O_k(L^{k-1}H)` in number
-  (`badIn_emb_count`, proved) and each contributes `O(L^{-k})`
-  (`det_tuple_measure_le` and `det_singleLevel_measure_le`, proved), for a
-  total `O(H/L) = O(L^{-1/4}) → 0`;
-* the remaining tuples are `O(L^k)` in number and each contributes
-  `O(L^{-(k+1)})` by residual 2, for a total `O(L^{-1}) → 0`. -/
-theorem det_quasi_independence (B : Set ℝ) (hB : MeasurableSet B)
-    (hB0 : ∃ δ > 0, ∀ x ∈ B, δ ≤ |x|) (hBbd : ∃ R : ℝ, ∀ x ∈ B, |x| ≤ R) (k : ℕ) :
+/-- **Residual 2 as an explicit hypothesis.**  The proof of
+`det_quasi_independence` below spends the residual exactly once, at the tuple
+length it is stated at, and everything else it uses is proved.  Isolating that
+one use is what lets a *downstream* module — where residual 2a is available as a
+theorem rather than as a `sorry` (`Kwon1002/TupleTransfer.lean`) — obtain this
+conclusion without `sorryAx`; the copy below, which supplies the hypothesis from
+the residual declared in this file, cannot, for the import-direction reason this
+file's header records. -/
+theorem det_quasi_independence_of_residual (B : Set ℝ) (hB : MeasurableSet B)
+    (hB0 : ∃ δ > 0, ∀ x ∈ B, δ ≤ |x|) (hBbd : ∃ R : ℝ, ∀ x ∈ B, |x| ≤ R) (k : ℕ)
+    (hres : ∃ C : ℝ, 0 < C ∧ ∀ᶠ n : ℕ in atTop, ∀ S : Finset ℕ, S.card = k → SepGoodSet n S →
+      |unifIoo.real (⋂ x ∈ (S : Set ℕ), detMarkEvent n B x)
+          - ∏ x ∈ S, unifIoo.real (detMarkEvent n B x)| ≤ C / (Lnorm n) ^ (k + 1)) :
     Tendsto (fun n : ℕ =>
         (∑ f : Fin k ↪ (Finset.range (n + 1) : Finset ℕ),
             unifIoo.real (Erdos1002.tupleEvent (detMarkEvent n B) f))
@@ -1127,8 +1123,8 @@ theorem det_quasi_independence (B : Set ℝ) (hB : MeasurableSet B)
       atTop (𝓝 0) := by
   classical
   obtain ⟨δ, hδ, hBδ⟩ := hB0
-  match k with
-  | 0 =>
+  match k, hres with
+  | 0, _ =>
     have hzero : ∀ n : ℕ,
         (∑ f : Fin 0 ↪ (Finset.range (n + 1) : Finset ℕ),
             unifIoo.real (Erdos1002.tupleEvent (detMarkEvent n B) f))
@@ -1144,10 +1140,10 @@ theorem det_quasi_independence (B : Set ℝ) (hB : MeasurableSet B)
         simp
       simp [he, hu]
     exact Filter.Tendsto.congr (fun n => (hzero n).symm) tendsto_const_nhds
-  | (m + 1) =>
+  | (m + 1), hres =>
     obtain ⟨C₁, hC₁, hC₁le⟩ := det_singleLevel_measure_le B hδ hBδ
     obtain ⟨C₂, hC₂, hC₂le⟩ := det_tuple_measure_le B hδ hBδ (m + 1)
-    obtain ⟨C₃, hC₃, hC₃le⟩ := goodSet_mark_factorization B hB ⟨δ, hδ, hBδ⟩ hBbd (m + 1)
+    obtain ⟨C₃, hC₃, hC₃le⟩ := hres
     obtain ⟨C₄, hC₄, hC₄le⟩ := badIn_emb_count (m + 1)
     set C : ℝ := max C₁ C₂ with hCdef
     have hC : 0 < C := lt_of_lt_of_le hC₁ (le_max_left _ _)
@@ -1294,6 +1290,33 @@ theorem det_quasi_independence (B : Set ℝ) (hB : MeasurableSet B)
       have hl2 : Tendsto (fun n : ℕ => 2 ^ (m + 1) * C₃ * (1 / Lnorm n)) atTop (𝓝 0) := by
         simpa using tendsto_one_div_L.const_mul ((2 : ℝ) ^ (m + 1) * C₃)
       simpa using hl1.add hl2
+
+
+/-- **The manuscript's steps 2 and 3, on the deterministic side.**
+
+`∑_f P(⋂_ℓ X_{n,f ℓ} ∈ B) - ∑_f ∏_ℓ P(X_{n,f ℓ} ∈ B) → 0`, the sums over
+ordered distinct `k`-tuples of levels.
+
+Proved from `goodSet_mark_factorization` (residual 2) **and nothing else
+sorried**:
+
+* tuples with a level outside the bulk contribute `0` exactly;
+* tuples inside the bulk failing the separation are `O_k(L^{k-1}H)` in number
+  (`badIn_emb_count`, proved) and each contributes `O(L^{-k})`
+  (`det_tuple_measure_le` and `det_singleLevel_measure_le`, proved), for a
+  total `O(H/L) = O(L^{-1/4}) → 0`;
+* the remaining tuples are `O(L^k)` in number and each contributes
+  `O(L^{-(k+1)})` by residual 2, for a total `O(L^{-1}) → 0`. -/
+theorem det_quasi_independence (B : Set ℝ) (hB : MeasurableSet B)
+    (hB0 : ∃ δ > 0, ∀ x ∈ B, δ ≤ |x|) (hBbd : ∃ R : ℝ, ∀ x ∈ B, |x| ≤ R) (k : ℕ) :
+    Tendsto (fun n : ℕ =>
+        (∑ f : Fin k ↪ (Finset.range (n + 1) : Finset ℕ),
+            unifIoo.real (Erdos1002.tupleEvent (detMarkEvent n B) f))
+          - ∑ f : Fin k ↪ (Finset.range (n + 1) : Finset ℕ),
+              ∏ ℓ, unifIoo.real (detMarkEvent n B (embTuple f ℓ)))
+      atTop (𝓝 0) :=
+  det_quasi_independence_of_residual B hB hB0 hBbd k
+    (goodSet_mark_factorization B hB hB0 hBbd k)
 
 /-! ## Part H, the deterministic limit and the three targets -/
 
