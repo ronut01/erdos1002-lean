@@ -552,3 +552,15 @@ canonical residual `Kwon1002.CorFinal.bulk_offdiagonal_abs_far_sharp` token for
 token. -/
 example : @Kwon1002.CorFinal.bulk_offdiagonal_abs_far_sharp
     = @Kwon1002.TailTransferJoin.bulk_offdiagonal_abs_far_sharp_proved := rfl
+
+/-- **Non-vacuity of join 3.**  `MultiLevel.multiLevel_transfer 2 2` quantifies
+over `GoodTuple n 2`, so the covariance estimate would be empty if `J_n` carried
+no good pair.  It does, for all large `n`.
+
+The companion guard for join 2 is `card_badPairs_le` itself: `badPairs n` is
+capped at `O(L·H) = O(L^{7/4})` while `J_n × J_n` carries `≍ L²` pairs, so the
+exceptional set cannot swallow the pairs the conclusion speaks about.  That is
+why the cardinality bound is proved rather than assumed — a bad set allowed to
+grow with the statement would make the residual trivially true. -/
+example : ∀ᶠ n : ℕ in Filter.atTop, ∃ j : ℕ → ℕ, Kwon1002.GoodTuple n 2 j :=
+  Kwon1002.MultiLevel.eventually_exists_goodTuple 2
