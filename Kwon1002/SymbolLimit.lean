@@ -842,6 +842,41 @@ theorem sum_mu_tendsto (c : ℝ) {ε : ℝ} (hε : 0 < ε) (t : ℝ) :
   refine lt_of_le_of_lt (norm_add₃_le) ?_
   linarith
 
+/-! ## `hp1` discharged inside the layer assembly
+
+`LayerAssembly.largeSum_charFun_limit_of_two_inputs` reduces
+`CorFinal.largeSum_charFun_limit` to `hp1` and `hqi`.  `sum_mu_tendsto` is `hp1`,
+so what follows records, inside Lean, that `hqi` is now the **only** remaining
+input on this route: the statement below is the conclusion of
+`CorFinal.largeSum_charFun_limit` with `hqi` as its single hypothesis. -/
+
+/-- **`CorFinal.largeSum_charFun_limit` from `hqi` alone.**  The `hp1` input of
+`LayerAssembly.largeSum_charFun_limit_of_two_inputs` is supplied by
+`sum_mu_tendsto`; nothing else is assumed. -/
+theorem largeSum_charFun_limit_of_hqi (c ε : ℝ) (hε0 : 0 < ε) (hε1 : ε < 1) (t : ℝ)
+    (hqi : ∀ k : ℕ, Tendsto (fun n : ℕ =>
+        ∑ S ∈ Finset.powersetCard k (Finset.range (n + 1)),
+          ‖(∫ α in Ioo (0:ℝ) 1, ∏ j ∈ S, jumpFactor t c ε n j α)
+              - ∏ j ∈ S, LayerAssembly.mu t c ε n j‖) atTop (𝓝 0)) :
+    Tendsto (fun n : ℕ => ∫ α in Ioo (0 : ℝ) 1,
+        Complex.exp ((t : ℂ) * (Assembly5.largeSum c ε α n : ℂ) * Complex.I)) atTop
+      (𝓝 (Complex.exp (∫ x in {x : ℝ | ε < |x|},
+          (Complex.exp ((t : ℂ) * (x : ℂ) * Complex.I) - 1)
+            * (levyIntensityDensity x : ℂ)))) :=
+  LayerAssembly.largeSum_charFun_limit_of_two_inputs c ε hε0 hε1 t
+    (sum_mu_tendsto c hε0 t) hqi
+
+/-- Statement guard: the conclusion above is the statement of
+`Kwon1002.CorFinal.largeSum_charFun_limit`, token for token.  The `example`
+mentions a sorried declaration, so it is anonymous. -/
+example : ∀ (c ε : ℝ), 0 < ε → ε < 1 → ∀ t : ℝ,
+    Filter.Tendsto (fun n : ℕ => ∫ α in Set.Ioo (0 : ℝ) 1,
+        Complex.exp ((t : ℂ) * (Kwon1002.Assembly5.largeSum c ε α n : ℂ) * Complex.I)) Filter.atTop
+      (nhds (Complex.exp (∫ x in {x : ℝ | ε < |x|},
+          (Complex.exp ((t : ℂ) * (x : ℂ) * Complex.I) - 1)
+            * (Kwon1002.levyIntensityDensity x : ℂ)))) :=
+  @Kwon1002.CorFinal.largeSum_charFun_limit
+
 end
 
 end SymbolLimit
