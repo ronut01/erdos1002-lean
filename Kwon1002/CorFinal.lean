@@ -612,7 +612,24 @@ index beyond the stopping time still contribute `−E g_j · E g_k`.  The
 diagonal analogue of that tail is discharged by the proved
 `L2Estimate.bulk_window_input`, used in `diagonal_covariance_sum_bound_F`;
 its off-diagonal analogue is **not** part of Proposition 4.1 and is folded
-into this residual rather than hidden. -/
+into this residual rather than hidden.
+
+**Which index set the §4 inputs actually cover, added this pass.**  The two
+transfer theorems that discharge §4 at the indicator,
+`Section5Join.oneLevel_transfer` and `MultiLevel.multiLevel_transfer`, are
+uniform only over `j ∈ Kwon1002.bulkJ n`, the deterministic bulk of (19), and
+over *good* tuples inside it; this sum runs over all of
+`range (n+1) ×ˢ range (n+1)`.  The gap is `O(H)` levels at each end
+(`StoppingWindow.diffWindow` contains both the `200H` lower boundary and the
+radius-`(A_n + D_n)` window around `m_n`), and for **mark-event measures** it is
+already bridged at every arity by the proved
+`TupleFinal.bulk_window_bridge_tuple`.  That bridge does not apply here: its
+currency is `unifIoo.real (tupleEvent (bulkMarkEvent c n B) f)`, a measure of an
+event, whereas `offdiagAbsTerm` is `|∫ g_j · g_k|` with `g` the *centred* real
+observable `bulkTermCentered`, which is `−E g_j` rather than `0` off the bulk.
+So the folded tail above is not a corollary of the bridge the tree already has;
+a covariance-currency analogue of it is what this residual owes, and no such
+statement exists in the tree. -/
 theorem bulk_offdiagonal_abs_far_sharp (c : ℝ) :
     ∃ κ : ℝ, 0 < κ ∧ ∀ ε : ℝ, 0 < ε → ε < 1 → ∃ N : ℕ, ∀ n : ℕ, N ≤ n →
       ∃ B : Finset (ℕ × ℕ),
