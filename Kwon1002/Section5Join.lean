@@ -785,6 +785,627 @@ theorem lebesgue_digitCut_tail :
   refine le_trans h (le_of_eq ?_)
   simp [div_eq_mul_inv]
 
+
+/-! ## Part F, item (i): the parameter choice, and display (35) at the
+truncation window
+
+Part D reduced display (35) to two items.  This part closes the first outright
+and the second at the shape the tree actually names.
+
+* **Item (i), the parameter choice** (`oneLevel_transfer`).  The bracket scale
+  `δ`, the Fejér degree `N` and the digit cut `Acut` are tied to `L` by the
+  schedule `δ = L^{-2}`, `N = ⌈L^6⌉`, `Acut = ⌈L^2⌉`, read against display
+  (24)'s exponent `D = 11` and the one-level rate `A = 2`.  `sched_admissible`
+  checks the three side conditions of `oneLevel_indicator_sandwich`, including
+  the binding budget `(Acut+1)(2N+1)(1+η) ≤ L^{11}`; `oneLevel_transfer` then
+  prices the five error terms and shows their sum is `o(1/L)`, uniformly in the
+  level and in the section family.
+
+* **Item (ii), the class.**  `oneLevel_gaussKuzmin_intensity_truncation` proves
+  the residual outright at `B = {x : ε < |x| ≤ R}`, the shape
+  `IntervalClass.isUnionOfIntervals_truncation` identifies as the only shape the
+  §5 chain gives `B`.  The section family is
+  `truncSection`, a union of two intervals uniformly in the digit; the
+  stationary side is the band normalisation of Part E; and the level-`j` event
+  is the section indicator (`oneLevelEvent_truncWindow`).  What is *not* closed
+  here is the passage from this window to a general finite union of intervals,
+  which needs a decomposition of an arbitrary `IsUnionOfIntervals` family into
+  disjoint bands; that is recorded on
+  `TupleInputs.oneLevel_gaussKuzmin_intensity_intervals`. -/
+
+
+/-- Bounded measurable functions are integrable on the fundamental cell. -/
+lemma integrableOn_cell {h : ℝ → ℝ} {K : ℝ} (hm : Measurable h) (hb : ∀ θ, |h θ| ≤ K) :
+    IntegrableOn h (Ioo (0 : ℝ) 1) := by
+  refine Measure.integrableOn_of_bounded (M := K) (by simp [Real.volume_Ioo])
+    hm.aestronglyMeasurable (Filter.Eventually.of_forall fun θ => ?_)
+  rw [Real.norm_eq_abs]; exact hb θ
+
+lemma innerMean_mono {f g : ℕ → ℝ → ℝ} {K : ℝ}
+    (hf : ∀ a, Measurable (f a)) (hg : ∀ a, Measurable (g a))
+    (hfb : ∀ a θ, |f a θ| ≤ K) (hgb : ∀ a θ, |g a θ| ≤ K)
+    (hle : ∀ a θ, f a θ ≤ g a θ) (a : ℕ) : innerMean f a ≤ innerMean g a := by
+  unfold innerMean
+  exact setIntegral_mono_on (integrableOn_cell (hf a) (hfb a))
+    (integrableOn_cell (hg a) (hgb a)) measurableSet_Ioo (fun θ _ => hle a θ)
+
+lemma stationaryMeanR_mono {f g : ℕ → ℝ → ℝ} {K : ℝ}
+    (hf : ∀ a, Measurable (f a)) (hg : ∀ a, Measurable (g a))
+    (hfb : ∀ a θ, |f a θ| ≤ K) (hgb : ∀ a θ, |g a θ| ≤ K)
+    (hle : ∀ a θ, f a θ ≤ g a θ) : stationaryMeanR f ≤ stationaryMeanR g := by
+  rw [stationaryMeanR_eq, stationaryMeanR_eq]
+  exact integral_mono
+    (integrable_innerMean_comp f (abs_innerMean_le_of_bound hfb))
+    (integrable_innerMean_comp g (abs_innerMean_le_of_bound hgb))
+    (fun x => innerMean_mono hf hg hfb hgb hle _)
+
+lemma measurable_indFull {Bs : ℕ → Set ℝ} (hBs : ∀ a, MeasurableSet (Bs a)) (a : ℕ) :
+    Measurable (indFull Bs a) := Selberg.measurable_perInd (hBs a)
+
+/-- **The Lebesgue digit-cut gap at level `j`.**  Cutting the digit at `Acut`
+moves the level-`j` `α`-average by at most the Lebesgue mass of
+`{α : a_{j+1}(α) > Acut}`. -/
+lemma abs_integral_indCut_sub_indFull_le (Acut : ℕ) {Bs : ℕ → Set ℝ}
+    (hBs : ∀ a, MeasurableSet (Bs a)) (n j : ℕ) :
+    |(∫ α in Ioo (0:ℝ) 1, indCut Acut Bs (digit α j) (theta α n j))
+        - ∫ α in Ioo (0:ℝ) 1, indFull Bs (digit α j) (theta α n j)|
+      ≤ (volume {α : ℝ | α ∈ Ioo (0:ℝ) 1 ∧ Acut < digit α j}).toReal := by
+  classical
+  have hIc : IntegrableOn (fun α : ℝ => indCut Acut Bs (digit α j) (theta α n j))
+      (Ioo (0:ℝ) 1) :=
+    integrableOn_symbol_comp (measurable_indCut Acut hBs) (abs_indCut_le Acut Bs) n j
+  have hIf : IntegrableOn (fun α : ℝ => indFull Bs (digit α j) (theta α n j))
+      (Ioo (0:ℝ) 1) :=
+    integrableOn_symbol_comp (measurable_indFull hBs) (abs_indFull_le Bs) n j
+  set S : Set ℝ := {α : ℝ | Acut < digit α j} with hS
+  have hSmeas : MeasurableSet S :=
+    (measurable_digit j) (measurableSet_lt measurable_const measurable_id)
+  have hGmeas : Measurable fun α : ℝ => S.indicator (fun _ => (1:ℝ)) α :=
+    (measurable_const.indicator hSmeas)
+  have hIG : IntegrableOn (fun α : ℝ => S.indicator (fun _ => (1:ℝ)) α) (Ioo (0:ℝ) 1) :=
+    integrableOn_cell (K := 1) hGmeas (fun θ => by
+      rw [Set.indicator_apply]; split_ifs <;> simp)
+  have hpt : ∀ α : ℝ,
+      ‖indCut Acut Bs (digit α j) (theta α n j) - indFull Bs (digit α j) (theta α n j)‖
+        ≤ S.indicator (fun _ => (1:ℝ)) α := by
+    intro α
+    rw [Real.norm_eq_abs]
+    by_cases hc : digit α j ≤ Acut
+    · have he : indCut Acut Bs (digit α j) (theta α n j)
+          = indFull Bs (digit α j) (theta α n j) := by
+        unfold indCut indFull; simp only [if_pos hc]
+      rw [he, sub_self, abs_zero]
+      rw [Set.indicator_apply]; split_ifs <;> simp
+    · have hmem : α ∈ S := not_le.mp hc
+      have he : indCut Acut Bs (digit α j) (theta α n j) = 0 := by
+        unfold indCut; simp only [if_neg hc]
+      rw [he, zero_sub, abs_neg, Set.indicator_of_mem hmem]
+      exact abs_indFull_le Bs _ _
+  have hstep : |(∫ α in Ioo (0:ℝ) 1, indCut Acut Bs (digit α j) (theta α n j))
+        - ∫ α in Ioo (0:ℝ) 1, indFull Bs (digit α j) (theta α n j)|
+      ≤ ∫ α in Ioo (0:ℝ) 1, S.indicator (fun _ => (1:ℝ)) α := by
+    rw [← integral_sub hIc hIf, ← Real.norm_eq_abs]
+    refine (norm_integral_le_integral_norm _).trans ?_
+    exact setIntegral_mono_on ((hIc.sub hIf).norm) hIG measurableSet_Ioo
+      (fun α _ => hpt α)
+  refine hstep.trans (le_of_eq ?_)
+  rw [setIntegral_indicator hSmeas, setIntegral_const, smul_eq_mul, mul_one]
+  have hset : Ioo (0:ℝ) 1 ∩ S = {α : ℝ | α ∈ Ioo (0:ℝ) 1 ∧ Acut < digit α j} := by
+    ext α; simp only [Set.mem_inter_iff, Set.mem_setOf_eq, hS]
+  rw [hset]
+  rfl
+
+/-! ### The parameter schedule -/
+
+/-- The bracketing scale of the parameter schedule: `δ = L^{-2}`. -/
+def schedDelta (L : ℝ) : ℝ := 1 / L ^ 2
+
+/-- The Fejér degree of the parameter schedule: `N = ⌈L^6⌉`. -/
+def schedDeg (L : ℝ) : ℕ := ⌈L ^ 6⌉₊
+
+/-- The digit cut of the parameter schedule: `Acut = ⌈L^2⌉`. -/
+def schedCut (L : ℝ) : ℕ := ⌈L ^ 2⌉₊
+
+/-- **The parameter schedule is admissible for display (24).**
+
+At `D = 11` the schedule `δ = L^{-2}`, `N = ⌈L^6⌉`, `Acut = ⌈L^2⌉` satisfies
+every side condition `oneLevel_indicator_sandwich` imposes, and its Selberg far
+tail is `O(L^{-2})`.  The budget is the binding one:
+`(Acut+1)(2N+1)(1+η) ≤ L^3 · L^7 · L = L^{11}`. -/
+theorem sched_admissible {L : ℝ} (h4L : (4:ℝ) ≤ L) :
+    0 < schedDelta L ∧
+    L ^ 2 ≤ (schedCut L : ℝ) ∧
+    Selberg.farTail (schedDeg L) (schedDelta L) ≤ 1 / (4 * L ^ 2) ∧
+    (schedCut L : ℝ) ≤ L ^ (11:ℝ) ∧
+    (schedDeg L : ℝ) ≤ L ^ (11:ℝ) ∧
+    ((schedCut L : ℝ) + 1) * ((2 * (schedDeg L : ℝ) + 1)
+        * (1 + Selberg.farTail (schedDeg L) (schedDelta L))) ≤ L ^ (11:ℝ) := by
+  have hLpos : (0:ℝ) < L := by linarith
+  have h1L : (1:ℝ) ≤ L := by linarith
+  have hL2pos : (0:ℝ) < L ^ 2 := by positivity
+  have hL4pos : (0:ℝ) < L ^ 4 := by positivity
+  have hL6pos : (0:ℝ) < L ^ 6 := by positivity
+  set δ : ℝ := schedDelta L with hδdef
+  set N : ℕ := schedDeg L with hNdef
+  set Acut : ℕ := schedCut L with hAdef
+  have hδpos : 0 < δ := by rw [hδdef, schedDelta]; positivity
+  have hδsq : δ ^ 2 = 1 / L ^ 4 := by rw [hδdef, schedDelta]; field_simp
+  have hNge : L ^ 6 ≤ (N:ℝ) := by rw [hNdef, schedDeg]; exact Nat.le_ceil _
+  have hNlt : (N:ℝ) < L ^ 6 + 1 := by rw [hNdef, schedDeg]; exact Nat.ceil_lt_add_one hL6pos.le
+  have hAge : L ^ 2 ≤ (Acut:ℝ) := by rw [hAdef, schedCut]; exact Nat.le_ceil _
+  have hAlt : (Acut:ℝ) < L ^ 2 + 1 := by
+    rw [hAdef, schedCut]; exact Nat.ceil_lt_add_one hL2pos.le
+  have hfarnn : 0 ≤ Selberg.farTail N δ := Selberg.farTail_nonneg N δ
+  have hfar : Selberg.farTail N δ ≤ 1 / (4 * L ^ 2) := by
+    unfold Selberg.farTail
+    rw [hδsq]
+    refine one_div_le_one_div_of_le (by positivity) ?_
+    have hrw : 4 * ((N:ℝ) + 1) * (1 / L ^ 4) = 4 * ((N:ℝ) + 1) / L ^ 4 := by ring
+    rw [hrw, le_div_iff₀ hL4pos]
+    nlinarith [hNge]
+  have hfar1 : Selberg.farTail N δ ≤ 1 := by
+    refine hfar.trans ?_
+    rw [div_le_one (by positivity)]
+    nlinarith
+  have hrpow : L ^ (11:ℝ) = L ^ (11:ℕ) := by
+    rw [show (11:ℝ) = ((11:ℕ):ℝ) by norm_num, Real.rpow_natCast]
+  have hA3 : (Acut:ℝ) + 1 ≤ L ^ 3 := by nlinarith [hAlt, h4L]
+  have hN7 : (2 * (N:ℝ) + 1) ≤ L ^ 7 := by nlinarith [hNlt, h4L, hL6pos]
+  refine ⟨hδpos, hAge, hfar, ?_, ?_, ?_⟩
+  · rw [hrpow]
+    exact (by linarith [hA3] : (Acut:ℝ) ≤ L ^ 3).trans
+      (pow_le_pow_right₀ h1L (by norm_num))
+  · rw [hrpow]
+    exact (by linarith [hN7] : (N:ℝ) ≤ L ^ 7).trans
+      (pow_le_pow_right₀ h1L (by norm_num))
+  · rw [hrpow]
+    have hstep1 : (1 + Selberg.farTail N δ) ≤ L := by linarith
+    have hstep2 : (2 * (N:ℝ) + 1) * (1 + Selberg.farTail N δ) ≤ L ^ 7 * L :=
+      mul_le_mul hN7 hstep1 (by linarith) (by positivity)
+    have hprod : ((Acut:ℝ) + 1) * ((2 * (N:ℝ) + 1) * (1 + Selberg.farTail N δ))
+        ≤ L ^ 3 * (L ^ 7 * L) :=
+      mul_le_mul hA3 hstep2 (by positivity) (by positivity)
+    refine hprod.trans (le_of_eq ?_)
+    ring
+
+set_option maxHeartbeats 1000000 in
+/-- **Item (i), the parameter choice, closed.**
+
+At every level of the deterministic bulk the level-`j` `α`-average of an
+indicator whose `θ`-sections are unions of at most `m` intervals agrees with its
+stationary mean to `o(1/L)`: for every `ε > 0`, eventually in `n`,
+
+  `L · |∫ 1_{Bs} (a_{j+1}(α), θ_j(α)) dα − stationaryMeanR (indFull Bs)| ≤ ε`
+
+uniformly over `j ∈ J_n` and over the section family.
+
+**The parameter choice, explicitly.**  Against display (24)'s exponent `D = 11`
+and the one-level rate `A = 2`, the schedule is
+
+  `δ = L^{-2}`,  `N = ⌈L^6⌉`,  `Acut = ⌈L^2⌉`,
+
+and the four costs are priced as follows.
+
+* Selberg gap `(4m+2)·2δ = (8m+4)L^{-2}`.
+* Selberg far tail `η(N,δ) = 1/(4(N+1)δ²) ≤ L^4/(4L^6) = L^{-2}/4`, so
+  `2η ≤ L^{-2}/2`.
+* one-level rate `C·L^{-A} = C·L^{-2}`.
+* stationary digit tail `log(1 + 1/(Acut+1))/log 2 ≤ L^{-2}/log 2 ≤ 2L^{-2}`
+  (`stationaryMeanR_digitCut_gap` plus `log(1+x) ≤ x`).
+* Lebesgue digit tail `C₂/(Acut+1) ≤ C₂L^{-2}` (`lebesgue_digitCut_tail`,
+  i.e. display (15) at `r = 1`).
+
+Their sum is `(8m + 7 + C + C₂)·L^{-2}`, which survives multiplication by `L`.
+Display (24)'s budget is met with room to spare: `Acut + 1 ≤ L^3`,
+`2N + 1 ≤ L^7`, `1 + η ≤ L`, so `(Acut+1)(2N+1)(1+η) ≤ L^{11}`
+(`sched_admissible`).  Every one of `D`, `A`, and the three schedule exponents
+is forced only by these five inequalities; nothing here is tuned to a
+particular `B`. -/
+theorem oneLevel_transfer (m : ℕ) {ε : ℝ} (hε : 0 < ε) :
+    ∀ᶠ n : ℕ in atTop, ∀ j ∈ bulkJ n,
+      ∀ Bs : ℕ → Set ℝ, (∀ a, MeasurableSet (Bs a)) →
+        (∀ a, IntervalClass.IsUnionOfIntervals m (Bs a)) →
+        |Lnorm n * (∫ α in Ioo (0:ℝ) 1, indFull Bs (digit α j) (theta α n j))
+            - Lnorm n * stationaryMeanR (indFull Bs)| ≤ ε := by
+  obtain ⟨C, hC, hev⟩ := oneLevel_indicator_sandwich 11 2 (by norm_num) (by norm_num)
+  obtain ⟨C₂, hC₂, htail⟩ := lebesgue_digitCut_tail
+  have hL0 : ∀ᶠ n : ℕ in atTop,
+      max 4 ((8 * (m:ℝ) + 7 + C + C₂) / ε) ≤ Lnorm n :=
+    TupleMeasure.tendsto_Lnorm_atTop.eventually_ge_atTop _
+  filter_upwards [hev, hL0] with n hn hLbig j hj Bs hBsm hBsi
+  have h4L : (4:ℝ) ≤ Lnorm n := le_trans (le_max_left _ _) hLbig
+  have hbigε : (8 * (m:ℝ) + 7 + C + C₂) / ε ≤ Lnorm n := le_trans (le_max_right _ _) hLbig
+  set L : ℝ := Lnorm n with hLdef
+  have hLpos : (0:ℝ) < L := by linarith
+  have hL2pos : (0:ℝ) < L ^ 2 := by positivity
+  have hu : (0:ℝ) < 1 / L ^ 2 := by positivity
+  have hmnn : (0:ℝ) ≤ (m:ℝ) := Nat.cast_nonneg m
+  obtain ⟨hδpos, hAge, hfar, hAle, hNle, hbud⟩ := sched_admissible h4L
+  set δ : ℝ := schedDelta L with hδdef
+  set N : ℕ := schedDeg L with hNdef
+  set Acut : ℕ := schedCut L with hAdef
+  have hδval : δ = 1 / L ^ 2 := by rw [hδdef, schedDelta]
+  have hfarnn : 0 ≤ Selberg.farTail N δ := Selberg.farTail_nonneg N δ
+  have hΓle : (4 * (m:ℝ) + 2) * (2 * δ) + 2 * Selberg.farTail N δ
+      ≤ (8 * (m:ℝ) + 5) * (1 / L ^ 2) := by
+    have hfaru : Selberg.farTail N δ ≤ (1 / L ^ 2) / 4 := by
+      have he : (1:ℝ) / (4 * L ^ 2) = (1 / L ^ 2) / 4 := by ring
+      linarith [hfar]
+    have hstep : (4 * (m:ℝ) + 2) * (2 * δ) = (8 * (m:ℝ) + 4) * (1 / L ^ 2) := by
+      rw [hδval]; ring
+    linarith [hstep, hfaru, hu]
+  have hrpowneg : L ^ (-(2:ℝ)) = 1 / L ^ 2 := by
+    have h2 : (2:ℝ) = ((2:ℕ):ℝ) := by norm_num
+    rw [Real.rpow_neg hLpos.le, h2, Real.rpow_natCast, one_div]
+  -- the sandwich at the scheduled parameters
+  obtain ⟨hlow, hhigh⟩ := hn j hj Acut N δ hδpos Bs hBsm hAle hNle hbud
+  have hKind : ∀ a θ, |indCut Acut Bs a θ| ≤ 1 + Selberg.farTail N δ :=
+    fun a θ => (abs_indCut_le Acut Bs a θ).trans (by linarith)
+  have hminSc : stationaryMeanR (minCut N Acut δ Bs) ≤ stationaryMeanR (indCut Acut Bs) :=
+    stationaryMeanR_mono (measurable_minCut N Acut δ Bs) (measurable_indCut Acut hBsm)
+      (abs_minCut_le N Acut δ Bs) hKind (fun a θ => minCut_le_indCut hδpos Bs a θ)
+  have hScmaj : stationaryMeanR (indCut Acut Bs) ≤ stationaryMeanR (majCut N Acut δ Bs) :=
+    stationaryMeanR_mono (measurable_indCut Acut hBsm) (measurable_majCut N Acut δ Bs)
+      hKind (abs_majCut_le N Acut δ Bs) (fun a θ => indCut_le_majCut hδpos Bs a θ)
+  have hgap := stationaryMeanR_gap_le (m := m) N Acut hδpos Bs hBsi
+  have hlebtail := (abs_integral_indCut_sub_indFull_le Acut hBsm n j).trans (htail j Acut)
+  have hstattail := stationaryMeanR_digitCut_gap Acut Bs
+  have hrpowneg : L ^ (-(2:ℝ)) = 1 / L ^ 2 := by
+    have h2 : (2:ℝ) = ((2:ℕ):ℝ) := by norm_num
+    rw [Real.rpow_neg hLpos.le, h2, Real.rpow_natCast, one_div]
+  -- the three error terms, each priced against `L^{-2}`
+  have hδval : δ = 1 / L ^ 2 := by rw [hδdef, schedDelta]
+  have hmnn : (0:ℝ) ≤ (m:ℝ) := Nat.cast_nonneg m
+  have hu : (0:ℝ) < 1 / L ^ 2 := by positivity
+  have hΓle : (4 * (m:ℝ) + 2) * (2 * δ) + 2 * Selberg.farTail N δ
+      ≤ (8 * (m:ℝ) + 5) * (1 / L ^ 2) := by
+    have hfaru : Selberg.farTail N δ ≤ (1 / L ^ 2) / 4 := by
+      have he : (1:ℝ) / (4 * L ^ 2) = (1 / L ^ 2) / 4 := by ring
+      linarith [hfar]
+    have hstep : (4 * (m:ℝ) + 2) * (2 * δ) = (8 * (m:ℝ) + 4) * (1 / L ^ 2) := by
+      rw [hδval]; ring
+    linarith [hstep, hfaru, hu]
+  -- the two digit tails, priced against `L^{-2}`
+  have hA1pos : (0:ℝ) < (Acut:ℝ) + 1 := by positivity
+  have hAcut1 : L ^ 2 ≤ (Acut:ℝ) + 1 := by linarith
+  have hlebu : C₂ / ((Acut:ℝ) + 1) ≤ C₂ * (1 / L ^ 2) := by
+    rw [div_le_iff₀ hA1pos]
+    have hrw : C₂ * (1 / L ^ 2) * ((Acut:ℝ) + 1) = C₂ * (((Acut:ℝ) + 1) / L ^ 2) := by ring
+    rw [hrw]
+    have h1 : (1:ℝ) ≤ ((Acut:ℝ) + 1) / L ^ 2 := by rw [le_div_iff₀ hL2pos]; linarith
+    have h2 := mul_le_mul_of_nonneg_left h1 hC₂.le
+    rw [mul_one] at h2
+    exact h2
+  have hlogu : Real.log (1 + 1 / ((Acut:ℝ) + 1)) / Real.log 2 ≤ 2 * (1 / L ^ 2) := by
+    have hx : (0:ℝ) < 1 / ((Acut:ℝ) + 1) := by positivity
+    have hxu : 1 / ((Acut:ℝ) + 1) ≤ 1 / L ^ 2 := by
+      rw [div_le_div_iff₀ hA1pos hL2pos]; linarith
+    have hnum : Real.log (1 + 1 / ((Acut:ℝ) + 1)) ≤ 1 / L ^ 2 :=
+      le_trans (GaussKuzmin.log_one_add_le hx) hxu
+    have hlog2 : (1:ℝ) / 2 < Real.log 2 := by have := Real.log_two_gt_d9; linarith
+    rw [div_le_iff₀ (by linarith : (0:ℝ) < Real.log 2)]
+    have h3 : (0:ℝ) ≤ (1 / L ^ 2) * (2 * Real.log 2 - 1) :=
+      mul_nonneg hu.le (by linarith)
+    linarith [hnum, h3]
+  -- the sandwich, read as a two-sided bound on the digit-cut average
+  have hIcSc : |(∫ α in Ioo (0:ℝ) 1, indCut Acut Bs (digit α j) (theta α n j))
+      - stationaryMeanR (indCut Acut Bs)|
+      ≤ ((4 * (m:ℝ) + 2) * (2 * δ) + 2 * Selberg.farTail N δ) + C * L ^ (-(2:ℝ)) := by
+    rw [abs_le]
+    exact ⟨by linarith, by linarith⟩
+  have htri : |(∫ α in Ioo (0:ℝ) 1, indFull Bs (digit α j) (theta α n j))
+      - stationaryMeanR (indFull Bs)|
+      ≤ C₂ / ((Acut:ℝ) + 1)
+        + (((4 * (m:ℝ) + 2) * (2 * δ) + 2 * Selberg.farTail N δ) + C * L ^ (-(2:ℝ)))
+        + Real.log (1 + 1 / ((Acut:ℝ) + 1)) / Real.log 2 := by
+    have h1 : |(∫ α in Ioo (0:ℝ) 1, indFull Bs (digit α j) (theta α n j))
+        - (∫ α in Ioo (0:ℝ) 1, indCut Acut Bs (digit α j) (theta α n j))|
+        ≤ C₂ / ((Acut:ℝ) + 1) := by rw [abs_sub_comm]; exact hlebtail
+    have hstep := abs_sub_le
+      (∫ α in Ioo (0:ℝ) 1, indFull Bs (digit α j) (theta α n j))
+      (∫ α in Ioo (0:ℝ) 1, indCut Acut Bs (digit α j) (theta α n j))
+      (stationaryMeanR (indFull Bs))
+    have hstep2 := abs_sub_le
+      (∫ α in Ioo (0:ℝ) 1, indCut Acut Bs (digit α j) (theta α n j))
+      (stationaryMeanR (indCut Acut Bs))
+      (stationaryMeanR (indFull Bs))
+    linarith [h1, hIcSc, hstattail, hstep, hstep2]
+  have hCterm : C * L ^ (-(2:ℝ)) = C * (1 / L ^ 2) := by rw [hrpowneg]
+  have htot : |(∫ α in Ioo (0:ℝ) 1, indFull Bs (digit α j) (theta α n j))
+      - stationaryMeanR (indFull Bs)|
+      ≤ (8 * (m:ℝ) + 7 + C + C₂) * (1 / L ^ 2) := by
+    have hexp : (8 * (m:ℝ) + 7 + C + C₂) * (1 / L ^ 2)
+        = (8 * (m:ℝ) + 5) * (1 / L ^ 2) + C * (1 / L ^ 2) + C₂ * (1 / L ^ 2)
+          + 2 * (1 / L ^ 2) := by ring
+    rw [hexp]
+    linarith [htri, hΓle, hlebu, hlogu, hCterm]
+  have habs : |L * (∫ α in Ioo (0:ℝ) 1, indFull Bs (digit α j) (theta α n j))
+      - L * stationaryMeanR (indFull Bs)|
+      = L * |(∫ α in Ioo (0:ℝ) 1, indFull Bs (digit α j) (theta α n j))
+          - stationaryMeanR (indFull Bs)| := by
+    rw [← mul_sub, abs_mul, abs_of_pos hLpos]
+  rw [habs]
+  have hstep := mul_le_mul_of_nonneg_left htot hLpos.le
+  have hfin : L * ((8 * (m:ℝ) + 7 + C + C₂) * (1 / L ^ 2))
+      = (8 * (m:ℝ) + 7 + C + C₂) / L := by field_simp
+  rw [hfin] at hstep
+  refine hstep.trans ?_
+  rw [div_le_iff₀ hLpos]
+  rw [div_le_iff₀ hε] at hbigε
+  linarith
+
+/-! ### Part B: the stationary normalisation at the truncation window -/
+
+/-- `Λ` is reflection invariant: its density `1/(2π²x²)` is even and Lebesgue
+measure is `neg`-invariant. -/
+theorem levyIntensity_neg {S : Set ℝ} (hS : MeasurableSet S) :
+    levyIntensity ((fun x : ℝ => -x) ⁻¹' S) = levyIntensity S := by
+  have heven : ∀ x : ℝ, levyIntensityDensity (-x) = levyIntensityDensity x := by
+    intro x; unfold levyIntensityDensity; ring_nf
+  unfold levyIntensity
+  rw [withDensity_apply _ (hS.preimage measurable_neg), withDensity_apply _ hS,
+    ← lintegral_indicator (hS.preimage measurable_neg), ← lintegral_indicator hS]
+  rw [← lintegral_neg_eq_self (μ := (volume : Measure ℝ))]
+  congr 1
+  funext x
+  by_cases hx : x ∈ S
+  · rw [Set.indicator_of_mem (show -x ∈ (fun y : ℝ => -y) ⁻¹' S by simpa using hx),
+      Set.indicator_of_mem hx, heven]
+  · rw [Set.indicator_of_notMem (show -x ∉ (fun y : ℝ => -y) ⁻¹' S by simpa using hx),
+      Set.indicator_of_notMem hx]
+
+/-- **The truncation window carries exactly twice the mass of its positive
+half.**  `Λ{ε < |x| ≤ R} = 2·Λ((ε,R])`. -/
+theorem levyIntensity_truncWindow {ε R : ℝ} (hε : 0 < ε) :
+    (levyIntensity {x : ℝ | ε < |x| ∧ |x| ≤ R}).toReal
+      = 2 * (levyIntensity (Ioc ε R)).toReal := by
+  have hneg : Ico (-R) (-ε) = (fun x : ℝ => -x) ⁻¹' (Ioc ε R) := by
+    ext x
+    simp only [Set.mem_Ico, Set.mem_preimage, Set.mem_Ioc]
+    constructor
+    · rintro ⟨h1, h2⟩; exact ⟨by linarith, by linarith⟩
+    · rintro ⟨h1, h2⟩; exact ⟨by linarith, by linarith⟩
+  have hsplit : {x : ℝ | ε < |x| ∧ |x| ≤ R} = Ioc ε R ∪ Ico (-R) (-ε) := by
+    ext x
+    simp only [Set.mem_setOf_eq, Set.mem_union, Set.mem_Ioc, Set.mem_Ico]
+    rcases le_or_gt 0 x with hx | hx
+    · rw [abs_of_nonneg hx]
+      constructor
+      · rintro ⟨h1, h2⟩; exact Or.inl ⟨h1, h2⟩
+      · rintro (⟨h1, h2⟩ | ⟨h1, h2⟩)
+        · exact ⟨h1, h2⟩
+        · exact absurd hx (by linarith)
+    · rw [abs_of_neg hx]
+      constructor
+      · rintro ⟨h1, h2⟩; exact Or.inr ⟨by linarith, by linarith⟩
+      · rintro (⟨h1, h2⟩ | ⟨h1, h2⟩)
+        · exact absurd h1 (by linarith)
+        · exact ⟨by linarith, by linarith⟩
+  have hdisj : Disjoint (Ioc ε R) (Ico (-R) (-ε)) := by
+    rw [Set.disjoint_left]
+    rintro x ⟨hx1, -⟩ ⟨-, hx2⟩
+    linarith
+  have hfin : levyIntensity (Ioc ε R) ≠ ⊤ :=
+    ne_top_of_le_ne_top (GaussKuzmin.levyIntensity_Ioi_lt_top hε)
+      (measure_mono (fun x hx => hx.1))
+  have hmeasure : levyIntensity {x : ℝ | ε < |x| ∧ |x| ≤ R}
+      = levyIntensity (Ioc ε R) + levyIntensity (Ioc ε R) := by
+    rw [hsplit, measure_union hdisj measurableSet_Ico, hneg,
+      levyIntensity_neg measurableSet_Ioc]
+  rw [hmeasure, ENNReal.toReal_add hfin hfin]
+  ring
+
+/-! ### The `θ`-sections of the truncation window -/
+
+/-- The `θ`-section of the mark event at the truncation window `(ε, R]`, scale
+`L`, digit `a`. -/
+def truncSection (L ε R : ℝ) (a : ℕ) : Set ℝ :=
+  {θ : ℝ | θ ∈ Ico (0:ℝ) 1 ∧ (a:ℝ) * W θ ∈ Ioc (ε * L) (R * L)}
+
+lemma truncSection_eq (L ε R : ℝ) (a : ℕ) :
+    truncSection L ε R a
+      = Ico (0:ℝ) 1 ∩ (fun θ : ℝ => (a:ℝ) * W θ) ⁻¹' (Ioc (ε * L) (R * L)) := rfl
+
+lemma measurableSet_truncSection (L ε R : ℝ) (a : ℕ) :
+    MeasurableSet (truncSection L ε R a) := by
+  rw [truncSection_eq]
+  exact measurableSet_Ico.inter
+    ((measurable_const.mul measurable_W) measurableSet_Ioc)
+
+/-- **The sections are unions of two intervals, uniformly in the digit.**  `W`
+has two monotone branches on the cell and `(ε L, R L]` is one interval. -/
+lemma isUnionOfIntervals_truncSection (L ε R : ℝ) (a : ℕ) :
+    IntervalClass.IsUnionOfIntervals 2 (truncSection L ε R a) := by
+  have h := IntervalClass.markSection_isUnionOfIntervals
+    (IntervalClass.isUnionOfIntervals_one (ordConnected_Ioc (a := ε * L) (b := R * L)))
+    ((a:ℝ))
+  rw [show 2 * 1 = 2 from rfl] at h
+  exact h
+
+/-- `W` sees only the fractional part.  (`Kwon1002.W_fract` of
+`Kwon1002/Prop64.lean` is the same fact, but §6 is not in this module's import
+closure, so it is reproved here rather than imported.) -/
+lemma W_of_fract (θ : ℝ) : W (Int.fract θ) = W θ := by
+  unfold W; rw [Int.fract_fract]
+
+/-- Membership in the periodised section, unwound. -/
+lemma mem_perSet_truncSection (L ε R : ℝ) (a : ℕ) (θ : ℝ) :
+    θ ∈ Selberg.perSet (truncSection L ε R a)
+      ↔ (ε * L < (a:ℝ) * W θ ∧ (a:ℝ) * W θ ≤ R * L) := by
+  unfold Selberg.perSet truncSection
+  simp only [Set.mem_preimage, Set.mem_setOf_eq, Set.mem_Ico, Set.mem_Ioc, W_of_fract]
+  exact ⟨fun h => h.2, fun h => ⟨⟨Int.fract_nonneg θ, Int.fract_lt_one θ⟩, h⟩⟩
+
+/-- **The section indicator is a difference of two mark-tail indicators.** -/
+lemma indFull_truncSection {L ε R : ℝ} (hεR : ε * L ≤ R * L) (a : ℕ) (θ : ℝ) :
+    indFull (truncSection L ε R) a θ
+      = (if ε * L < (a:ℝ) * W θ then (1:ℝ) else 0)
+        - (if R * L < (a:ℝ) * W θ then (1:ℝ) else 0) := by
+  classical
+  have hmem := mem_perSet_truncSection L ε R a θ
+  unfold indFull Selberg.perInd
+  rw [Set.indicator_apply]
+  by_cases h : θ ∈ Selberg.perSet (truncSection L ε R a)
+  · obtain ⟨h1, h2⟩ := hmem.mp h
+    rw [if_pos h, if_pos h1, if_neg (not_lt.mpr h2)]
+    ring
+  · rw [if_neg h]
+    have hnot := (not_iff_not.mpr hmem).mp h
+    rw [not_and_or, not_lt, not_le] at hnot
+    rcases hnot with h1 | h2
+    · rw [if_neg (not_lt.mpr h1), if_neg (not_lt.mpr (le_trans h1 hεR))]
+      ring
+    · rw [if_pos (lt_of_le_of_lt hεR h2), if_pos h2]
+      ring
+
+/-- `stationaryMeanR` is additive on bounded measurable symbols. -/
+lemma stationaryMeanR_sub {f g : ℕ → ℝ → ℝ} {K : ℝ}
+    (hf : ∀ a, Measurable (f a)) (hg : ∀ a, Measurable (g a))
+    (hfb : ∀ a θ, |f a θ| ≤ K) (hgb : ∀ a θ, |g a θ| ≤ K) :
+    stationaryMeanR (fun a θ => f a θ - g a θ) = stationaryMeanR f - stationaryMeanR g := by
+  have hinner : ∀ x : ℝ, (∫ θ in Ioo (0:ℝ) 1, (f (digit x 0) θ - g (digit x 0) θ))
+      = innerMean f (digit x 0) - innerMean g (digit x 0) := by
+    intro x
+    exact integral_sub (integrableOn_cell (hf _) (hfb _)) (integrableOn_cell (hg _) (hgb _))
+  show (∫ x, (∫ θ in Ioo (0:ℝ) 1, (f (digit x 0) θ - g (digit x 0) θ))
+      ∂Erdos1002.gaussMeasure) = _
+  rw [integral_congr_ae (Filter.Eventually.of_forall hinner), stationaryMeanR_eq,
+    stationaryMeanR_eq]
+  exact integral_sub (integrable_innerMean_comp f (abs_innerMean_le_of_bound hfb))
+    (integrable_innerMean_comp g (abs_innerMean_le_of_bound hgb))
+
+lemma measurable_markTailSymbol (M : ℝ) (a : ℕ) :
+    Measurable (fun θ : ℝ => if M < (a:ℝ) * W θ then (1:ℝ) else 0) :=
+  measurable_const.ite (measurableSet_lt measurable_const (measurable_const.mul measurable_W))
+    measurable_const
+
+lemma abs_markTailSymbol_le (M : ℝ) (a : ℕ) (θ : ℝ) :
+    |(if M < (a:ℝ) * W θ then (1:ℝ) else 0)| ≤ 1 := by
+  split_ifs <;> simp
+
+/-- **The stationary side of display (35) at the truncation window.**  The
+stationary mean of the section indicator is the mark-tail band mass. -/
+theorem stationaryMeanR_truncSection {L ε R : ℝ} (hεR : ε * L ≤ R * L) :
+    stationaryMeanR (indFull (truncSection L ε R))
+      = GaussKuzmin.markTailMean (ε * L) - GaussKuzmin.markTailMean (R * L) := by
+  have hfun : indFull (truncSection L ε R)
+      = fun (a : ℕ) (θ : ℝ) => (if ε * L < (a:ℝ) * W θ then (1:ℝ) else 0)
+        - (if R * L < (a:ℝ) * W θ then (1:ℝ) else 0) := by
+    funext a θ; exact indFull_truncSection hεR a θ
+  rw [hfun, stationaryMeanR_sub (K := 1) (measurable_markTailSymbol (ε * L))
+    (measurable_markTailSymbol (R * L)) (abs_markTailSymbol_le (ε * L))
+    (abs_markTailSymbol_le (R * L)), markTail_stationaryMeanR, markTail_stationaryMeanR]
+
+/-! ### The level-`j` event *is* the section indicator -/
+
+lemma measurableSet_truncWindow (ε R : ℝ) : MeasurableSet {x : ℝ | ε < |x| ∧ |x| ≤ R} :=
+  (measurableSet_lt measurable_const measurable_abs).inter
+    (measurableSet_le measurable_abs measurable_const)
+
+/-- **The `α`-average of the section indicator is the level-`j` event mass.**
+The sign `(-1)^j` cancels because the truncation window is symmetric and the
+mark is nonnegative, so the identity holds at every parity. -/
+theorem oneLevelEvent_truncWindow {ε R : ℝ} {n j : ℕ} (hL : 0 < Lnorm n) :
+    unifIoo.real (oneLevelEvent n {x : ℝ | ε < |x| ∧ |x| ≤ R} j)
+      = ∫ α in Ioo (0:ℝ) 1,
+          indFull (truncSection (Lnorm n) ε R) (digit α j) (theta α n j) := by
+  classical
+  set B : Set ℝ := {x : ℝ | ε < |x| ∧ |x| ≤ R} with hBdef
+  have hE : MeasurableSet (oneLevelEvent n B j) :=
+    (measurable_signedMark n j) (measurableSet_truncWindow ε R)
+  have hiff : ∀ α : ℝ,
+      theta α n j ∈ Selberg.perSet (truncSection (Lnorm n) ε R (digit α j))
+        ↔ α ∈ oneLevelEvent n B j := by
+    intro α
+    rw [mem_perSet_truncSection]
+    have hmarknn : (0:ℝ) ≤ mark α n j :=
+      mul_nonneg (Nat.cast_nonneg _) (W_nonneg _)
+    have habs : |signedMark α n j| = mark α n j / Lnorm n := by
+      rw [signedMark, abs_div, abs_mul, abs_pow, abs_neg, abs_one, one_pow, one_mul,
+        abs_of_nonneg hL.le, abs_of_nonneg hmarknn]
+    have hmk : (digit α j : ℝ) * W (theta α n j) = mark α n j := rfl
+    rw [hmk]
+    show _ ↔ signedMark α n j ∈ B
+    rw [hBdef]
+    simp only [Set.mem_setOf_eq, habs]
+    rw [lt_div_iff₀ hL, div_le_iff₀ hL]
+  have hind : ∀ α : ℝ, indFull (truncSection (Lnorm n) ε R) (digit α j) (theta α n j)
+      = Set.indicator (oneLevelEvent n B j) (fun _ => (1:ℝ)) α := by
+    intro α
+    unfold indFull Selberg.perInd
+    by_cases hc : theta α n j ∈ Selberg.perSet (truncSection (Lnorm n) ε R (digit α j))
+    · rw [Set.indicator_of_mem hc, Set.indicator_of_mem ((hiff α).mp hc)]
+    · rw [Set.indicator_of_notMem hc,
+        Set.indicator_of_notMem (fun h => hc ((hiff α).mpr h))]
+  rw [integral_congr_ae (Filter.Eventually.of_forall hind),
+    setIntegral_indicator hE, setIntegral_const, smul_eq_mul, mul_one]
+  show (unifIoo (oneLevelEvent n B j)).toReal = _
+  rw [unifIoo, Measure.restrict_apply hE]
+  congr 2
+  exact Set.inter_comm _ _
+
+/-! ### Display (35) at the truncation window, unconditionally -/
+
+/-- **`TupleInputs.oneLevel_gaussKuzmin_intensity` at the truncation window,
+proved.**
+
+For `B = {x : ε < |x| ≤ R}` — the shape `IntervalClass.isUnionOfIntervals_truncation`
+identifies as the only shape the §5 chain gives `B` — display (35) holds
+unconditionally, with `Λe = Λo = Λ((ε,R])` and `Λe + Λo = Λ(B)`
+(`levyIntensity_truncWindow`).
+
+The three ingredients are Part D's sandwich read through `oneLevel_transfer`
+(item (i), the parameter choice), the Gauss-Kuzmin band normalisation
+`GaussKuzmin.tendsto_scaled_markBandMean` (Part E), and the identification of
+the level-`j` event with the section indicator (`oneLevelEvent_truncWindow`).
+The sign `(-1)^j` does not enter: the window is symmetric and the mark is
+nonnegative, so the section is the same at both parities, and the two halves of
+`Λ` are equal by `levyIntensity_neg`. -/
+theorem oneLevel_gaussKuzmin_intensity_truncation {ε R : ℝ} (hε : 0 < ε) (hεR : ε ≤ R) :
+    ∃ Λe Λo : ℝ, Λe + Λo = (levyIntensity {x : ℝ | ε < |x| ∧ |x| ≤ R}).toReal ∧
+      ∀ ε' > 0, ∀ᶠ n : ℕ in atTop, ∀ j ∈ bulkJ n,
+        |Lnorm n * unifIoo.real (oneLevelEvent n {x : ℝ | ε < |x| ∧ |x| ≤ R} j)
+            - 2 * lyapunov * (if Even j then Λe else Λo)| ≤ ε' := by
+  refine ⟨(levyIntensity (Ioc ε R)).toReal, (levyIntensity (Ioc ε R)).toReal, ?_, ?_⟩
+  · rw [levyIntensity_truncWindow hε]; ring
+  intro ε' hε'
+  set Λ : ℝ := (levyIntensity (Ioc ε R)).toReal with hΛdef
+  have hband : Tendsto (fun n : ℕ => Lnorm n *
+      (GaussKuzmin.markTailMean (ε * Lnorm n) - GaussKuzmin.markTailMean (R * Lnorm n)))
+      atTop (𝓝 (2 * lyapunov * Λ)) :=
+    (GaussKuzmin.tendsto_scaled_markBandMean hε hεR).comp TupleMeasure.tendsto_Lnorm_atTop
+  have hb0 : Tendsto (fun n : ℕ => |Lnorm n *
+      (GaussKuzmin.markTailMean (ε * Lnorm n) - GaussKuzmin.markTailMean (R * Lnorm n))
+        - 2 * lyapunov * Λ|) atTop (𝓝 0) := by
+    have h := (hband.sub (tendsto_const_nhds (x := 2 * lyapunov * Λ) (f := atTop))).abs
+    simpa using h
+  have hbd : ∀ᶠ n : ℕ in atTop, |Lnorm n *
+      (GaussKuzmin.markTailMean (ε * Lnorm n) - GaussKuzmin.markTailMean (R * Lnorm n))
+        - 2 * lyapunov * Λ| ≤ ε' / 2 :=
+    hb0.eventually_le_const (by linarith)
+  filter_upwards [oneLevel_transfer 2 (half_pos hε'), hbd,
+    TupleMeasure.tendsto_Lnorm_atTop.eventually_gt_atTop 0] with n htr hbdn hL j hj
+  have hεRL : ε * Lnorm n ≤ R * Lnorm n := mul_le_mul_of_nonneg_right hεR hL.le
+  have hev := htr j hj (truncSection (Lnorm n) ε R)
+    (measurableSet_truncSection (Lnorm n) ε R) (isUnionOfIntervals_truncSection (Lnorm n) ε R)
+  rw [stationaryMeanR_truncSection hεRL] at hev
+  rw [oneLevelEvent_truncWindow hL, ite_self]
+  refine le_trans (abs_sub_le _ (Lnorm n *
+      (GaussKuzmin.markTailMean (ε * Lnorm n) - GaussKuzmin.markTailMean (R * Lnorm n))) _) ?_
+  linarith [hev, hbdn]
+
+/-- **Token-identity check.**  The statement proved above is the canonical
+residual `Kwon1002.TupleInputs.oneLevel_gaussKuzmin_intensity`, read at
+`B = {x : ε < |x| ≤ R}`; this `example` reproduces that residual token for
+token, so the instance above is an instance of *it* and not of a variant. -/
+example : ∀ (B : Set ℝ), MeasurableSet B →
+    (∃ δ > 0, ∀ x ∈ B, δ ≤ |x|) → (∃ R : ℝ, ∀ x ∈ B, |x| ≤ R) →
+    ∃ Λe Λo : ℝ, Λe + Λo = (levyIntensity B).toReal ∧
+      ∀ ε > 0, ∀ᶠ n : ℕ in atTop, ∀ j ∈ bulkJ n,
+        |Lnorm n * unifIoo.real (oneLevelEvent n B j)
+            - 2 * lyapunov * (if Even j then Λe else Λo)| ≤ ε :=
+  TupleInputs.oneLevel_gaussKuzmin_intensity
+
 end
 
 end Section5Join
