@@ -168,6 +168,64 @@ theorem sum_levelSymbol_step_tendsto (c : ℝ) {M : ℕ} (w : Fin M → ℂ) (E 
   exact (Complex.continuous_ofReal.tendsto _).comp
     (TupleTransfer.oneLevel_intensity_limit_intervals c (E i) (hE i) (hE0 i) (hEb i) (hEi i))
 
+
+/-! ## The window mass, uniformly in `n`
+
+The second half of `hp1` — the approximation and the tail — is priced against the
+total mass the levels put on the truncation window.  That mass is bounded
+uniformly in `n`, with a constant that decays in the truncation level, and the
+bound is the mass analogue of `LayerAssembly.sum_norm_mu_le`: only `O(L)` levels
+can contribute (the Lamé cap) and each contributes `O(1/L)` (display (15)). -/
+
+/-- **The total large-jump mass is `O(1)` uniformly in `n`, with the constant of
+`FactorialRoute.exists_tupleBigEvent_bound`.**  Since that constant is
+`C₀/(8ε)`, the same statement read at truncation level `R` in place of `ε` gives
+`∑_{j ≤ n} P(|X_{n,j}| > R, j ∈ J_n) ≤ C₀/(2R)`, which is the tail estimate
+`hp1` needs; and read at `ε` it is the window mass the approximation error is
+multiplied by. -/
+theorem sum_bigEvent_mass_le (c ε : ℝ) {C : ℝ} (_hC : 0 < C) {n : ℕ} (hn : 1 ≤ n)
+    (hL : 3 ≤ Lnorm n)
+    (hbnd : ∀ S : Finset ℕ,
+      unifIoo.real (FactorialRoute.tupleBigEvent c ε n S) ≤ (C / Lnorm n) ^ S.card) :
+    (∑ j ∈ Finset.range (n + 1), unifIoo.real (FactorialRoute.bigEvent c ε n j))
+      ≤ 4 * C := by
+  classical
+  have hL0 : (0 : ℝ) < Lnorm n := by linarith
+  have hsingle : ∀ j : ℕ, FactorialRoute.tupleBigEvent c ε n ({j} : Finset ℕ)
+      = FactorialRoute.bigEvent c ε n j := by
+    intro j
+    simp [FactorialRoute.tupleBigEvent]
+  set M : ℕ := min (n + 1) (FactorialRoute.lameCap n) with hM
+  have hcap : (∑ j ∈ Finset.range (n + 1), unifIoo.real (FactorialRoute.bigEvent c ε n j))
+      = ∑ j ∈ Finset.range M, unifIoo.real (FactorialRoute.bigEvent c ε n j) := by
+    refine (Finset.sum_subset ?_ ?_).symm
+    · intro j hj
+      exact Finset.mem_range.mpr
+        (lt_of_lt_of_le (Finset.mem_range.mp hj) (min_le_left _ _))
+    · intro j hjmem hjnot
+      have hjn : j < n + 1 := Finset.mem_range.mp hjmem
+      have hjc : FactorialRoute.lameCap n ≤ j := by
+        simp only [hM, Finset.mem_range, not_lt] at hjnot
+        omega
+      rw [Measure.real,
+        FactorialRoute.bigEvent_null_of_large c ε n j hn (FactorialRoute.lameCap_lt hjc),
+        ENNReal.toReal_zero]
+  rw [hcap]
+  have hterm : ∀ j ∈ Finset.range M,
+      unifIoo.real (FactorialRoute.bigEvent c ε n j) ≤ C / Lnorm n := by
+    intro j _
+    have h := hbnd ({j} : Finset ℕ)
+    rw [hsingle j, Finset.card_singleton, pow_one] at h
+    exact h
+  refine le_trans (Finset.sum_le_sum hterm) ?_
+  rw [Finset.sum_const, Finset.card_range, nsmul_eq_mul]
+  have hMle : (M : ℝ) ≤ 4 * Lnorm n :=
+    le_trans (by exact_mod_cast Nat.cast_le.mpr (min_le_right (n + 1) (FactorialRoute.lameCap n)))
+      (FactorialRoute.lameCap_le hL)
+  have hCnn : (0:ℝ) ≤ C / Lnorm n := by positivity
+  refine le_trans (mul_le_mul_of_nonneg_right hMle hCnn) (le_of_eq ?_)
+  field_simp
+
 end
 
 end SymbolIntensity
