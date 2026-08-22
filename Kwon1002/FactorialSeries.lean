@@ -64,19 +64,36 @@ functions of `bulkSum c α n − b n` — so the set-quantified machinery is int
 to routes the assembly does not take.  Closing (35b) would close a true
 statement that Corollary 5.3 does not use.
 
-**(B) The layer limit is strictly stronger than the indicator tuple limit, not
-merely its "bounded complex symbol" version.**  `FactorialRoute`'s header says
-the passage from indicators to the symbol `x ↦ (e^{itx}−1)1{|x|>ε}` needs "the
-limit uniformly over a simple-function approximation".  That understates the
-gap.  A simple-function approximation `φ ≈ ∑_m c_m 1_{B_m}` turns
-`∏_{j∈S} φ(X_j)` into a sum over multi-indices of tuple events carrying a
-*different* set at each level, `1_{B_{m(j_1)}}(X_{j_1})···1_{B_{m(j_k)}}(X_{j_k})`.
+**(B) The layer limit needs a per-level (multi-set) statement, which
+`LevyExponent.tuple_measure_convergence` does not supply.**  `FactorialRoute`'s
+header says the passage from indicators to the symbol
+`x ↦ (e^{itx}−1)1{|x|>ε}` needs "the limit uniformly over a simple-function
+approximation".  That understates the gap.  A simple-function approximation
+`φ ≈ ∑_m c_m 1_{B_m}` turns `∏_{j∈S} φ(X_j)` into a sum over multi-indices of
+tuple events carrying a *different* set at each level,
+`1_{B_{m(j_1)}}(X_{j_1})···1_{B_{m(j_k)}}(X_{j_k})`.
 `LevyExponent.tuple_measure_convergence` is
 `Erdos1002.tupleEvent (bulkMarkEvent c n B) f = ⋂_i bulkMarkEvent c n B (f i)` —
 one and the same `B` at every level.  It therefore does not supply the diagonal
-of the needed family, let alone the family; the input the layer limit requires
-is the *multi-set* tuple limit, which is a statement the tree does not contain
-in any form and which is not obtained by widening a symbol class.
+of the needed family, let alone the family.
+
+**(B′) Correction to (B): the tree *does* contain the per-level statement, at
+Proposition 4.1.**  The sentence "a statement the tree does not contain in any
+form" was wrong, and `Kwon1002/MultiLevel.lean` corrects it.
+`Kwon1002.prop_4_1_marked_factorization` quantifies over
+`F : ℕ → ℕ → ℝ → ℂ` with `∀ ℓ, ℓ < r → IsInPD D (Lnorm n) (F ℓ)`: the symbol
+family is indexed by the level slot, so a different symbol at each level is
+already what display (27) says, and the diagonal `F ℓ = G` is the special case.
+`MultiLevel.multiLevel_transfer` spends this: for every `r`, every interval
+count `m` and every rate `A`, uniformly over good tuples of `J_n` and over
+**per-level** section families,
+
+  `|∫₀¹ ∏_{ℓ<r} 1_{B_ℓ}(a_{j_ℓ+1}, θ_{j_ℓ}) − ∏_{ℓ<r} stationaryMeanR 1_{B_ℓ}|
+      ≤ C·L^{−A}`,
+
+axiom-clean.  What (B) got right is narrower and still stands: the multi-set
+*limit* is not in the tree, and it is not obtained by widening a symbol class.
+`multiLevel_transfer` is its *factorization* half only.
 
 **(C) `TupleMeasure.tuple_measure_le` cannot dominate a series as stated.**  It
 reads `∀ k, ∃ C, ∀ᶠ n, …`, so both the constant and the eventual-`n` threshold
@@ -88,10 +105,27 @@ and it is the version the assembly consumes.
 
 ## What remains on this route
 
-The layer limit `hlim`, and nothing else.  By (B) its input is the multi-set
-tuple limit of §4, so the route is gated on §4 for pairs-and-higher at
-per-level distinct sets — not on any residual of `TupleInputs`,
-`Section5Intervals` or `Section5Join`.
+The layer limit `hlim`, and nothing else.  Its input is the multi-set tuple
+limit of §4, whose *factorization* half is now proved
+(`MultiLevel.multiLevel_transfer`, see (B′)).  Four named things separate that
+from the layer limit itself, and none of them is closed:
+
+1. the per-level intensity for the **complex** symbol
+   `x ↦ (e^{itx} − 1)1{|x| > ε}` rather than an indicator — a simple-function
+   approximation inside a truncation window `(ε, R]`, plus the `R → ∞` tail;
+2. `Kwon1002.nonGood_tuple_count` (`Kwon1002/Section4.lean`), still sorried:
+   the layer runs over *all* `k`-subsets of the capped level range, and
+   `multiLevel_transfer` speaks only about **good** tuples;
+3. the `k`-level index-set bridge between the random bulk
+   `Marks.bulkIndices c α n` (which `bigEvent` uses) and the deterministic
+   `bulkJ n` (which §4 uses).  `Kwon1002.bulk_window_bridge_oneLevel` is proved
+   at one level; its `k`-level analogue is not;
+4. the passage from `∑_{|S| = k} ∏_{j ∈ S} (per-level mean)` to `Λ̂^k/k!` —
+   an elementary-symmetric versus power-sum comparison, plus the even/odd
+   split the sign `(−1)^j` forces.
+
+None of the four is a residual of `TupleInputs`, `Section5Intervals` or
+`Section5Join`.
 -/
 
 open Filter MeasureTheory Set
