@@ -819,11 +819,18 @@ and the second at the shape the tree actually names.
   §5 chain gives `B`.  The section family is
   `truncSection`, a union of two intervals uniformly in the digit; the
   stationary side is the band normalisation of Part E; and the level-`j` event
-  is the section indicator (`oneLevelEvent_truncWindow`).  What is *not* closed
-  here is the passage from this window to a general finite union of intervals,
-  which needs a decomposition of an arbitrary `IsUnionOfIntervals` family into
-  disjoint bands; that is recorded on
-  `TupleInputs.oneLevel_gaussKuzmin_intensity_intervals`. -/
+  is the section indicator (`oneLevelEvent_truncWindow`).
+
+  **Record corrected.**  This paragraph used to say that the passage from this
+  window to a general finite union of intervals is *not* closed here and
+  "needs a decomposition of an arbitrary `IsUnionOfIntervals` family into
+  disjoint bands".  Both halves are now wrong.
+  `Kwon1002/Section5Intervals.lean` proves residual (35a) — the canonical
+  statement `TupleInputs.oneLevel_gaussKuzmin_intensity_intervals`, token for
+  token — outright and axiom-clean, and it does so with **no** disjointification:
+  the stationary functional is modular pointwise, so the family is peeled one
+  set at a time by inclusion-exclusion, and each order-convex piece is bracketed
+  between two half-open bands rather than cut at its endpoints. -/
 
 
 /-- Bounded measurable functions are integrable on the fundamental cell. -/

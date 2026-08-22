@@ -466,13 +466,24 @@ half-lines (`tendsto_scaled_markTailMean`) and at a single band
 (`tendsto_scaled_markBandMean`), and
 `Section5Join.oneLevel_gaussKuzmin_intensity_truncation` assembles those with
 item 1 into a **complete, unconditional proof** of the conclusion below at
-`B = {x : ε < |x| ∧ |x| ≤ R}`.  Going from one band to an arbitrary
-`IntervalClass.IsUnionOfIntervals` family needs that family decomposed into
-*disjoint* bands with endpoints — the `Finset (Set ℝ)` of order-convex sets in
-`IsUnionOfIntervals` may overlap and carries no endpoints — together with the
-(true, unstated) fact that the level sets `{(x,θ) : a₁(x)·W(θ) = c}` are null,
-so that the interval type at each endpoint does not matter.  That is the whole
-remaining content of this residual.
+`B = {x : ε < |x| ∧ |x| ≤ R}`.
+
+**This residual is closed; the record above it is stale and is corrected here.**
+`Kwon1002/Section5Intervals.lean` proves the statement below outright and
+axiom-clean, at the same text (an `example` there checks the two types agree in
+both directions).  The declaration here keeps its `sorry` only because
+`Section5Intervals` imports `Section5Join`, which imports this file, so the
+proof cannot be routed back to this name without a cycle.  The record used to
+say that closing it needs an arbitrary `IsUnionOfIntervals` family decomposed
+into *disjoint* bands with endpoints, together with the nullity of the level
+sets `{(x,θ) : a₁(x)·W(θ) = c}`.  Neither is used.  The stationary mark law is
+modular *pointwise* — the identity between the four indicators holds before any
+integral is taken — so the family is peeled one set at a time by
+inclusion-exclusion and the recursion is on the cardinality alone; and each
+order-convex piece is bracketed between two half-open bands whose ends miss its
+infimum and supremum by `η`, priced at `O(η/δ²)` by the explicit
+`Λ((u,∞)) = 1/(2π²u)`, so no endpoint is ever read and the nullity is neither
+used nor needed.
 
 **The constant is not among the residuals any more.**
 `GaussKuzmin.markTailMean_bounds` proves, for every `M > 0`,
@@ -574,14 +585,17 @@ instance services every use the tree makes *and* every use the tree is designed
 to make; what it does not service is the stated generality, which is what
 residuals (35a) and (35b) carry.
 
-What separates that from residual
-(35a) is *not* the bracket parameters (item (i), closed by
-`Section5Join.oneLevel_transfer`) and *not* the normalisation (closed by
-`Kwon1002/GaussKuzmin.lean`): it is the decomposition of an arbitrary
-`IsUnionOfIntervals` family into disjoint bands, which is what turns the
-half-line normalisation `GaussKuzmin.tendsto_scaled_markTailMean` into a
-statement about a general interval union.  That decomposition is residual
-(35a)'s whole remaining content. -/
+**Record corrected.**  This paragraph used to say that what separates the
+truncation instance from residual (35a) is "the decomposition of an arbitrary
+`IsUnionOfIntervals` family into disjoint bands", and that the decomposition is
+"residual (35a)'s whole remaining content".  Residual (35a) is now proved
+(`Kwon1002/Section5Intervals.lean`), and no such decomposition occurs in the
+proof.  What remains between (35a) and the statement below is therefore
+residual (35b) alone — `oneLevel_gaussKuzmin_intensity_to_measurable`, the
+passage from finite unions of intervals to an arbitrary measurable `B`, whose
+obstruction (a uniform-in-`L` absolute-continuity bound on the level-`j` law) is
+unchanged.  In particular **closing (35a) does not close this statement**: it is
+derived from (35a) *and* (35b), and (35b) is still a `sorry`. -/
 theorem oneLevel_gaussKuzmin_intensity (B : Set ℝ) (_hB : MeasurableSet B)
     (_hB0 : ∃ δ > 0, ∀ x ∈ B, δ ≤ |x|) (_hBbd : ∃ R : ℝ, ∀ x ∈ B, |x| ≤ R) :
     ∃ Λe Λo : ℝ, Λe + Λo = (levyIntensity B).toReal ∧

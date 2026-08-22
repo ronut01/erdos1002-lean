@@ -195,11 +195,6 @@ theorem markMean_Ioc {L u v : ℝ} (hL : 0 < L) (huv : u ≤ v) :
     (measurable_markTailSymbol (v * L)) (abs_markTailSymbol_le (u * L))
     (abs_markTailSymbol_le (v * L)), markTail_stationaryMeanR, markTail_stationaryMeanR]
 
-lemma Lnorm_nonneg (n : ℕ) : 0 ≤ Lnorm n := by
-  rcases Nat.eq_zero_or_pos n with h | h
-  · simp [Lnorm, h]
-  · exact Real.log_nonneg (by exact_mod_cast h)
-
 /-- **The normalisation on a band, along `L = log n`.** -/
 theorem tendsto_scaled_markMean_Ioc {u v : ℝ} (hu : 0 < u) (huv : u ≤ v) :
     Tendsto (fun n : ℕ => Lnorm n * markMean (Lnorm n) (Ioc u v)) atTop
