@@ -111,3 +111,5 @@ import Kwon1002.StepQuasi
 import Kwon1002.QuasiIndep
 import Kwon1002.CauchyJoin
 import Kwon1002.BandMass
+import Kwon1002.WindowCovariance
+import Kwon1002.WindowCovJoin
