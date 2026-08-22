@@ -350,10 +350,26 @@ which Lévy continuity and `charFun_largeSum_law` remove.  Writing
 `h_j(α) = exp(i t X_{n,j}) − 1` on `{j ∈ J_n, |X_{n,j}| > ε}` and `0`
 elsewhere, `Finset.prod_add` turns the left side into
 `∑_{S ⊆ {0,…,n}} ∫ ∏_{j∈S} h_j`, whose `|S| = k` layer is `1/k!` times a §4
-tuple sum for the bounded complex symbol `x ↦ (e^{itx}−1)·1{|x|>ε}`; the
-uniform-in-`n` domination is available from the proved
-`TupleMeasure.tuple_measure_le` and `L2Estimate.stoppingTime_le_log`.  What is
-missing is the tuple limit for a complex symbol, Proposition 4.1.
+tuple sum for the bounded complex symbol `x ↦ (e^{itx}−1)·1{|x|>ε}`.
+
+**This route is now built, and one clause of the sentence that used to stand
+here is corrected.**  `Kwon1002/FactorialRoute.lean` proves the expansion
+(`exp_largeSum_powerset_expansion`) and the domination
+(`norm_integral_prod_jumpFactor_le`, `tupleBigEvent_null_of_large`) outright,
+neither consuming a `sorry`.  The old sentence said the uniform-in-`n`
+domination "is available from the proved `TupleMeasure.tuple_measure_le` and
+`L2Estimate.stoppingTime_le_log`".  `tuple_measure_le` alone does not dominate a
+layer — there are `~n^k` tuples in `{0,…,n}` and `(C/L)^k = (C/log n)^k` does not
+beat that.  What carries the domination is that `stoppingTime_le_log` is
+*deterministic*, capping the index set at `2L/log 2 + 2` for **every**
+irrational `α ∈ (0,1)` with no exceptional set, so the `|S| = k` layer is a sum
+over `C(O(L), k)` subsets and the binomial coefficient supplies the `1/k!`.
+What is missing is the **layer limit** for the complex symbol: the tuple limit
+of §4 read at `x ↦ (e^{itx}−1)·1{|x|>ε}` rather than at an indicator.  Its
+indicator form `LevyExponent.tuple_measure_convergence` is itself a bare `sorry`
+(`#print axioms` verified), and passing from indicators to a bounded complex
+symbol needs the limit uniformly along a simple-function approximation, which
+the tree does not state in any form.
 
 **Gate, verified 2026-08-10 (stage D).**  A reconciliation note listed
 `PoissonRoute.largeJump_tendsto_compoundPoisson` among the *proved*
