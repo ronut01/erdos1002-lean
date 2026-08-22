@@ -421,6 +421,40 @@ theorem layerSum_tendsto_of_inputs (c : ℝ) {ε : ℝ} (hε : 0 < ε) (t : ℝ)
   rw [zero_add] at h
   exact Filter.Tendsto.congr (fun n => by ring) h
 
+/-! ## `CorFinal.largeSum_charFun_limit`, reduced to two analytic inputs -/
+
+/-- **The whole of DEBT 1, from the one-level limit and subset quasi-independence
+for the complex symbol.**
+
+The conclusion is the statement of `Kwon1002.CorFinal.largeSum_charFun_limit`
+reproduced token for token (guarded by the anonymous `example` at the foot of
+this file).  The hypotheses are exactly two, both about the symbol
+`x ↦ (e^{itx} − 1)1{|x| > ε}` and both `k`-free in `hp1`'s case:
+
+* `hp1` — the one-level limit `∑_{j ≤ n} ∫₀¹ h_j → Λ̂`;
+* `hqi` — for each `k`, the `k`-subset quasi-independence
+  `∑_{|S| = k} |∫₀¹ ∏_{j∈S} h_j − ∏_{j∈S} ∫₀¹ h_j| → 0`.
+
+Everything else the route needed — the powerset expansion, the domination, the
+Lamé cap, the `k`-uniform tuple bound, the series interchange, the
+elementary-symmetric passage and the two weight-size conditions — is proved. -/
+theorem largeSum_charFun_limit_of_two_inputs (c ε : ℝ) (hε0 : 0 < ε) (hε1 : ε < 1) (t : ℝ)
+    (hp1 : Tendsto (fun n : ℕ => ∑ j ∈ Finset.range (n + 1), mu t c ε n j) atTop
+      (𝓝 (∫ x in {x : ℝ | ε < |x|},
+          (Complex.exp ((t : ℂ) * (x : ℂ) * Complex.I) - 1)
+            * (levyIntensityDensity x : ℂ))))
+    (hqi : ∀ k : ℕ, Tendsto (fun n : ℕ =>
+        ∑ S ∈ Finset.powersetCard k (Finset.range (n + 1)),
+          ‖(∫ α in Ioo (0:ℝ) 1, ∏ j ∈ S, jumpFactor t c ε n j α)
+              - ∏ j ∈ S, mu t c ε n j‖) atTop (𝓝 0)) :
+    Tendsto (fun n : ℕ => ∫ α in Ioo (0 : ℝ) 1,
+        Complex.exp ((t : ℂ) * (Assembly5.largeSum c ε α n : ℂ) * Complex.I)) atTop
+      (𝓝 (Complex.exp (∫ x in {x : ℝ | ε < |x|},
+          (Complex.exp ((t : ℂ) * (x : ℂ) * Complex.I) - 1)
+            * (levyIntensityDensity x : ℂ)))) :=
+  largeSum_charFun_limit_of_layer_limit c ε hε0 hε1 t
+    (fun k => layerSum_tendsto_of_inputs c hε0 t _ k hp1 (hqi k))
+
 /-! ## The two record corrections, checked in Lean
 
 `FactorialSeries` items 2 and 3, and `MultiLevel` items 2 and 3, are proved and
@@ -447,3 +481,16 @@ end
 end LayerAssembly
 
 end Kwon1002
+
+/- **Statement guard.**  The conclusion of
+`Kwon1002.LayerAssembly.largeSum_charFun_limit_of_two_inputs` is the statement of
+`Kwon1002.CorFinal.largeSum_charFun_limit`, token for token.  The `example`
+mentions a sorried declaration, so it is anonymous and nothing proved above
+depends on it. -/
+example : ∀ (c ε : ℝ), 0 < ε → ε < 1 → ∀ t : ℝ,
+    Filter.Tendsto (fun n : ℕ => ∫ α in Set.Ioo (0 : ℝ) 1,
+        Complex.exp ((t : ℂ) * (Kwon1002.Assembly5.largeSum c ε α n : ℂ) * Complex.I)) Filter.atTop
+      (nhds (Complex.exp (∫ x in {x : ℝ | ε < |x|},
+          (Complex.exp ((t : ℂ) * (x : ℂ) * Complex.I) - 1)
+            * (Kwon1002.levyIntensityDensity x : ℂ)))) :=
+  @Kwon1002.CorFinal.largeSum_charFun_limit

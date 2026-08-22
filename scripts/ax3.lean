@@ -1,7 +1,0 @@
-import Kwon1002
-open Kwon1002
-#print axioms Kwon1002.TupleFinal.bulk_window_bridge_tuple
-#print axioms Kwon1002.TupleFinal.goodSet_mark_factorization_intervals
-#print axioms Kwon1002.TupleFinal.det_quasi_independence
-#print axioms Kwon1002.TupleInputs.tuple_measure_convergence
-#print axioms Kwon1002.FiveFinal.deterministic_oneLevel_intensity
