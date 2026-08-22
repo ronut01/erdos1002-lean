@@ -410,6 +410,43 @@ theorem tuple_quasi_independence_intervals (c : ℝ) (B : Set ℝ) (hB : Measura
   rw [sub_self] at hsub
   exact hsub
 
+
+/-! ## Statement guards
+
+The two `example`s below check, inside Lean, that
+`goodSet_mark_factorization_intervals` above is the statement of
+`Kwon1002.TupleFinal.goodSet_mark_factorization_intervals` — residual 2a — token
+for token.  The second mentions a sorried declaration, so it is anonymous and
+nothing proved above depends on it. -/
+
+example : ∀ (B : Set ℝ), MeasurableSet B → (∃ δ > 0, ∀ x ∈ B, δ ≤ |x|) →
+    (∃ R : ℝ, ∀ x ∈ B, |x| ≤ R) → IntervalClass.IsFiniteUnionOfIntervals B →
+    ∀ k : ℕ, ∃ C : ℝ, 0 < C ∧ ∀ᶠ n : ℕ in atTop,
+      ∀ S : Finset ℕ, S.card = k → TupleFinal.SepGoodSet n S →
+      |unifIoo.real (⋂ x ∈ (S : Set ℕ), TupleFinal.detMarkEvent n B x)
+          - ∏ x ∈ S, unifIoo.real (TupleFinal.detMarkEvent n B x)|
+        ≤ C / (Lnorm n) ^ (k + 1) :=
+  goodSet_mark_factorization_intervals
+
+example : ∀ (B : Set ℝ), MeasurableSet B → (∃ δ > 0, ∀ x ∈ B, δ ≤ |x|) →
+    (∃ R : ℝ, ∀ x ∈ B, |x| ≤ R) → IntervalClass.IsFiniteUnionOfIntervals B →
+    ∀ k : ℕ, ∃ C : ℝ, 0 < C ∧ ∀ᶠ n : ℕ in atTop,
+      ∀ S : Finset ℕ, S.card = k → TupleFinal.SepGoodSet n S →
+      |unifIoo.real (⋂ x ∈ (S : Set ℕ), TupleFinal.detMarkEvent n B x)
+          - ∏ x ∈ S, unifIoo.real (TupleFinal.detMarkEvent n B x)|
+        ≤ C / (Lnorm n) ^ (k + 1) :=
+  @TupleFinal.goodSet_mark_factorization_intervals
+
+/-- The interval-class chain above is `LevyExponent.tuple_measure_convergence`
+with one hypothesis added; this `example` checks the shape against the canonical
+declaration.  It mentions a sorry-tainted declaration, so it is anonymous. -/
+example : ∀ (c : ℝ) (B : Set ℝ), MeasurableSet B → (∃ δ > 0, ∀ x ∈ B, δ ≤ |x|) →
+    (∃ R : ℝ, ∀ x ∈ B, |x| ≤ R) → ∀ k : ℕ,
+    Tendsto (fun n : ℕ => ∑ f : Fin k ↪ (Finset.range (n + 1) : Finset ℕ),
+        unifIoo.real (Erdos1002.tupleEvent (bulkMarkEvent c n B) f))
+      atTop (𝓝 ((levyIntensity B).toReal ^ k)) :=
+  @LevyExponent.tuple_measure_convergence
+
 end
 
 end TupleTransfer
