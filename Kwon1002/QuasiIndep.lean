@@ -258,6 +258,156 @@ lemma norm_stepDefect_le {k : ℕ} (c : ℝ) {M : ℕ} (w : Fin M → ℂ) {E : 
     ring
   rw [← mul_sub, hpush, norm_mul, Complex.norm_real, Real.norm_eq_abs, norm_prod]
 
+
+/-! ## The tuple bound at per-level radii
+
+`digit_tail_product` is stated with a *threshold per level*, and every call site
+so far has instantiated it at a constant family.  The `R`-tail of a `k`-fold
+product needs one level at the truncation radius `R` and the others at `ε`, so
+the per-level form is recorded here.  Nothing in the proof changes but the
+threshold family. -/
+
+lemma prod_orderEmb {β : Type*} [CommMonoid β] {k : ℕ} {S : Finset ℕ} (h : S.card = k)
+    (F : ℕ → β) : (∏ i : Fin k, F (S.orderEmbOfFin h i)) = ∏ j ∈ S, F j := by
+  classical
+  rw [← Finset.prod_image (f := F) (g := fun i : Fin k => (S.orderEmbOfFin h i))
+      (fun x _ y _ hxy => (S.orderEmbOfFin h).injective hxy)]
+  congr 1
+  have hset : ((Finset.univ.image (fun i : Fin k => (S.orderEmbOfFin h i)) : Finset ℕ) : Set ℕ)
+      = (S : Set ℕ) := by
+    rw [Finset.coe_image, Finset.coe_univ, Set.image_univ]
+    exact S.range_orderEmbOfFin h
+  exact_mod_cast hset
+
+/-- **The tuple bound with a radius per level.** -/
+theorem exists_tuple_bound_radii (c : ℝ) :
+    ∃ C₀ : ℝ, 0 < C₀ ∧ ∀ ε : ℝ, 0 < ε → ∀ᶠ n : ℕ in atTop,
+      ∀ rad : ℕ → ℝ, (∀ j, ε ≤ rad j) → ∀ S : Finset ℕ,
+        unifIoo.real (⋂ j ∈ S, bigEvent c (rad j) n j)
+          ≤ ∏ j ∈ S, (C₀ / (8 * rad j) / Lnorm n) := by
+  classical
+  obtain ⟨C₀, hC₀, hC⟩ := digit_tail_product
+  refine ⟨C₀, hC₀, ?_⟩
+  intro ε hε
+  have h1 : ∀ᶠ n : ℕ in atTop, (1 : ℝ) ≤ 8 * ε * Lnorm n := by
+    have h : Tendsto (fun n : ℕ => 8 * ε * Lnorm n) atTop atTop :=
+      Filter.Tendsto.const_mul_atTop (by positivity) TupleMeasure.tendsto_Lnorm_atTop
+    exact h.eventually_ge_atTop 1
+  have h2 : ∀ᶠ n : ℕ in atTop, (0 : ℝ) < Lnorm n :=
+    TupleMeasure.tendsto_Lnorm_atTop.eventually_gt_atTop 0
+  filter_upwards [h1, h2] with n hn1 hn2 rad hrad S
+  set k : ℕ := S.card with hk
+  set js : Fin k → ℕ := fun i => S.orderEmbOfFin hk.symm i with hjs
+  set A : Fin k → ℝ := fun i => 8 * rad (js i) * Lnorm n with hA
+  have hinj : Function.Injective js := (S.orderEmbOfFin hk.symm).injective
+  have hA1 : ∀ i, 1 ≤ A i := by
+    intro i
+    have h := hrad (js i)
+    have hmul : 8 * ε * Lnorm n ≤ 8 * rad (js i) * Lnorm n := by nlinarith
+    simp only [hA]
+    linarith
+  set big : Set ℝ := {α : ℝ | α ∈ Set.Ioo (0 : ℝ) 1 ∧ ∀ i : Fin k, A i ≤ (digit α (js i) : ℝ)}
+    with hbig
+  have hbound : (volume big).toReal ≤ C₀ ^ k * ∏ i, (A i)⁻¹ := hC k js A hinj hA1
+  have hsub : (⋂ j ∈ S, bigEvent c (rad j) n j) ∩ Ioo (0 : ℝ) 1 ⊆ big := by
+    rintro α ⟨hα, hαI⟩
+    refine ⟨hαI, fun i => ?_⟩
+    have hmem : α ∈ bigEvent c (rad (js i)) n (js i) :=
+      Set.mem_iInter₂.mp hα (js i) (S.orderEmbOfFin_mem hk.symm i)
+    have hB0 : ∀ x ∈ PoissonRoute.truncSet (rad (js i)), rad (js i) ≤ |x| :=
+      fun _ hx => le_of_lt hx
+    exact TupleMeasure.digit_ge_of_mem_bulkMarkEvent c (PoissonRoute.truncSet (rad (js i)))
+      hB0 hn2 hmem
+  have hfin : volume big ≠ ⊤ := by
+    refine ne_top_of_le_ne_top ?_ (measure_mono (fun x hx => hx.1))
+    rw [Real.volume_Ioo]
+    exact ENNReal.ofReal_ne_top
+  have hmeas : unifIoo.real (⋂ j ∈ S, bigEvent c (rad j) n j) ≤ (volume big).toReal := by
+    rw [Measure.real, unifIoo, Measure.restrict_apply' measurableSet_Ioo]
+    exact ENNReal.toReal_mono hfin (measure_mono hsub)
+  refine le_trans hmeas (le_trans hbound (le_of_eq ?_))
+  have hstep : C₀ ^ k * ∏ i, (A i)⁻¹ = ∏ i : Fin k, (C₀ * (A i)⁻¹) := by
+    rw [Finset.prod_mul_distrib, Finset.prod_const, Finset.card_univ, Fintype.card_fin]
+  rw [hstep]
+  have hfin2 : (∏ i : Fin k, (C₀ * (8 * rad (js i) * Lnorm n)⁻¹))
+      = ∏ j ∈ S, (C₀ * (8 * rad j * Lnorm n)⁻¹) :=
+    prod_orderEmb hk.symm (fun j => C₀ * (8 * rad j * Lnorm n)⁻¹)
+  simp only [hA]
+  rw [hfin2]
+  refine Finset.prod_congr rfl (fun j _ => ?_)
+  rw [div_div, div_eq_mul_inv]
+
+/-! ## Products of indicators over a `Finset` of levels -/
+
+lemma prod_indicator_biInter (T : Finset ℕ) (A : ℕ → Set ℝ) (α : ℝ) :
+    (∏ j ∈ T, Set.indicator (A j) (fun _ => (1:ℝ)) α)
+      = Set.indicator (⋂ j ∈ T, A j) (fun _ => (1:ℝ)) α := by
+  classical
+  by_cases h : ∀ j ∈ T, α ∈ A j
+  · rw [Set.indicator_of_mem (Set.mem_iInter₂.mpr h)]
+    exact Finset.prod_eq_one (fun j hj => Set.indicator_of_mem (h j hj) _)
+  · push_neg at h
+    obtain ⟨j₀, hj₀T, hj₀⟩ := h
+    rw [Set.indicator_of_notMem (fun hh => hj₀ (Set.mem_iInter₂.mp hh j₀ hj₀T))]
+    exact Finset.prod_eq_zero hj₀T (Set.indicator_of_notMem hj₀ _)
+
+/-! ## The sorted embedding attached to a level set -/
+
+/-- The increasing enumeration of a `k`-element level set, as an embedding. -/
+def sortEmb {n k : ℕ} {S : Finset ℕ} (hsub : S ⊆ Finset.range (n + 1)) (hcard : S.card = k) :
+    Fin k ↪ (Finset.range (n + 1) : Finset ℕ) :=
+  ⟨fun ℓ => ⟨S.orderEmbOfFin hcard ℓ, hsub (S.orderEmbOfFin_mem hcard ℓ)⟩,
+    fun a b hab => (S.orderEmbOfFin hcard).injective (by
+      simpa using congrArg Subtype.val hab)⟩
+
+@[simp] lemma embTuple_sortEmb {n k : ℕ} {S : Finset ℕ} (hsub : S ⊆ Finset.range (n + 1))
+    (hcard : S.card = k) (ℓ : Fin k) :
+    embTuple (sortEmb hsub hcard) ℓ = S.orderEmbOfFin hcard ℓ := rfl
+
+lemma image_embTuple_sortEmb {n k : ℕ} {S : Finset ℕ} (hsub : S ⊆ Finset.range (n + 1))
+    (hcard : S.card = k) : Finset.univ.image (embTuple (sortEmb hsub hcard)) = S := by
+  classical
+  have hset : ((Finset.univ.image (embTuple (sortEmb hsub hcard)) : Finset ℕ) : Set ℕ)
+      = (S : Set ℕ) := by
+    rw [Finset.coe_image, Finset.coe_univ, Set.image_univ]
+    exact S.range_orderEmbOfFin hcard
+  exact_mod_cast hset
+
+/-- Summing over `k`-element level sets is dominated by summing over embeddings:
+each level set is the image of its own increasing enumeration. -/
+lemma sum_powersetCard_le_sum_emb {n k : ℕ} {T : Finset ℕ} (hT : T ⊆ Finset.range (n + 1))
+    (G : Finset ℕ → ℝ) (F : (Fin k ↪ (Finset.range (n + 1) : Finset ℕ)) → ℝ)
+    (hF : ∀ f, 0 ≤ F f)
+    (hGF : ∀ S ∈ Finset.powersetCard k T, ∃ f : Fin k ↪ (Finset.range (n + 1) : Finset ℕ),
+      Finset.univ.image (embTuple f) = S ∧ G S ≤ F f) :
+    (∑ S ∈ Finset.powersetCard k T, G S) ≤ ∑ f, F f := by
+  classical
+  have hmaps : ∀ f ∈ (Finset.univ : Finset (Fin k ↪ (Finset.range (n + 1) : Finset ℕ))),
+      Finset.univ.image (embTuple f) ∈ Finset.powersetCard k (Finset.range (n + 1)) := by
+    intro f _
+    rw [Finset.mem_powersetCard]
+    refine ⟨?_, TupleFinal.card_image_embTuple f⟩
+    intro x hx
+    obtain ⟨ℓ, _, rfl⟩ := Finset.mem_image.mp hx
+    exact (f ℓ).2
+  have hfib := Finset.sum_fiberwise_of_maps_to hmaps F
+  have hsubset : Finset.powersetCard k T ⊆ Finset.powersetCard k (Finset.range (n + 1)) := by
+    intro S hS
+    rw [Finset.mem_powersetCard] at hS ⊢
+    exact ⟨fun x hx => hT (hS.1 hx), hS.2⟩
+  calc (∑ S ∈ Finset.powersetCard k T, G S)
+      ≤ ∑ S ∈ Finset.powersetCard k T,
+          ∑ f ∈ Finset.univ.filter (fun f => Finset.univ.image (embTuple f) = S), F f := by
+        refine Finset.sum_le_sum (fun S hS => ?_)
+        obtain ⟨f, hfS, hGf⟩ := hGF S hS
+        refine le_trans hGf (Finset.single_le_sum (f := F) (fun g _ => hF g) ?_)
+        exact Finset.mem_filter.mpr ⟨Finset.mem_univ f, hfS⟩
+    _ ≤ ∑ S ∈ Finset.powersetCard k (Finset.range (n + 1)),
+          ∑ f ∈ Finset.univ.filter (fun f => Finset.univ.image (embTuple f) = S), F f := by
+        refine Finset.sum_le_sum_of_subset_of_nonneg hsubset (fun S _ _ => ?_)
+        exact Finset.sum_nonneg (fun f _ => hF f)
+    _ = ∑ f, F f := hfib
+
 end
 
 end QuasiIndep
