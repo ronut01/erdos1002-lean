@@ -91,6 +91,7 @@ import Kwon1002.JacksonGate
 import Kwon1002.Selberg
 import Kwon1002.IntervalClass
 import Kwon1002.OneLevelLaw
+import Kwon1002.GaussKuzmin
 import Kwon1002.StoppingWindow
 import Kwon1002.Master
 import Kwon1002.Section7Bridge

@@ -8,6 +8,7 @@ import Kwon1002.LDMain
 import Kwon1002.Fejer
 import Kwon1002.JacksonGate
 import Kwon1002.Selberg
+import Kwon1002.GaussKuzmin
 
 /-!
 # The §4/§5 join
@@ -612,6 +613,43 @@ theorem stationaryMeanR_gap_le {m : ℕ} (N Acut : ℕ) {δ : ℝ} (hδ : 0 < δ
     _ = Γ := by
         rw [integral_const]
         simp
+
+/-! ## Part E, the Gauss-Kuzmin normalisation, closed at the interval class
+
+Part D removed the one-sidedness: `oneLevel_indicator_sandwich` reads §4's
+one-level law at the indicator itself, and `stationaryMeanR_gap_le` prices the
+sandwich by the jump count alone.  What the header then named as the remaining
+content of (35) — "the Gauss-Kuzmin *normalisation*, the identification of
+`stationaryMeanR` of the mark indicator with `2λ·Λ`" — is proved in
+`Kwon1002/GaussKuzmin.lean`, unconditionally and with the constant pinned.
+
+The two `example`s below are the `rfl` guards: the object `GaussKuzmin`
+computes with **is** `stationaryMeanR` of the mark-tail symbol, not a variant
+of it. -/
+
+/-- **`GaussKuzmin.markTailMean` is `stationaryMeanR` of the mark-tail
+indicator**, definitionally.  This is the guard that the normalisation proved
+in `Kwon1002/GaussKuzmin.lean` is about this file's object. -/
+example : ∀ M : ℝ, GaussKuzmin.markTailMean M
+    = stationaryMeanR (fun a θ => if M < (a : ℝ) * W θ then (1:ℝ) else 0) :=
+  fun _ => rfl
+
+/-- The same guard read through `indCut` at a full digit range: the mark-tail
+symbol is the `indCut` family of Part D at the sections
+`Bs a = {θ : M < a·W θ}`, once the digit cut is inactive.  (`Selberg.perInd` of
+a `1`-periodic section is that section's indicator.) -/
+theorem markTail_stationaryMeanR (M : ℝ) :
+    stationaryMeanR (fun a θ => if M < (a : ℝ) * W θ then (1:ℝ) else 0)
+      = GaussKuzmin.markTailMean M := rfl
+
+/-- **The stationary side of display (35), at a half-line.**  Uniformly in
+nothing — this is the exact stationary statement, and it is where the constant
+`2λ·Λ` of the manuscript is pinned. -/
+theorem stationaryMeanR_markTail_limit {u : ℝ} (hu : 0 < u) :
+    Tendsto (fun n : ℕ => Lnorm n *
+        stationaryMeanR (fun a θ => if u * Lnorm n < (a : ℝ) * W θ then (1:ℝ) else 0))
+      atTop (𝓝 (2 * lyapunov * (levyIntensity (Ioi u)).toReal)) :=
+  GaussKuzmin.tendsto_scaled_markTailMean_nat hu
 
 end
 
