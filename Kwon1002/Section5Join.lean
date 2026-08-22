@@ -672,6 +672,119 @@ theorem stationaryMeanR_markTail_limit {u : ℝ} (hu : 0 < u) :
       atTop (𝓝 (2 * lyapunov * (levyIntensity (Ioi u)).toReal)) :=
   GaussKuzmin.tendsto_scaled_markTailMean_nat hu
 
+/-! ### The two digit tails item (i) needs
+
+Cutting the digit at `Acut` is the one step of item (i) that is not pure
+parameter juggling, because it is measured against two different laws: the
+stationary one, where the exact Gauss-Kuzmin tail applies, and Lebesgue at
+level `j`, where display (15) applies.  Both are bounded here, so that item (i)
+is a finite and fully named list. -/
+
+/-- The uncut indicator family: `indCut` with the digit cut removed. -/
+def indFull (Bs : ℕ → Set ℝ) : ℕ → ℝ → ℝ := fun a θ => Selberg.perInd (Bs a) θ
+
+lemma abs_indFull_le (Bs : ℕ → Set ℝ) (a : ℕ) (θ : ℝ) : |indFull Bs a θ| ≤ 1 := by
+  unfold indFull
+  rw [abs_of_nonneg (Selberg.perInd_nonneg (Bs a) θ)]
+  exact Selberg.perInd_le_one (Bs a) θ
+
+lemma abs_innerMean_le_of_bound {f : ℕ → ℝ → ℝ} {K : ℝ} (hK : ∀ a θ, |f a θ| ≤ K) (a : ℕ) :
+    |innerMean f a| ≤ K := by
+  unfold innerMean
+  have hI : (volume : Measure ℝ).real (Ioo (0 : ℝ) 1) = 1 := by
+    simp [Measure.real, Real.volume_Ioo]
+  have h := norm_setIntegral_le_of_norm_le_const (C := K) (s := Ioo (0 : ℝ) 1)
+    (measure_Ioo_lt_top (μ := (volume : Measure ℝ)) (a := 0) (b := 1))
+    (fun θ _ => by rw [Real.norm_eq_abs]; exact hK a θ)
+  rw [hI, mul_one, Real.norm_eq_abs] at h
+  exact h
+
+/-- **The stationary digit-cut tail.**  Cutting the digit at `Acut` moves
+`stationaryMeanR` by at most the *exact* Gauss-Kuzmin tail
+`γ{a₁ ≥ Acut+1} = log(1 + 1/(Acut+1))/log 2`, uniformly in the section family.
+With `Acut ≈ L^D` this is `O(L^{-D})`, so it survives multiplication by `L` for
+any `D > 1`. -/
+theorem stationaryMeanR_digitCut_gap (Acut : ℕ) (Bs : ℕ → Set ℝ) :
+    |stationaryMeanR (indCut Acut Bs) - stationaryMeanR (indFull Bs)|
+      ≤ Real.log (1 + 1 / ((Acut : ℝ) + 1)) / Real.log 2 := by
+  have habsCut : ∀ a θ, |indCut Acut Bs a θ| ≤ 1 := abs_indCut_le Acut Bs
+  have hIc := integrable_innerMean_comp (indCut Acut Bs)
+    (abs_innerMean_le_of_bound habsCut)
+  have hIf := integrable_innerMean_comp (indFull Bs)
+    (abs_innerMean_le_of_bound (abs_indFull_le Bs))
+  set T : Set ℝ := {x : ℝ | Acut + 1 ≤ digit x 0} with hT
+  have hTmeas : MeasurableSet T := (measurable_digit 0) (measurableSet_le measurable_const
+    measurable_id)
+  have hind : (fun x : ℝ => (if Acut + 1 ≤ digit x 0 then (1:ℝ) else 0))
+      = Set.indicator T (fun _ => (1:ℝ)) := by
+    funext x
+    by_cases hx : Acut + 1 ≤ digit x 0
+    · rw [if_pos hx, Set.indicator_of_mem (show x ∈ T from hx)]
+    · rw [if_neg hx, Set.indicator_of_notMem (show x ∉ T from hx)]
+  have hIT : Integrable (fun x : ℝ => (if Acut + 1 ≤ digit x 0 then (1:ℝ) else 0))
+      Erdos1002.gaussMeasure := by
+    rw [hind]
+    exact (integrable_const (1:ℝ)).indicator hTmeas
+  have hpt : ∀ x : ℝ,
+      ‖innerMean (indCut Acut Bs) (digit x 0) - innerMean (indFull Bs) (digit x 0)‖
+        ≤ (if Acut + 1 ≤ digit x 0 then (1:ℝ) else 0) := by
+    intro x
+    rw [Real.norm_eq_abs]
+    by_cases hc : digit x 0 ≤ Acut
+    · have he : innerMean (indCut Acut Bs) (digit x 0) = innerMean (indFull Bs) (digit x 0) := by
+        unfold innerMean indCut indFull
+        simp only [if_pos hc]
+      rw [he, sub_self, abs_zero]
+      positivity
+    · have he : innerMean (indCut Acut Bs) (digit x 0) = 0 := by
+        unfold innerMean indCut
+        simp only [if_neg hc]
+        simp
+      rw [he, zero_sub, abs_neg, if_pos (Nat.succ_le_of_lt (not_le.mp hc))]
+      exact abs_innerMean_le_of_bound (abs_indFull_le Bs) _
+  rw [stationaryMeanR_eq, stationaryMeanR_eq, ← integral_sub hIc hIf]
+  have hbound := norm_integral_le_of_norm_le hIT (Filter.Eventually.of_forall hpt)
+  refine le_trans hbound (le_of_eq ?_)
+  rw [hind, integral_indicator_const (1:ℝ) hTmeas]
+  simp only [smul_eq_mul, mul_one, Measure.real]
+  have hK := DigitLocalLaw.gaussMeasure_real_digit_zero_ge (K := Acut + 1)
+    (Nat.le_add_left 1 Acut)
+  push_cast at hK
+  exact hK
+
+/-- **The Lebesgue digit-cut tail.**  `vol{α ∈ (0,1) : a_{j+1}(α) > Acut} ≤
+C/(Acut+1)` with `C` absolute, uniformly in the level.  This is display (15) at
+`r = 1`, i.e. `Kwon1002.digit_tail_product`; it is what bounds the part of the
+level-`j` event that the digit cut discards. -/
+theorem lebesgue_digitCut_tail :
+    ∃ C : ℝ, 0 < C ∧ ∀ j Acut : ℕ,
+      (volume {α : ℝ | α ∈ Ioo (0:ℝ) 1 ∧ Acut < digit α j}).toReal
+        ≤ C / ((Acut : ℝ) + 1) := by
+  obtain ⟨C, hC, hbound⟩ := digit_tail_product
+  refine ⟨C, hC, fun j Acut => ?_⟩
+  have hset : {α : ℝ | α ∈ Ioo (0:ℝ) 1 ∧ Acut < digit α j}
+      = {α : ℝ | α ∈ Ioo (0:ℝ) 1 ∧
+          ∀ i : Fin 1, (fun _ : Fin 1 => (Acut : ℝ) + 1) i
+            ≤ (digit α ((fun _ : Fin 1 => j) i) : ℝ)} := by
+    ext α
+    simp only [Set.mem_setOf_eq, and_congr_right_iff]
+    intro _
+    constructor
+    · intro h _
+      have : (Acut : ℝ) + 1 ≤ ((digit α j : ℕ) : ℝ) := by exact_mod_cast h
+      simpa using this
+    · intro h
+      have := h 0
+      simp only at this
+      have h2 : (Acut : ℝ) + 1 ≤ ((digit α j : ℕ) : ℝ) := this
+      exact_mod_cast h2
+  rw [hset]
+  have h := hbound 1 (fun _ => j) (fun _ => (Acut : ℝ) + 1)
+    (fun a b _ => Subsingleton.elim a b)
+    (fun _ => by have h0 : (0:ℝ) ≤ (Acut : ℝ) := Nat.cast_nonneg _; linarith)
+  refine le_trans h (le_of_eq ?_)
+  simp [div_eq_mul_inv]
+
 end
 
 end Section5Join
