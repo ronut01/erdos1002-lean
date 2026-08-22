@@ -114,3 +114,4 @@ import Kwon1002.BandMass
 import Kwon1002.WindowCovariance
 import Kwon1002.WindowCovJoin
 import Kwon1002.PairLayerCake
+import Kwon1002.DetPairJoin

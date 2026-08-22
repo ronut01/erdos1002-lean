@@ -439,6 +439,19 @@ owed is short and specific:
 So `CorFinal.bulk_offdiagonal_abs_far_sharp` remains open, and item 2 above is
 the one part of it that is not present in the tree in any currency.
 
+**Superseded, item 2.**  `Kwon1002/WindowCovariance.lean` now supplies the
+covariance-currency analogue: `WindowCov.window_covariance_bridge` bounds the
+gap between the random-index and deterministic-index covariances by
+`16ε²·|StopWin.stopBad n|` at any two levels outside `StopWin.diffWindow c n`,
+and `WindowCov.abs_far_sharp_of_det_pair_decay` spends it, reducing the residual
+to a far-pair covariance decay stated entirely over `bulkJ n`.
+`Kwon1002/PairLayerCake.lean` then converts that into a statement about tail
+*events* (`PairLayerCake.abs_cov_le_of_indicator_cov`), and
+`Kwon1002/DetPairJoin.lean` records the composite: the residual follows from the
+joint-tail transfer at `r = 2`, which is the currency
+`MultiLevel.multiLevel_transfer` is already stated in.  Item 1 (Proposition 4.1
+at `r = 2`) and item 3 (the digit cut and the pair count) are unchanged.
+
 **One correction to the record.**  `CorFinal.bulk_offdiagonal_abs_far_sharp` is
 a bare `sorry` of its own; it does not *rest* on
 `FiveIndep.bulk_offdiagonal_abs_far` (also a bare `sorry`) in the closure
