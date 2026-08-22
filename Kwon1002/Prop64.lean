@@ -1181,6 +1181,129 @@ theorem BwindowRep_actualWindow (R : ℕ) (α : ℝ) (n j : ℕ) (hj : R + 1 ≤
     _ = BremainderTrunc α n R j := by
           exact max_eq_right hlow
 
+/-! ### The bounded representative on the stationary law -/
+
+/-- The carry reconstructed from a stationary radius-`R` window is the
+stationary carry started `R` steps in the past. -/
+theorem windowCarry_stationaryWindow (R : ℕ) {z : NatExtTorus}
+    (hz : z ∈ CarryGraph.GoodT) :
+    windowCarry R (stationaryWindow R z) R =
+      CarryGraph.iterCarry (hatSinv^[R] z) R := by
+  have hstate : ∀ k ≤ R,
+      hatS^[k] (hatSinv^[R] z) = hatSzpow (-(R : ℤ) + (k : ℤ)) z := by
+    intro k hk
+    rw [CarryGraph.hatS_iterate_hatSinv_iterate hz k R hk]
+    by_cases hlt : k < R
+    · rw [hatSzpow, if_neg (by omega)]
+      congr 2
+      omega
+    · have hkr : k = R := by omega
+      subst k
+      simp [hatSzpow]
+  have hcarry : ∀ k ≤ R,
+      windowCarry R (stationaryWindow R z) k =
+        CarryGraph.iterCarry (hatSinv^[R] z) k := by
+    intro k
+    induction k with
+    | zero => intro _; rfl
+    | succ k ih =>
+        intro hk
+        have hkR : k ≤ R := by omega
+        simp only [windowCarry, CarryGraph.iterCarry]
+        rw [ih hkR,
+          wX_stationaryWindow R z (t := -(R : ℤ) + (k : ℤ)) (by omega) (by omega),
+          wTh_stationaryWindow R z (t := -(R : ℤ) + (k : ℤ) - 1) (by omega) (by omega),
+          wTh_stationaryWindow R z (t := -(R : ℤ) + (k : ℤ)) (by omega) (by omega),
+          hstate k hkR]
+        have htor := StationaryIdentity31.hatSzpow_fst_torus hz
+          (-(R : ℤ) + (k : ℤ))
+        rw [htor]
+  exact hcarry R le_rfl
+
+/-- On every stationary window over the full good set, the raw window
+formula already lies in the manuscript interval `[-45/8,45/8]`. -/
+theorem abs_Bwindow_stationaryWindow_le (R : ℕ) {z : NatExtTorus}
+    (hz : z ∈ CarryGraph.GoodT) :
+    |Bwindow R (stationaryWindow R z)| ≤ 45 / 8 := by
+  let q : NatExtTorus := hatSinv^[R] z
+  let d : ℤ := windowCarry R (stationaryWindow R z) R
+  have hq : q ∈ CarryGraph.GoodT := CarryGraph.hatSinv_iterate_mem_goodT hz R
+  have hdBounds := CarryGraph.iterCarry_bounds hq R
+  have hdEq : d = CarryGraph.iterCarry q R := by
+    simpa [q, d] using windowCarry_stationaryWindow R hz
+  have hd0 : 0 ≤ d := by rw [hdEq]; exact hdBounds.1
+  have hd9 : d ≤ 9 := by rw [hdEq]; exact hdBounds.2
+  have hx : z.1.1 ∈ Ioo (0 : ℝ) 1 := hz.1.1
+  have hx' : gaussMap z.1.1 ∈ Ioo (0 : ℝ) 1 := by
+    exact (CarryGraph.hatS_mem_goodT hz).1.1
+  have hr : (hatSinv z).2.2 ∈ Ico (0 : ℝ) 1 :=
+    (CarryGraph.hatSinv_mem_goodT hz).2.2
+  have hd0' : (0 : ℝ) ≤ (d : ℝ) := by exact_mod_cast hd0
+  have hd9' : (d : ℝ) ≤ 9 := by exact_mod_cast hd9
+  have hE0 : 0 ≤ (d : ℝ) + (hatSinv z).2.2 := by linarith [hr.1]
+  have hE10 : (d : ℝ) + (hatSinv z).2.2 ≤ 10 := by linarith [hr.2]
+  let u := carryU z.1.1 (hatSinv z).2.2 z.2.2 d
+  have hu0 : 0 ≤ u := by
+    simp only [u, carryU]
+    exact Int.fract_nonneg _
+  have hu1 : u < 1 := by
+    simp only [u, carryU]
+    exact Int.fract_lt_one _
+  have hdW : |W u - W z.2.2| ≤
+      z.1.1 * ((d : ℝ) + (hatSinv z).2.2) / 2 := by
+    simp only [u, carryU]
+    rw [W_fract,
+      show z.2.2 - z.1.1 * ((d : ℝ) + (hatSinv z).2.2)
+          = z.2.2 + -(z.1.1 * ((d : ℝ) + (hatSinv z).2.2)) by ring]
+    have h := W_sub_le z.2.2 (-(z.1.1 * ((d : ℝ) + (hatSinv z).2.2)))
+    rwa [abs_neg, abs_of_nonneg (mul_nonneg hx.1.le hE0)] at h
+  have hmain := principal_bound z.1.1 (gaussMap z.1.1) u z.2.2
+    (digit z.1.1 0 : ℝ) ((d : ℝ) + (hatSinv z).2.2) 10
+    hx.1 hx'.1 hx'.2 hu0 hu1 (Nat.cast_nonneg _)
+    (inv_eq_digit_add_gaussMap hx) hE0 hE10 (W_eq_of_mem hu0 hu1) hdW
+  have hB : Bwindow R (stationaryWindow R z)
+      = Phi z.1.1 u - (digit z.1.1 0 : ℝ) * W z.2.2 := by
+    simp only [Bwindow]
+    rw [wX_stationaryWindow R z (t := 0) (by omega) (by omega),
+      wTh_stationaryWindow R z (t := -1) (by omega) (by omega),
+      wTh_stationaryWindow R z (t := 0) (by omega) (by omega),
+      wA_stationaryWindow R z (t := 0) (by omega) (by omega)]
+    rw [show hatSzpow 0 z = z by simp [hatSzpow],
+      show hatSzpow (-1) z = hatSinv z by simp [hatSzpow],
+      windowCarry_stationaryWindow R hz]
+    simp only [u, d]
+    rw [windowCarry_stationaryWindow R hz]
+  rw [hB]
+  calc
+    |Phi z.1.1 u - (digit z.1.1 0 : ℝ) * W z.2.2| ≤ 10 / 2 + 5 / 8 := hmain
+    _ = 45 / 8 := by norm_num
+
+/-- The raw window formula satisfies the same `45/8` bound almost everywhere
+under the stationary window law. -/
+theorem ae_abs_Bwindow_le (R : ℕ) :
+    ∀ᵐ w ∂(windowLaw R), |Bwindow R w| ≤ 45 / 8 := by
+  have hs : MeasurableSet {w : WindowSpace R | |Bwindow R w| ≤ 45 / 8} :=
+    measurableSet_le (measurable_Bwindow R).abs measurable_const
+  rw [windowLaw, ae_map_iff (measurable_stationaryWindow R).aemeasurable hs]
+  filter_upwards [CarryGraph.hatMu0_ae_goodT] with z hz
+  exact abs_Bwindow_stationaryWindow_le R hz
+
+/-- The clamp defining `BwindowRep` is inactive `windowLaw`-almost
+everywhere.  This is the stationary-law bridge required before attacking
+display (55). -/
+theorem ae_BwindowRep_eq_Bwindow (R : ℕ) :
+    BwindowRep R =ᵐ[windowLaw R] Bwindow R := by
+  filter_upwards [ae_abs_Bwindow_le R] with w hw
+  have hb := abs_le.mp hw
+  rw [BwindowRep, min_eq_right hb.2, max_eq_right hb.1]
+
+/-- Clamping preserves continuity at every continuity point of the raw
+window formula. -/
+theorem continuousAt_BwindowRep {R : ℕ} {w : WindowSpace R}
+    (h : ContinuousAt (Bwindow R) w) : ContinuousAt (BwindowRep R) w := by
+  unfold BwindowRep
+  exact continuousAt_const.max (continuousAt_const.min h)
+
 /-! ### Named inputs for display (55) -/
 
 /-- **Input (step 1, density bridge).**  v5 lines 1316-1330: the algebra
@@ -1193,8 +1316,10 @@ Consumes `Section6Skeleton.BwindowRep_ae_continuous` and
 The raw formula `Bwindow` is not globally bounded (`bwindow_unbounded`),
 so the canonical contract now uses `BwindowRep`: its measurability and
 global `45/8` bound are proved above, and it agrees with
-`BremainderTrunc` on every actual irrational window.  The remaining inputs
-are its `windowLaw`-a.e. continuity and the density statement itself,
+`BremainderTrunc` on every actual irrational window.  Moreover,
+`ae_BwindowRep_eq_Bwindow` proves that its clamp is inactive
+`windowLaw`-almost everywhere.  The remaining inputs are its
+`windowLaw`-a.e. continuity and the density statement itself,
 the one v9 records after Lemma 6.3: finite sums
 `Σ_ℓ D_ℓ g_ℓ e(Σ c_{ℓ,t} θ_t)` are dense in `L²(μ_R)`.  That needs
 Stone-Weierstrass on the compact exhaustion `digitCapCube` together with
