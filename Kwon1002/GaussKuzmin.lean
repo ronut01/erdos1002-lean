@@ -86,20 +86,35 @@ measurable** `B` bounded away from `0` and bounded, and against the level-`j`
 law under **Lebesgue in `α`**, not the stationary law.  This module supplies
 the stationary side at half-lines and at bands, i.e. on the interval class —
 which is exactly the class `Section5Join.stationaryMeanR_gap_le` and the
-Selberg bracket can reach.  Two things still stand between that and the
-residual as stated, and neither is addressed here:
+Selberg bracket can reach.  Two things stood between that and the
+residual as stated when this module was written.  **Both records are now
+stale, and both are corrected here.**
 
-1. the passage from the stationary mean to the level-`j` Lebesgue average,
-   which is `Section5Join.oneLevel_indicator_sandwich` plus a choice of the
-   bracket parameters `(Acut, N, δ)` against `L`, together with the digit-cut
-   tail `L·vol{α : digit α j > Acut} → 0`;
-2. the passage from the interval class to an arbitrary measurable `B`.  Item 2
-   is *not* bookkeeping: the sandwich needs `IsUnionOfIntervals`, and for a
-   general measurable `B` the `θ`-sections `W^{-1}(L·B/a)` are not finite
-   unions of intervals.  Closing it needs a uniform-in-`L` absolute-continuity
-   bound on the level-`j` law (a density bound `≍ x^{-2}`) so that `B` can be
-   approximated by finite unions of intervals with an error that does not
-   depend on `L`.  Nothing in the tree states such a bound.
+1. The passage from the stationary mean to the level-`j` Lebesgue average,
+   i.e. `Section5Join.oneLevel_indicator_sandwich` plus a choice of the bracket
+   parameters `(Acut, N, δ)` against `L` together with the digit-cut tails.
+   **Closed**: `Section5Join.sched_admissible` and
+   `Section5Join.oneLevel_transfer` make the choice explicit
+   (`δ = L^{-2}`, `N = ⌈L^6⌉`, `Acut = ⌈L^2⌉`, against `D = 11`, `A = 2`) and
+   prove the resulting error is `o(1/L)` uniformly over the bulk.
+2. The passage from the interval class to an arbitrary measurable `B`.  This
+   half of the record stands, and is now isolated as
+   `TupleInputs.oneLevel_gaussKuzmin_intensity_to_measurable`.  The sentence
+   "the `θ`-sections `W^{-1}(L·B/a)` are not finite unions of intervals" and the
+   need for a uniform-in-`L` density bound `≍ x^{-2}` are both correct and both
+   unchanged.
+
+What the old record got wrong is the *scope* of item 2.  It said the interval
+class is where the argument stops.  It stops strictly later:
+`Section5Join.oneLevel_gaussKuzmin_intensity_truncation` proves the residual's
+conclusion **outright**, unconditionally and `#print axioms` clean, at
+`B = {x : ε < |x| ∧ |x| ≤ R}` — the truncation window that
+`IntervalClass.isUnionOfIntervals_truncation` shows is a union of two intervals
+and that the tree records as the only shape `B` ever takes below Proposition
+5.1.  What is missing between that window and the general interval class is not
+a density bound but a decomposition: an arbitrary `IsUnionOfIntervals` family
+must be rewritten as a *disjoint* union of bands with endpoints before
+`tendsto_scaled_markBandMean` can be summed over it.
 
 Recorded, not hidden.
 -/

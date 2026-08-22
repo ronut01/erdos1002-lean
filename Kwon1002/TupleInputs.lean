@@ -94,7 +94,13 @@ hand.
   targets except `deterministic_oneLevel_intensity`.
 * `Kwon1002.TupleFinal.goodSet_mark_factorization`, residual 2, only through
   `TupleFinal.det_quasi_independence`, and only for `tuple_quasi_independence`.
-* `oneLevel_gaussKuzmin_intensity`, the new residual declared in this file.
+* `oneLevel_gaussKuzmin_intensity`, the residual declared in this file.  It is
+  now **split**, on the pattern of `TupleFinal.goodSet_mark_factorization`:
+  `oneLevel_gaussKuzmin_intensity_intervals` carries the added hypothesis
+  `IntervalClass.IsFiniteUnionOfIntervals B`,
+  `oneLevel_gaussKuzmin_intensity_to_measurable` is the separate approximation
+  step, and `oneLevel_gaussKuzmin_intensity` keeps its exact statement and is
+  derived from the two.  No consumer signature changed.
 * **Nothing else.**  In particular `Kwon1002.deterministic_oneLevel_intensity`,
   `Kwon1002.bulk_window_bridge_oneLevel`,
   `Kwon1002.TupleMeasure.oneLevel_intensity_limit`,
@@ -425,33 +431,48 @@ and nothing more.
   clean, for every symbol in the class `IsInPD D L` of display (24), uniformly
   over `j ∈ bulkJ n`.  The record is corrected here.
 
-**What actually remains, as of `Kwon1002/GaussKuzmin.lean`.**  Two items, and
-neither is the joint law or the constant.
+**What actually remains, and the two records this corrects.**  Two items were
+named here as remaining.  **Item 1 is closed and item 2 is now split off**, so
+both of the paragraphs that used to stand here are stale and are replaced.
 
 1. *From the stationary mean to the level-`j` Lebesgue average, at an
-   indicator.*  `Section5Join.oneLevel_indicator_sandwich` does this two-sided
-   and uniformly, and `Section5Join.stationaryMeanR_gap_le` prices it by the
-   jump count of the `θ`-sections; both are proved.  What is not written is the
-   *choice of parameters*: the bracket scale `δ`, the degree `N` and the digit
-   cut `Acut` have to be tied to `L` so that all three of `L·((4m+2)·2δ)`,
-   `L·2·farTail(N,δ)` and `L·C·L^{-A}` vanish while display (24)'s budget
-   `(Acut+1)(2N+1)(1+farTail) ≤ L^D` still holds, together with the two digit
-   tails (Lebesgue: `Kwon1002.digit_tail_product`; stationary:
-   `DigitLocalLaw.gaussMeasure_real_digit_zero_ge`).  This is bookkeeping, but
-   it is not empty bookkeeping.
-2. *From the interval class to an arbitrary measurable `B`.*  The statement
-   below quantifies over every measurable `B` bounded away from `0` and
-   bounded.  `GaussKuzmin` supplies the stationary side at half-lines
-   (`tendsto_scaled_markTailMean`) and hence, by additivity, on the interval
-   class (`tendsto_scaled_markBandMean`) — which is exactly the class the
-   Selberg bracket of item 1 can reach, since `IsUnionOfIntervals` is what
-   `stationaryMeanR_gap_le` consumes.  For a general measurable `B` the
-   `θ`-sections `W^{-1}(L·B/a)` are **not** finite unions of intervals, so the
-   sandwich does not apply directly; one needs a uniform-in-`L`
-   absolute-continuity bound on the level-`j` law (a density `≍ x^{-2}` on
-   `δ ≤ |x| ≤ R`) to approximate `B` by finite unions of intervals with an
-   error independent of `L`.  Nothing in the tree states such a bound.  This
-   is the genuinely open item.
+   indicator.*  **Closed**, in `Kwon1002.Section5Join.oneLevel_transfer`.  The
+   record used to say that the *choice of parameters* — the bracket scale `δ`,
+   the degree `N` and the digit cut `Acut`, tied to `L` so that all of
+   `L·((4m+2)·2δ)`, `L·2·farTail(N,δ)` and `L·C·L^{-A}` vanish while display
+   (24)'s budget `(Acut+1)(2N+1)(1+farTail) ≤ L^D` still holds — "is not
+   written".  It is written now: the schedule is `δ = L^{-2}`, `N = ⌈L^6⌉`,
+   `Acut = ⌈L^2⌉` against `D = 11` and `A = 2`, checked in
+   `Section5Join.sched_admissible`, and the five error terms (the two Selberg
+   ones, the one-level rate, and the two digit tails
+   `Kwon1002.digit_tail_product` and
+   `DigitLocalLaw.gaussMeasure_real_digit_zero_ge`) sum to `(8m+7+C+C₂)L^{-2}`,
+   which survives multiplication by `L`.  Nothing about that step is open.
+2. *From the interval class to an arbitrary measurable `B`.*  Split off as
+   `oneLevel_gaussKuzmin_intensity_to_measurable` below, exactly as
+   `TupleFinal.goodSet_intervals_to_measurable` splits the same passage off
+   `TupleFinal.goodSet_mark_factorization`.  It is unchanged in content: for a
+   general measurable `B` the `θ`-sections `W^{-1}(L·B/a)` are **not** finite
+   unions of intervals (a fat Cantor set inside `[1,2]` satisfies all three
+   hypotheses and has a section with no finite jump count), so the Selberg
+   sandwich does not apply, and closing it needs a uniform-in-`L`
+   absolute-continuity bound on the level-`j` law — a density `≍ x^{-2}` on
+   `δ ≤ |x| ≤ R`.  Nothing in the tree states such a bound.
+
+**What is left of *this* residual, precisely.**  Not the joint law, not the
+constant, not the parameters, and not the passage to measurable `B`.  What is
+left is the *decomposition step*: `GaussKuzmin` supplies the stationary side at
+half-lines (`tendsto_scaled_markTailMean`) and at a single band
+(`tendsto_scaled_markBandMean`), and
+`Section5Join.oneLevel_gaussKuzmin_intensity_truncation` assembles those with
+item 1 into a **complete, unconditional proof** of the conclusion below at
+`B = {x : ε < |x| ∧ |x| ≤ R}`.  Going from one band to an arbitrary
+`IntervalClass.IsUnionOfIntervals` family needs that family decomposed into
+*disjoint* bands with endpoints — the `Finset (Set ℝ)` of order-convex sets in
+`IsUnionOfIntervals` may overlap and carries no endpoints — together with the
+(true, unstated) fact that the level sets `{(x,θ) : a₁(x)·W(θ) = c}` are null,
+so that the interval type at each endpoint does not matter.  That is the whole
+remaining content of this residual.
 
 **The constant is not among the residuals any more.**
 `GaussKuzmin.markTailMean_bounds` proves, for every `M > 0`,
@@ -462,13 +483,115 @@ so `L·stationaryMeanR → 2λ·Λ((u,∞))` at `M = uL`, unconditionally.
 `#J_n = (1+o(1))L/λ` and the parity balance, which the previous residual
 `Kwon1002.deterministic_oneLevel_intensity` bundled in; both are proved above.
 This residual is the manuscript's (35) and nothing else. -/
-theorem oneLevel_gaussKuzmin_intensity (B : Set ℝ) (_hB : MeasurableSet B)
-    (_hB0 : ∃ δ > 0, ∀ x ∈ B, δ ≤ |x|) (_hBbd : ∃ R : ℝ, ∀ x ∈ B, |x| ≤ R) :
+theorem oneLevel_gaussKuzmin_intensity_intervals (B : Set ℝ) (_hB : MeasurableSet B)
+    (_hB0 : ∃ δ > 0, ∀ x ∈ B, δ ≤ |x|) (_hBbd : ∃ R : ℝ, ∀ x ∈ B, |x| ≤ R)
+    (_hint : IntervalClass.IsFiniteUnionOfIntervals B) :
     ∃ Λe Λo : ℝ, Λe + Λo = (levyIntensity B).toReal ∧
       ∀ ε > 0, ∀ᶠ n : ℕ in atTop, ∀ j ∈ bulkJ n,
         |Lnorm n * unifIoo.real (oneLevelEvent n B j)
             - 2 * lyapunov * (if Even j then Λe else Λo)| ≤ ε := by
   sorry
+
+/-- **Residual (35b): the passage from finite unions of intervals back to
+measurable sets.**
+
+Residual (35a) is stated at finite unions of intervals because that is the class
+the Selberg bracket admits: `Section5Join.stationaryMeanR_gap_le` consumes
+`IntervalClass.IsUnionOfIntervals`, and
+`IntervalClass.markSection_isUnionOfIntervals` is what supplies it uniformly in
+the digit and the sign.  For a general measurable `B` the `θ`-sections
+`W^{-1}(L·B/a)` need not be finite unions of intervals — a fat Cantor set inside
+`[1,2]` satisfies all three hypotheses above and has a section with no finite
+jump count — so the bracket does not apply.
+
+The consumers of this residual (`deterministic_oneLevel_intensity` below, and
+through it `sum_det_tendsto`, `oneLevel_intensity_limit`,
+`det_tuple_measure_convergence`, `tuple_measure_convergence` and
+`tuple_quasi_independence`) quantify over merely measurable `B`, and those
+statements are **not** weakened here: their `B`-generality is expected to be
+true, recoverable from the interval case by approximation against the
+absolutely continuous limit `Λ`.  Isolating that argument is the point of this
+residual; pushing the interval hypothesis into the consumers instead would
+weaken statements that are true.
+
+Stated as the implication rather than as a second copy of the conclusion, so
+that it says exactly one thing: *the interval case implies the measurable case*.
+
+**Obstruction.**  Closing it needs a uniform-in-`L` absolute-continuity bound on
+the level-`j` law — a density `≍ x^{-2}` on `δ ≤ |x| ≤ R` — so that `B` can be
+approximated by finite unions of intervals with an error that does not depend on
+`L`.  Nothing in the tree states such a bound.  This is unchanged by the present
+pass; what the present pass changes is that it is no longer entangled with the
+bracket parameters or with the normalisation. -/
+theorem oneLevel_gaussKuzmin_intensity_to_measurable
+    (_h : ∀ B : Set ℝ, MeasurableSet B → (∃ δ > 0, ∀ x ∈ B, δ ≤ |x|) →
+        (∃ R : ℝ, ∀ x ∈ B, |x| ≤ R) → IntervalClass.IsFiniteUnionOfIntervals B →
+        ∃ Λe Λo : ℝ, Λe + Λo = (levyIntensity B).toReal ∧
+          ∀ ε > 0, ∀ᶠ n : ℕ in atTop, ∀ j ∈ bulkJ n,
+            |Lnorm n * unifIoo.real (oneLevelEvent n B j)
+                - 2 * lyapunov * (if Even j then Λe else Λo)| ≤ ε) :
+    ∀ B : Set ℝ, MeasurableSet B → (∃ δ > 0, ∀ x ∈ B, δ ≤ |x|) →
+      (∃ R : ℝ, ∀ x ∈ B, |x| ≤ R) →
+      ∃ Λe Λo : ℝ, Λe + Λo = (levyIntensity B).toReal ∧
+        ∀ ε > 0, ∀ᶠ n : ℕ in atTop, ∀ j ∈ bulkJ n,
+          |Lnorm n * unifIoo.real (oneLevelEvent n B j)
+              - 2 * lyapunov * (if Even j then Λe else Λo)| ≤ ε := by
+  sorry
+
+/-- **The residual, statement unchanged.**  Every consumer below and every
+token-identity check at the foot of this file reads exactly the same `Prop` as
+before; it is no longer a bare `sorry` but is derived from residuals (35a) and
+(35b), which between them say what the argument actually does.
+
+**The interval case is proved at the shape the tree names.**
+`Kwon1002.Section5Join.oneLevel_gaussKuzmin_intensity_truncation` proves this
+very conclusion, unconditionally and `#print axioms` clean, for
+`B = {x : ε < |x| ∧ |x| ≤ R}` — the truncation window that
+`IntervalClass.isUnionOfIntervals_truncation` shows is a union of two intervals
+and that `TupleFinal.goodSet_mark_factorization_truncation` records as the only
+shape `B` ever takes below Proposition 5.1.
+
+**Consumer audit, and a record made precise.**  `TupleFinal`'s docstring says
+"the concrete `B` the §5 chain instantiates is the large-jump truncation
+`{x : ε < |x|}` cut to the bounded window".  A full sweep of `Kwon1002/` finds
+that this is a statement of *intent*, not of current fact: **no theorem in this
+chain is applied to a concrete `B` anywhere in the tree.**  Every application of
+`oneLevel_gaussKuzmin_intensity`, `deterministic_oneLevel_intensity`,
+`sum_det_tendsto`, `oneLevel_intensity_limit`, `tuple_measure_convergence`,
+`tuple_quasi_independence`, `LevyExponent.factorialMoment_convergence`,
+`LevyExponent.poisson_count_limit_of_tuple` and
+`PoissonRoute.xi_count_poisson_limit` passes the enclosing theorem's own bound
+`B` straight through, and the top nodes
+(`CauchyLaw.factorialMoment_convergence`, `PoissonRoute.factorialMoment_convergence`,
+`PoissonRoute.xi_count_poisson_limit`, `CauchyLaw.poisson_count_limit`) have no
+call sites at all; the route that actually reaches `Master` runs through
+`CorFinal.largeSum_charFun_limit`, which `Kwon1002/CorFinal.lean` records as
+*not* consuming `LevyExponent.tuple_measure_convergence`.  The single concrete
+instantiation of `B` in the whole development is
+`TupleFinal.goodSet_mark_factorization_truncation`, at exactly
+`{x : ε < |x| ∧ |x| ≤ R}` — which is the shape proved above.  So the truncation
+instance services every use the tree makes *and* every use the tree is designed
+to make; what it does not service is the stated generality, which is what
+residuals (35a) and (35b) carry.
+
+What separates that from residual
+(35a) is *not* the bracket parameters (item (i), closed by
+`Section5Join.oneLevel_transfer`) and *not* the normalisation (closed by
+`Kwon1002/GaussKuzmin.lean`): it is the decomposition of an arbitrary
+`IsUnionOfIntervals` family into disjoint bands, which is what turns the
+half-line normalisation `GaussKuzmin.tendsto_scaled_markTailMean` into a
+statement about a general interval union.  That decomposition is residual
+(35a)'s whole remaining content. -/
+theorem oneLevel_gaussKuzmin_intensity (B : Set ℝ) (_hB : MeasurableSet B)
+    (_hB0 : ∃ δ > 0, ∀ x ∈ B, δ ≤ |x|) (_hBbd : ∃ R : ℝ, ∀ x ∈ B, |x| ≤ R) :
+    ∃ Λe Λo : ℝ, Λe + Λo = (levyIntensity B).toReal ∧
+      ∀ ε > 0, ∀ᶠ n : ℕ in atTop, ∀ j ∈ bulkJ n,
+        |Lnorm n * unifIoo.real (oneLevelEvent n B j)
+            - 2 * lyapunov * (if Even j then Λe else Λo)| ≤ ε :=
+  oneLevel_gaussKuzmin_intensity_to_measurable
+    (fun B' hB' hB0' hBbd' hint' =>
+      oneLevel_gaussKuzmin_intensity_intervals B' hB' hB0' hBbd' hint')
+    B _hB _hB0 _hBbd
 
 /-- **Target 3**, `Kwon1002.deterministic_oneLevel_intensity`
 (`Kwon1002/FiveFinal.lean` line 287), reproduced token for token and proved

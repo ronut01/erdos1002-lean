@@ -116,15 +116,27 @@ replaces the infinite digit sum by the *exact* Gauss-Kuzmin tail
 `∫₀¹ W = 1/12` supplying the `1/12`.  No Riemann sum is needed, and
 `IntervalClass.volume_W_gt` is not used.
 
-What remains of (35) after Parts D and E is therefore neither the
-one-sidedness nor the constant.  It is (i) the *choice of bracket parameters*
-`(Acut, N, δ)` against `L`, together with the two digit tails, and (ii) the
-passage from the interval class — where both the bracket and the normalisation
-live — to the arbitrary measurable `B` the residual is stated for.  Item (ii)
-needs a uniform-in-`L` density bound on the level-`j` law and is the one
-genuinely open item; see the corrected obstruction record on
-`TupleInputs.oneLevel_gaussKuzmin_intensity`.  For residual 2a and (F7) the
-`k`-level and pair-level bookkeeping sits on top of the same two items.
+What remained of (35) after Parts D and E was neither the one-sidedness nor the
+constant, but (i) the *choice of bracket parameters* `(Acut, N, δ)` against `L`,
+together with the two digit tails, and (ii) the passage from the interval class
+— where both the bracket and the normalisation live — to the arbitrary
+measurable `B` the residual is stated for.
+
+**Part F closes item (i) and settles how much of item (ii) is real.**
+`oneLevel_transfer` makes the choice explicit — `δ = L^{-2}`, `N = ⌈L^6⌉`,
+`Acut = ⌈L^2⌉`, against display (24)'s `D = 11` and the one-level rate `A = 2`,
+with `sched_admissible` discharging the budget — and proves the resulting error
+is `o(1/L)` uniformly over the bulk and over the section family.  Item (ii) is
+then split off as `TupleInputs.oneLevel_gaussKuzmin_intensity_to_measurable`,
+and `oneLevel_gaussKuzmin_intensity_truncation` proves the residual's conclusion
+**outright** at `B = {x : ε < |x| ≤ R}`, the only shape `B` takes below
+Proposition 5.1.  What is left between that window and the general interval
+class is a decomposition of an arbitrary `IsUnionOfIntervals` family into
+disjoint bands, and what is left above the interval class is the density bound
+`≍ x^{-2}`; see the corrected obstruction records on
+`TupleInputs.oneLevel_gaussKuzmin_intensity_intervals` and
+`TupleInputs.oneLevel_gaussKuzmin_intensity_to_measurable`.  For residual 2a and
+(F7) the `k`-level and pair-level bookkeeping sits on top of the same items.
 
 ## Finding (F7) is refuted, conditionally on that gate
 
