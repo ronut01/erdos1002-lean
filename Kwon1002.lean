@@ -105,4 +105,5 @@ import Kwon1002.LayerAssembly
 import Kwon1002.SymbolIntensity
 import Kwon1002.WindowBridgeFamily
 import Kwon1002.DetQuasiFamily
+import Kwon1002.PatternSum
 import Kwon1002.SymbolLimit
