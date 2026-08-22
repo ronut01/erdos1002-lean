@@ -64,6 +64,16 @@ names neither:
    limit uniformly over a simple-function approximation of the symbol, which is
    a statement the tree does not contain in any form.
 
+**The structural half of this is now proved.**  `Kwon1002/FactorialSeries.lean`
+proves `CorFinal.largeSum_charFun_limit` (conclusion token for token, guarded
+inside Lean) from the layer limit *alone*: the regrouping by cardinality, the
+deterministic Lamé cap in `ℕ`, the `k`-uniform tuple bound and the interchange
+of the `k`-series with `n → ∞` are all discharged there.  That module also
+sharpens item 2 above: the approximation does not merely need a bounded complex
+symbol in place of an indicator, it needs tuple events carrying a *different*
+set at each level, whereas `tuple_measure_convergence` fixes one `B` at every
+level.  See the "Three records corrected" section of that file's header.
+
 A second, purely combinatorial bridge is needed only if the layer is to be read
 as a §4 tuple sum over embeddings rather than over subsets: the `|S| = k` layer
 is `1/k!` times `∑_{f : Fin k ↪ {0,…,n}} ∫ ∏_i h_{f i}`, because each `k`-subset

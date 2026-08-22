@@ -98,3 +98,4 @@ import Kwon1002.Section7Bridge
 import Kwon1002.Section5Join
 import Kwon1002.Section5Intervals
 import Kwon1002.FactorialRoute
+import Kwon1002.FactorialSeries
