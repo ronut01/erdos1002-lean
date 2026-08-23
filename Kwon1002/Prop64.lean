@@ -1,4 +1,5 @@
 import Kwon1002.Section6Skeleton
+import Kwon1002.Prop64Variance
 import Kwon1002.WindowLaws
 import Kwon1002.WindowMarginal
 import Kwon1002.DigitLaw
@@ -315,16 +316,14 @@ combination of monomials the alternating centered average has variance
 exceptional pairs `O(LH) = o(L²)`, and every other pair the three decaying
 terms of (34).
 
-Consumes `Section4.prop_4_2_two_block_factorization` (equivalently
-`V5Prop42.prop_4_2_v5`) and `Section6Skeleton.lemma_6_3_full_state_transfer`
-for the replacement of the stationary means by the actual means.
-**Obstruction.**  Proposition 4.2 is sorried, and the covariance
-bookkeeping that turns it into a variance bound has not been formalised. -/
+The covariance bookkeeping and the proved unconditional form of Proposition 4.2
+are packaged upstream in `Prop64Variance.poly_centered_avg_L2_tendsto_zero`. -/
 theorem poly_centered_avg_L2_tendsto_zero (R M K : ℕ) (P : WindowSymbol (R + M) K) :
     Tendsto (fun n : ℕ => eLpNorm
         (centeredAvg (Lnorm n) (bulkJ n) (fun j α => (P.at α n j).re)) 2
         (volume.restrict (Ioo (0 : ℝ) 1))) atTop (𝓝 0) := by
-  sorry
+  simpa [centeredAvg, Prop64Variance.varianceCenteredAvg] using
+    Prop64Variance.poly_centered_avg_L2_tendsto_zero R M K P
 
 /-- The §2 carry `u_j = {N_j x_j}` is a measurable function of `α`. -/
 theorem measurable_carry (n j : ℕ) : Measurable fun α : ℝ => carry α n j := by
