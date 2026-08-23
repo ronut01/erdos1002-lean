@@ -4,6 +4,10 @@ import Kwon1002.WindowMarginal
 import Kwon1002.DigitLaw
 import Kwon1002.CarryGraph
 import Kwon1002.StationaryIdentity31
+import Mathlib.Topology.ContinuousMap.StoneWeierstrass
+import Mathlib.Analysis.Fourier.AddCircleMulti
+import Mathlib.MeasureTheory.Integral.IntervalIntegral.Periodic
+import Mathlib.MeasureTheory.Function.ContinuousMapDense
 
 /-!
 # Proposition 6.4 of v5: the bounded-remainder weak law, reduced to named inputs
@@ -48,7 +52,7 @@ restatement of a target; each is a strictly smaller analytic fact.
 -/
 
 open MeasureTheory Set Filter
-open scoped BigOperators Topology ENNReal
+open scoped BigOperators Topology ComplexConjugate ENNReal BoundedContinuousFunction
 
 namespace Kwon1002
 
@@ -1304,33 +1308,673 @@ theorem continuousAt_BwindowRep {R : ℕ} {w : WindowSpace R}
   unfold BwindowRep
   exact continuousAt_const.max (continuousAt_const.min h)
 
+variable {R : ℕ}
+
+/-- The corrected window topology: torus coordinates live in the quotient `ℝ / ℤ`. -/
+abbrev QWindow (R : ℕ) :=
+  (Fin (2 * R + 1) → ℕ) ×
+    (Fin (2 * R + 1) → ℝ) × UnitAddTorus (Fin (2 * R + 2))
+
+/-- Evaluation of the existing algebraic data on the corrected quotient window. -/
+def DenseElt.qeval (G : DenseElt R) (w : QWindow R) : ℂ :=
+  ∑ l : Fin G.len, G.D l w.1 * G.g l w.2.1 * UnitAddTorus.mFourier (G.c l) w.2.2
+
+private def DenseElt.zero (R : ℕ) : DenseElt R where
+  len := 0
+  D := Fin.elim0
+  Dwords := Fin.elim0
+  D_support := by intro l; exact Fin.elim0 l
+  g := Fin.elim0
+  g_continuous := by intro l; exact Fin.elim0 l
+  c := Fin.elim0
+
+private def DenseElt.add (G H : DenseElt R) : DenseElt R where
+  len := G.len + H.len
+  D := Fin.addCases G.D H.D
+  Dwords := Fin.addCases G.Dwords H.Dwords
+  D_support := by
+    intro l
+    induction l using Fin.addCases with
+    | left l => simpa using G.D_support l
+    | right l => simpa using H.D_support l
+  g := Fin.addCases G.g H.g
+  g_continuous := by
+    intro l
+    induction l using Fin.addCases with
+    | left l => simpa using G.g_continuous l
+    | right l => simpa using H.g_continuous l
+  c := Fin.addCases G.c H.c
+
+private def DenseElt.mul (G H : DenseElt R) : DenseElt R where
+  len := G.len * H.len
+  D l w := G.D (finProdFinEquiv.symm l).1 w * H.D (finProdFinEquiv.symm l).2 w
+  Dwords l := G.Dwords (finProdFinEquiv.symm l).1 ∩ H.Dwords (finProdFinEquiv.symm l).2
+  D_support := by
+    intro l w hw
+    simp only [Finset.mem_inter, not_and_or] at hw
+    rcases hw with hw | hw
+    · rw [G.D_support _ _ hw, zero_mul]
+    · rw [H.D_support _ _ hw, mul_zero]
+  g l x := G.g (finProdFinEquiv.symm l).1 x * H.g (finProdFinEquiv.symm l).2 x
+  g_continuous l :=
+    (G.g_continuous (finProdFinEquiv.symm l).1).mul
+      (H.g_continuous (finProdFinEquiv.symm l).2)
+  c l t := G.c (finProdFinEquiv.symm l).1 t + H.c (finProdFinEquiv.symm l).2 t
+
+private def DenseElt.star (G : DenseElt R) : DenseElt R where
+  len := G.len
+  D l w := (starRingEnd ℂ) (G.D l w)
+  Dwords := G.Dwords
+  D_support := by intro l w hw; simp [G.D_support l w hw]
+  g l x := (starRingEnd ℂ) (G.g l x)
+  g_continuous l := continuous_star.comp (G.g_continuous l)
+  c l t := -G.c l t
+
+private theorem qeval_zero (w : QWindow R) : (DenseElt.zero R).qeval w = 0 := by
+  simp [DenseElt.qeval, DenseElt.zero]
+
+private theorem qeval_add (G H : DenseElt R) (w : QWindow R) :
+    (G.add H).qeval w = G.qeval w + H.qeval w := by
+  simp [DenseElt.qeval, DenseElt.add, Fin.sum_univ_add]
+
+private theorem qeval_mul (G H : DenseElt R) (w : QWindow R) :
+    (G.mul H).qeval w = G.qeval w * H.qeval w := by
+  simp only [DenseElt.qeval, DenseElt.mul]
+  have hmf (l : Fin (G.len * H.len)) :
+      UnitAddTorus.mFourier
+          (fun t => G.c (finProdFinEquiv.symm l).1 t + H.c (finProdFinEquiv.symm l).2 t)
+          w.2.2 =
+        UnitAddTorus.mFourier (G.c (finProdFinEquiv.symm l).1) w.2.2 *
+          UnitAddTorus.mFourier (H.c (finProdFinEquiv.symm l).2) w.2.2 := by
+    exact UnitAddTorus.mFourier_add
+  simp_rw [hmf]
+  rw [(finProdFinEquiv.symm.sum_comp (fun p : Fin G.len × Fin H.len =>
+    G.D p.1 w.1 * H.D p.2 w.1 * (G.g p.1 w.2.1 * H.g p.2 w.2.1) *
+      (UnitAddTorus.mFourier (G.c p.1) w.2.2 *
+        UnitAddTorus.mFourier (H.c p.2) w.2.2)))]
+  rw [Fintype.sum_prod_type, Fintype.sum_mul_sum]
+  simp [mul_assoc, mul_left_comm, mul_comm]
+
+private theorem qeval_star (G : DenseElt R) (w : QWindow R) :
+    G.star.qeval w = (starRingEnd ℂ) (G.qeval w) := by
+  simp only [DenseElt.qeval, DenseElt.star]
+  rw [map_sum]
+  apply Finset.sum_congr rfl
+  intro l _
+  rw [map_mul, map_mul]
+  rw [show (fun t => -G.c l t) = -G.c l by rfl, UnitAddTorus.mFourier_neg]
+
+private theorem continuous_qeval (G : DenseElt R) : Continuous G.qeval := by
+  unfold DenseElt.qeval
+  refine continuous_finset_sum _ fun l _ =>
+    ((continuous_of_discreteTopology.comp continuous_fst).mul
+      ((G.g_continuous l).comp (continuous_fst.comp continuous_snd))).mul ?_
+  exact (UnitAddTorus.mFourier (G.c l)).continuous.comp
+    (continuous_snd.comp continuous_snd)
+
+def digitWords (K : Set (QWindow R)) (hK : IsCompact K) :
+    Finset (Fin (2 * R + 1) → ℕ) :=
+  ((hK.image continuous_fst).finite_of_discrete).toFinset
+
+private theorem fst_mem_digitWords {K : Set (QWindow R)} (hK : IsCompact K)
+    {w : QWindow R} (hw : w ∈ K) : w.1 ∈ digitWords K hK := by
+  rw [digitWords, Set.Finite.mem_toFinset]
+  exact mem_image_of_mem Prod.fst hw
+
+private def DenseElt.ofContinuousOnK (K : Set (QWindow R)) (hK : IsCompact K)
+    (g : (Fin (2 * R + 1) → ℝ) → ℂ) (hg : Continuous g) : DenseElt R where
+  len := 1
+  D _ w := if w ∈ digitWords K hK then 1 else 0
+  Dwords _ := digitWords K hK
+  D_support := by simp
+  g _ := g
+  g_continuous _ := hg
+  c _ _ := 0
+
+private theorem qeval_ofContinuousOnK (K : Set (QWindow R)) (hK : IsCompact K)
+    (g : (Fin (2 * R + 1) → ℝ) → ℂ) (hg : Continuous g)
+    {w : QWindow R} (hw : w ∈ K) :
+    (DenseElt.ofContinuousOnK K hK g hg).qeval w = g w.2.1 := by
+  simp only [DenseElt.qeval, DenseElt.ofContinuousOnK, Finset.univ_unique,
+    Fin.default_eq_zero, Finset.sum_singleton, fst_mem_digitWords hK hw, if_pos,
+    one_mul]
+  rw [show (fun _ : Fin (2 * R + 2) => (0 : ℤ)) = 0 by rfl,
+    UnitAddTorus.mFourier_zero, ContinuousMap.one_apply, mul_one]
+
+private def DenseElt.monomialOnK (K : Set (QWindow R)) (hK : IsCompact K)
+    (g : (Fin (2 * R + 1) → ℝ) → ℂ) (hg : Continuous g)
+    (c : Fin (2 * R + 2) → ℤ) : DenseElt R where
+  len := 1
+  D _ w := if w ∈ digitWords K hK then 1 else 0
+  Dwords _ := digitWords K hK
+  D_support := by simp
+  g _ := g
+  g_continuous _ := hg
+  c _ := c
+
+private theorem qeval_monomialOnK (K : Set (QWindow R)) (hK : IsCompact K)
+    (g : (Fin (2 * R + 1) → ℝ) → ℂ) (hg : Continuous g)
+    (c : Fin (2 * R + 2) → ℤ) {w : QWindow R} (hw : w ∈ K) :
+    (DenseElt.monomialOnK K hK g hg c).qeval w =
+      g w.2.1 * UnitAddTorus.mFourier c w.2.2 := by
+  simp [DenseElt.qeval, DenseElt.monomialOnK, fst_mem_digitWords hK hw]
+
+private def DenseElt.digitIndicator (a : Fin (2 * R + 1) → ℕ) : DenseElt R where
+  len := 1
+  D _ w := if w = a then 1 else 0
+  Dwords _ := {a}
+  D_support := by simp_all
+  g _ _ := 1
+  g_continuous _ := continuous_const
+  c _ _ := 0
+
+private theorem qeval_digitIndicator (a : Fin (2 * R + 1) → ℕ) (w : QWindow R) :
+    (DenseElt.digitIndicator a).qeval w = if w.1 = a then 1 else 0 := by
+  simp only [DenseElt.qeval, DenseElt.digitIndicator, Finset.univ_unique,
+    Fin.default_eq_zero, Finset.sum_singleton, mul_one]
+  rw [show (fun _ : Fin (2 * R + 2) => (0 : ℤ)) = 0 by rfl,
+    UnitAddTorus.mFourier_zero, ContinuousMap.one_apply, mul_one]
+
+private def restrictQEval {K : Set (QWindow R)} (G : DenseElt R) : C(K, ℂ) :=
+  ⟨fun w => G.qeval w.1, (continuous_qeval G).comp continuous_subtype_val⟩
+
+/-- Every digit amplitude vanishes away from the finite digit projection of `K`. -/
+def SupportedOnDigitWords (K : Set (QWindow R)) (hK : IsCompact K) (G : DenseElt R) : Prop :=
+  ∀ l w, w ∉ digitWords K hK → G.D l w = 0
+
+/-- Restrictions of `DenseElt.qeval` form a unital star subalgebra on every compact `K`.
+The compactness is used exactly to make the digit cutoff finite. -/
+def denseEltStarSubalgebra (K : Set (QWindow R)) (hK : IsCompact K) :
+    StarSubalgebra ℂ C(K, ℂ) where
+  carrier := {f | ∃ G : DenseElt R, restrictQEval G = f ∧ SupportedOnDigitWords K hK G}
+  zero_mem' := ⟨DenseElt.zero R, by ext w; exact qeval_zero w.1,
+    by intro l; exact Fin.elim0 l⟩
+  one_mem' := by
+    refine ⟨DenseElt.ofContinuousOnK K hK (fun _ => 1) continuous_const, ?_, ?_⟩
+    · ext w
+      exact qeval_ofContinuousOnK K hK _ continuous_const w.2
+    · intro l w hw
+      simp [DenseElt.ofContinuousOnK, hw]
+  add_mem' := by
+    rintro f g ⟨G, rfl, hG⟩ ⟨H, rfl, hH⟩
+    refine ⟨G.add H, ?_, ?_⟩
+    · ext w
+      exact qeval_add G H w.1
+    · intro l
+      induction l using Fin.addCases with
+      | left l => simpa [DenseElt.add] using hG l
+      | right l => simpa [DenseElt.add] using hH l
+  mul_mem' := by
+    rintro f g ⟨G, rfl, hG⟩ ⟨H, rfl, hH⟩
+    refine ⟨G.mul H, ?_, ?_⟩
+    · ext w
+      exact qeval_mul G H w.1
+    · intro l w hw
+      simp [DenseElt.mul, hG _ _ hw]
+  algebraMap_mem' := by
+    intro z
+    refine ⟨DenseElt.ofContinuousOnK K hK (fun _ => z) continuous_const, ?_, ?_⟩
+    · ext w
+      simpa using qeval_ofContinuousOnK K hK (fun _ => z) continuous_const w.2
+    · intro l w hw
+      simp [DenseElt.ofContinuousOnK, hw]
+  star_mem' := by
+    rintro f ⟨G, rfl, hG⟩
+    refine ⟨G.star, ?_, ?_⟩
+    · ext w
+      exact qeval_star G w.1
+    · intro l w hw
+      simp [DenseElt.star, hG l w hw]
+
+private theorem denseEltStarSubalgebra_separatesPoints (K : Set (QWindow R))
+    (hK : IsCompact K) : (denseEltStarSubalgebra K hK).SeparatesPoints := by
+  classical
+  intro x y hxy
+  by_cases hd : x.1.1 = y.1.1
+  · by_cases hr : x.1.2.1 = y.1.2.1
+    · have ht : x.1.2.2 ≠ y.1.2.2 := by
+        intro he
+        apply hxy
+        exact Subtype.ext <| Prod.ext hd (Prod.ext hr he)
+      rw [Ne, funext_iff, not_forall] at ht
+      obtain ⟨i, hi⟩ := ht
+      let G := DenseElt.monomialOnK K hK (fun _ => 1) continuous_const (Pi.single i 1)
+      refine ⟨_, ⟨restrictQEval G, ⟨G, rfl, ?_⟩, rfl⟩, ?_⟩
+      · intro l w hw
+        simp [G, DenseElt.monomialOnK, hw]
+      have hc : fourier 1 (x.1.2.2 i) ≠ fourier 1 (y.1.2.2 i) := by
+        rw [fourier_one, fourier_one, Ne, Subtype.coe_inj]
+        contrapose! hi
+        exact AddCircle.injective_toCircle one_ne_zero hi
+      simpa [restrictQEval, G, qeval_monomialOnK K hK,
+        UnitAddTorus.mFourier_single] using hc
+    · obtain ⟨i, hi⟩ := Function.ne_iff.mp hr
+      let G := DenseElt.ofContinuousOnK K hK (fun z => (z i : ℂ)) (by fun_prop)
+      refine ⟨_, ⟨restrictQEval G, ⟨G, rfl, ?_⟩, rfl⟩, ?_⟩
+      · intro l w hw
+        simp [G, DenseElt.ofContinuousOnK, hw]
+      simpa [restrictQEval, G, qeval_ofContinuousOnK K hK] using hi
+  · let G := DenseElt.digitIndicator x.1.1
+    refine ⟨_, ⟨restrictQEval G, ⟨G, rfl, ?_⟩, rfl⟩, ?_⟩
+    · intro l w hw
+      have hne : w ≠ x.1.1 := by
+        intro he
+        apply hw
+        simpa [he] using fst_mem_digitWords hK x.2
+      simp [G, DenseElt.digitIndicator, hne]
+    simp [restrictQEval, G, qeval_digitIndicator, Ne.symm hd]
+
+/-- Uniform Stone--Weierstrass approximation on a compact subset of the corrected window. -/
+theorem exists_denseElt_uniformly_approximates (K : Set (QWindow R)) (hK : IsCompact K)
+    (f : C(K, ℂ)) {ε : ℝ} (hε : 0 < ε) :
+    ∃ G : DenseElt R, SupportedOnDigitWords K hK G ∧
+      ∀ w : K, ‖restrictQEval G w - f w‖ < ε := by
+  let A := denseEltStarSubalgebra K hK
+  letI : CompactSpace K := isCompact_iff_compactSpace.mp hK
+  have hclosure : A.topologicalClosure = ⊤ :=
+    ContinuousMap.starSubalgebra_topologicalClosure_eq_top_of_separatesPoints A
+      (denseEltStarSubalgebra_separatesPoints K hK)
+  have hf : f ∈ closure (A : Set C(K, ℂ)) := by
+    change f ∈ A.topologicalClosure
+    rw [hclosure]
+    trivial
+  obtain ⟨g, hgA, hdist⟩ := (Metric.mem_closure_iff.mp hf) ε hε
+  obtain ⟨G, rfl, hG⟩ := hgA
+  have hnorm : ‖f - restrictQEval G‖ < ε := by
+    simpa [dist_eq_norm] using hdist
+  refine ⟨G, hG, fun w => ?_⟩
+  have hle := (f - restrictQEval G).norm_coe_le_norm w
+  rw [ContinuousMap.sub_apply, norm_sub_rev] at hle
+  exact hle.trans_lt hnorm
+
+/-! ## Quotienting the stationary window law -/
+
+def quotientWindow (R : ℕ) (w : WindowSpace R) : QWindow R :=
+  (w.1, w.2.1, fun i ↦ (w.2.2 i : UnitAddCircle))
+
+def liftQWindow (R : ℕ) (q : QWindow R) : WindowSpace R :=
+  (q.1, q.2.1, fun i ↦ ((AddCircle.measurableEquivIco 1 0) (q.2.2 i)).1)
+
+lemma measurable_quotientWindow (R : ℕ) : Measurable (quotientWindow R) := by
+  unfold quotientWindow
+  refine Measurable.prodMk measurable_fst (Measurable.prodMk
+    (measurable_fst.comp measurable_snd) ?_)
+  exact measurable_pi_lambda _ fun i ↦
+    AddCircle.measurable_mk'.comp
+      ((measurable_pi_apply i).comp (measurable_snd.comp measurable_snd))
+
+lemma measurable_liftQWindow (R : ℕ) : Measurable (liftQWindow R) := by
+  unfold liftQWindow
+  refine Measurable.prodMk measurable_fst (Measurable.prodMk
+    (measurable_fst.comp measurable_snd) ?_)
+  exact measurable_pi_lambda _ fun i ↦
+    (measurable_subtype_coe.comp (AddCircle.measurableEquivIco 1 0).measurable).comp
+      ((measurable_pi_apply i).comp (measurable_snd.comp measurable_snd))
+
+lemma denseElt_qeval_quotientWindow (G : DenseElt R) (w : WindowSpace R) :
+    G.qeval (quotientWindow R w) = G.eval w := by
+  unfold DenseElt.qeval DenseElt.eval quotientWindow
+  refine Finset.sum_congr rfl fun l _ ↦ ?_
+  congr 1
+  rw [UnitAddTorus.mFourier]
+  simp only [ContinuousMap.coe_mk]
+  have hsum (t : Fin (2 * R + 2) → ℝ) :
+      torusChar (∑ i, t i) = ∏ i, torusChar (t i) := by
+    unfold torusChar
+    rw [← Complex.exp_sum]
+    congr 1
+    push_cast
+    rw [Finset.mul_sum]
+  rw [hsum]
+  refine Finset.prod_congr rfl fun i _ ↦ ?_
+  rw [fourier_coe_apply, torusChar]
+  congr 1
+  push_cast
+  ring
+
+def WindowSupport (R : ℕ) : Set (WindowSpace R) :=
+  {w | (∀ i, w.2.1 i ∈ Ioo (0 : ℝ) 1) ∧
+    (∀ i, w.2.2 i ∈ Ico (0 : ℝ) 1)}
+
+private theorem hatSzpow_mem_goodT {z : NatExtTorus}
+    (hz : z ∈ CarryGraph.GoodT) (t : ℤ) : hatSzpow t z ∈ CarryGraph.GoodT := by
+  by_cases ht : (0 : ℤ) ≤ t
+  · rw [hatSzpow, if_pos ht]
+    exact CarryGraph.hatS_iterate_mem_goodT hz _
+  · rw [hatSzpow, if_neg ht]
+    exact CarryGraph.hatSinv_iterate_mem_goodT hz _
+
+private theorem stationaryWindow_mem_windowSupport (R : ℕ) {z : NatExtTorus}
+    (hz : z ∈ CarryGraph.GoodT) : stationaryWindow R z ∈ WindowSupport R := by
+  constructor
+  · intro i
+    let t : ℤ := (i : ℤ) - (R : ℤ)
+    change (hatSzpow t z).1.1 ∈ Ioo (0 : ℝ) 1
+    exact (hatSzpow_mem_goodT hz t).1.1
+  · intro i
+    let t : ℤ := (i : ℤ) - (R : ℤ) - 1
+    change (hatSzpow t z).2.2 ∈ Ico (0 : ℝ) 1
+    exact (hatSzpow_mem_goodT hz t).2.2
+
+lemma measurableSet_windowSupport (R : ℕ) : MeasurableSet (WindowSupport R) := by
+  have hset : WindowSupport R =
+      (⋂ i, {w : WindowSpace R | w.2.1 i ∈ Ioo (0 : ℝ) 1}) ∩
+      (⋂ i, {w : WindowSpace R | w.2.2 i ∈ Ico (0 : ℝ) 1}) := by
+    ext w; simp [WindowSupport]
+  rw [hset]
+  refine MeasurableSet.inter (MeasurableSet.iInter fun i ↦ ?_)
+    (MeasurableSet.iInter fun i ↦ ?_)
+  · exact ((measurable_pi_apply i).comp (measurable_fst.comp measurable_snd)) measurableSet_Ioo
+  · exact ((measurable_pi_apply i).comp (measurable_snd.comp measurable_snd)) measurableSet_Ico
+
+lemma windowLaw_ae_mem_windowSupport (R : ℕ) :
+    ∀ᵐ w ∂(windowLaw R), w ∈ WindowSupport R := by
+  rw [windowLaw]
+  apply (ae_map_iff (measurable_stationaryWindow R).aemeasurable
+    (measurableSet_windowSupport R)).2
+  filter_upwards [CarryGraph.hatMu0_ae_goodT] with z hz
+  exact stationaryWindow_mem_windowSupport R hz
+
+lemma liftQWindow_quotientWindow_of_mem_support {w : WindowSpace R}
+    (hw : w ∈ WindowSupport R) : liftQWindow R (quotientWindow R w) = w := by
+  ext i <;> simp only [liftQWindow, quotientWindow]
+  change ((AddCircle.equivIco 1 0) (w.2.2 i : UnitAddCircle)).1 = w.2.2 i
+  rw [AddCircle.equivIco_coe_eq (by simpa using hw.2 i)]
+
+lemma ae_liftQWindow_quotientWindow (R : ℕ) :
+    ∀ᵐ w ∂(windowLaw R), liftQWindow R (quotientWindow R w) = w := by
+  filter_upwards [windowLaw_ae_mem_windowSupport R] with w hw
+  exact liftQWindow_quotientWindow_of_mem_support hw
+
+def qWindowLaw (R : ℕ) : Measure (QWindow R) :=
+  (windowLaw R).map (quotientWindow R)
+
+def qBwindowRep (R : ℕ) (q : QWindow R) : ℂ :=
+  (BwindowRep R (liftQWindow R q) : ℂ)
+
+lemma measurable_qBwindowRep (R : ℕ) : Measurable (qBwindowRep R) :=
+  Complex.measurable_ofReal.comp ((measurable_BwindowRep R).comp (measurable_liftQWindow R))
+
+lemma ae_qBwindowRep_quotientWindow (R : ℕ) :
+    (fun w : WindowSpace R ↦ (BwindowRep R w : ℂ)) =ᵐ[windowLaw R]
+      fun w ↦ qBwindowRep R (quotientWindow R w) := by
+  filter_upwards [ae_liftQWindow_quotientWindow R] with w hw
+  simp [qBwindowRep, hw]
+
+local instance qWindowLaw_isProbabilityMeasure (R : ℕ) :
+    IsProbabilityMeasure (qWindowLaw R) := by
+  constructor
+  rw [qWindowLaw, Measure.map_apply_of_aemeasurable
+    (measurable_quotientWindow R).aemeasurable MeasurableSet.univ]
+  simp
+
+lemma memLp_qBwindowRep (R : ℕ) : MemLp (qBwindowRep R) 2 (qWindowLaw R) := by
+  have hm : AEStronglyMeasurable (qBwindowRep R) (qWindowLaw R) :=
+    (measurable_qBwindowRep R).aestronglyMeasurable
+  have hb : ∀ᵐ q ∂(qWindowLaw R), ‖qBwindowRep R q‖ ≤ (45 / 8 : ℝ) := by
+    filter_upwards [] with q
+    simpa [qBwindowRep, Complex.norm_real] using abs_BwindowRep_le R (liftQWindow R q)
+  exact (memLp_top_of_bound hm (45 / 8) hb).mono_exponent (by norm_num)
+
+def fullDigitCapQ (R K : ℕ) : Set (QWindow R) := {q | ∀ i, q.1 i ≤ K}
+
+lemma measurableSet_fullDigitCapQ (R K : ℕ) : MeasurableSet (fullDigitCapQ R K) := by
+  have hset : fullDigitCapQ R K = ⋂ i, {q : QWindow R | q.1 i ≤ K} := by
+    ext q; simp [fullDigitCapQ]
+  rw [hset]
+  refine MeasurableSet.iInter fun i ↦ ?_
+  change MeasurableSet ((fun q : QWindow R ↦ q.1 i) ⁻¹' {n : ℕ | n ≤ K})
+  exact ((measurable_pi_apply i).comp measurable_fst) MeasurableSet.of_discrete
+
+lemma qWindowLaw_fullDigitCapQ_compl_le (R K : ℕ) :
+    qWindowLaw R (fullDigitCapQ R K)ᶜ ≤
+      ENNReal.ofReal (((2 * R + 1 : ℕ) : ℝ) * (2 / ((K : ℝ) + 1))) := by
+  have hpre : quotientWindow R ⁻¹' (fullDigitCapQ R K)ᶜ =
+      ⋃ i : Fin (2 * R + 1), {w : WindowSpace R | K + 1 ≤ w.1 i} := by
+    ext w
+    simp only [Set.mem_preimage, Set.mem_compl_iff, fullDigitCapQ, Set.mem_setOf_eq,
+      not_forall, not_le, Set.mem_iUnion, quotientWindow]
+    exact exists_congr fun i ↦ Nat.lt_iff_add_one_le
+  rw [qWindowLaw, Measure.map_apply (measurable_quotientWindow R)
+    (measurableSet_fullDigitCapQ R K).compl, hpre]
+  refine le_trans (measure_iUnion_le _) ?_
+  rw [tsum_fintype]
+  refine le_trans (Finset.sum_le_sum (fun i _ ↦ windowLaw_digitCoord_tail R i K)) ?_
+  rw [Finset.sum_const, Finset.card_univ, Fintype.card_fin, nsmul_eq_mul,
+    ← ENNReal.ofReal_natCast, ← ENNReal.ofReal_mul (by positivity)]
+
+def fullDigitCubeQ (R K : ℕ) : Set (QWindow R) :=
+  {a : Fin (2 * R + 1) → ℕ | ∀ i, a i ≤ K} ×ˢ
+    ((Set.univ.pi fun _ : Fin (2 * R + 1) ↦ Icc (0 : ℝ) 1) ×ˢ
+      (Set.univ : Set (UnitAddTorus (Fin (2 * R + 2)))))
+
+lemma isCompact_fullDigitCubeQ (R K : ℕ) : IsCompact (fullDigitCubeQ R K) := by
+  refine IsCompact.prod ?_ (IsCompact.prod ?_ isCompact_univ)
+  · refine Set.Finite.isCompact ?_
+    have hrw : {a : Fin (2 * R + 1) → ℕ | ∀ i, a i ≤ K} =
+        Set.univ.pi fun _ : Fin (2 * R + 1) ↦ Set.Iic K := by
+      ext a; simp [Pi.le_def]
+    rw [hrw]
+    exact Set.Finite.pi fun _ ↦ Set.finite_Iic K
+  · exact isCompact_univ_pi fun _ ↦ isCompact_Icc
+
+lemma quotientWindow_mem_fullDigitCubeQ {K : ℕ} {w : WindowSpace R}
+    (hcap : ∀ i, w.1 i ≤ K) (hsupp : w ∈ WindowSupport R) :
+    quotientWindow R w ∈ fullDigitCubeQ R K := by
+  refine ⟨hcap, ?_, Set.mem_univ _⟩
+  intro i _
+  exact Ioo_subset_Icc_self (hsupp.1 i)
+
+def qRealSupport (R : ℕ) : Set (QWindow R) :=
+  {q | ∀ i, q.2.1 i ∈ Icc (0 : ℝ) 1}
+
+lemma measurableSet_qRealSupport (R : ℕ) : MeasurableSet (qRealSupport R) := by
+  have hset : qRealSupport R =
+      ⋂ i, {q : QWindow R | q.2.1 i ∈ Icc (0 : ℝ) 1} := by
+    ext q; simp [qRealSupport]
+  rw [hset]
+  exact MeasurableSet.iInter fun i ↦
+    ((measurable_pi_apply i).comp (measurable_fst.comp measurable_snd)) measurableSet_Icc
+
+lemma qWindowLaw_ae_mem_qRealSupport (R : ℕ) :
+    ∀ᵐ q ∂(qWindowLaw R), q ∈ qRealSupport R := by
+  rw [qWindowLaw]
+  apply (ae_map_iff (measurable_quotientWindow R).aemeasurable
+    (measurableSet_qRealSupport R)).2
+  filter_upwards [windowLaw_ae_mem_windowSupport R] with w hw
+  exact fun i ↦ Ioo_subset_Icc_self (hw.1 i)
+
+lemma digitWords_fullDigitCubeQ_subset (K : ℕ) {a : Fin (2 * R + 1) → ℕ}
+    (ha : a ∈ digitWords (fullDigitCubeQ R K) (isCompact_fullDigitCubeQ R K)) :
+    ∀ i, a i ≤ K := by
+  rw [digitWords, Set.Finite.mem_toFinset] at ha
+  obtain ⟨q, hqK, hqa⟩ := ha
+  simpa [fullDigitCubeQ, hqa] using hqK.1
+
+lemma qeval_eq_zero_outside_fullDigitCapQ (K : ℕ) {G : DenseElt R}
+    (hG : SupportedOnDigitWords (fullDigitCubeQ R K) (isCompact_fullDigitCubeQ R K) G)
+    {q : QWindow R} (hq : q ∉ fullDigitCapQ R K) : G.qeval q = 0 := by
+  unfold DenseElt.qeval
+  refine Finset.sum_eq_zero fun l _ ↦ ?_
+  rw [hG l q.1]
+  · simp
+  · intro hword
+    apply hq
+    exact digitWords_fullDigitCubeQ_subset K hword
+
+theorem qDenseElt_density (R : ℕ) (f : QWindow R → ℂ)
+    (hf : MemLp f 2 (qWindowLaw R)) (e : ℝ) (he : 0 < e) :
+    ∃ G : DenseElt R, eLpNorm (f - G.qeval) 2 (qWindowLaw R) < ENNReal.ofReal e := by
+  letI : Measure.Regular (qWindowLaw R) :=
+    Measure.Regular.of_sigmaCompactSpace_of_isLocallyFiniteMeasure (qWindowLaw R)
+  obtain ⟨h, hfh, -⟩ := hf.exists_boundedContinuous_eLpNorm_sub_le
+    (by norm_num) (show ENNReal.ofReal (e / 4) ≠ 0 by positivity)
+  let C : ℝ := ‖h‖ + 1
+  have hC : 0 < C := by dsimp [C]; positivity
+  let η : ℝ := e / 4 / C
+  have hη : 0 < η := by dsimp [η]; positivity
+  have hη2 : 0 < η ^ 2 := by positivity
+  obtain ⟨K, hKgt⟩ := exists_nat_gt
+    (((2 * R + 1 : ℕ) : ℝ) * 2 / η ^ 2)
+  have hK1 : (0 : ℝ) < (K : ℝ) + 1 := by positivity
+  have hKbound : ((2 * R + 1 : ℕ) : ℝ) * (2 / ((K : ℝ) + 1)) < η ^ 2 := by
+    rw [div_lt_iff₀ hη2] at hKgt
+    rw [← mul_div_assoc, div_lt_iff₀ hK1]
+    nlinarith
+  let QK : Set (QWindow R) := fullDigitCubeQ R K
+  have hQK : IsCompact QK := isCompact_fullDigitCubeQ R K
+  let hKfun : C(QK, ℂ) := ⟨fun q ↦ h q.1, h.continuous.comp continuous_subtype_val⟩
+  obtain ⟨G, hGsupport, hGunif⟩ :=
+    exists_denseElt_uniformly_approximates QK hQK hKfun (show 0 < e / 4 by positivity)
+  refine ⟨G, ?_⟩
+  let E : Set (QWindow R) := fullDigitCapQ R K
+  have hEm : MeasurableSet E := measurableSet_fullDigitCapQ R K
+  have hinside : eLpNorm (E.indicator (fun q ↦ (h q : ℂ) - G.qeval q)) 2 (qWindowLaw R)
+      ≤ ENNReal.ofReal (e / 4) := by
+    have hbd : ∀ᵐ q ∂(qWindowLaw R),
+        ‖E.indicator (fun q ↦ (h q : ℂ) - G.qeval q) q‖ ≤ e / 4 := by
+      filter_upwards [qWindowLaw_ae_mem_qRealSupport R] with q hqreal
+      by_cases hqE : q ∈ E
+      · rw [Set.indicator_of_mem hqE]
+        have hqK : q ∈ QK := ⟨hqE, ⟨fun i _ ↦ hqreal i, Set.mem_univ q.2.2⟩⟩
+        have hu := hGunif ⟨q, hqK⟩
+        simpa [restrictQEval, hKfun, norm_sub_rev] using hu.le
+      · rw [Set.indicator_of_notMem hqE, norm_zero]
+        exact (div_nonneg he.le (by norm_num))
+    have hb := eLpNorm_le_of_ae_bound (p := (2 : ℝ≥0∞)) hbd
+    calc
+      eLpNorm (E.indicator (fun q ↦ (h q : ℂ) - G.qeval q)) 2 (qWindowLaw R)
+          ≤ qWindowLaw R Set.univ ^ (2 : ℝ≥0∞).toReal⁻¹ * ENNReal.ofReal (e / 4) := hb
+      _ = ENNReal.ofReal (e / 4) := by rw [measure_univ, ENNReal.one_rpow, one_mul]
+  have hmeasure : qWindowLaw R Eᶜ < ENNReal.ofReal (η ^ 2) :=
+    lt_of_le_of_lt (qWindowLaw_fullDigitCapQ_compl_le R K)
+      ((ENNReal.ofReal_lt_ofReal_iff hη2).mpr hKbound)
+  have htail : eLpNorm (Eᶜ.indicator fun q ↦ (h q : ℂ)) 2 (qWindowLaw R)
+      < ENNReal.ofReal (e / 4) := by
+    have hdom : ∀ᵐ q ∂(qWindowLaw R),
+        ‖Eᶜ.indicator (fun q ↦ (h q : ℂ)) q‖ ≤
+          ‖Eᶜ.indicator (fun _ ↦ (C : ℂ)) q‖ := by
+      filter_upwards [] with q
+      by_cases hqE : q ∈ Eᶜ
+      · rw [Set.indicator_of_mem hqE, Set.indicator_of_mem hqE]
+        have hnormC : ‖(C : ℂ)‖ = C := by
+          rw [Complex.norm_real, Real.norm_of_nonneg hC.le]
+        rw [hnormC]
+        exact (h.norm_coe_le_norm q).trans (by dsimp [C]; linarith)
+      · simp [Set.indicator_of_notMem hqE]
+    refine lt_of_le_of_lt (eLpNorm_mono_ae hdom) ?_
+    rw [eLpNorm_indicator_const hEm.compl (by norm_num) (by norm_num)]
+    have htwo : (1 : ℝ) / (2 : ℝ≥0∞).toReal = (1 / 2 : ℝ) := by norm_num
+    rw [htwo, ← ofReal_norm_eq_enorm, Complex.norm_real,
+      Real.norm_of_nonneg hC.le]
+    have hrpow : (ENNReal.ofReal (η ^ 2)) ^ ((1 : ℝ) / 2) = ENNReal.ofReal η := by
+      rw [ENNReal.ofReal_pow hη.le, ← ENNReal.rpow_natCast (ENNReal.ofReal η) 2,
+        ← ENNReal.rpow_mul]
+      norm_num
+    have hneC : ENNReal.ofReal C ≠ 0 := by
+      simp [ENNReal.ofReal_eq_zero, not_le, hC]
+    calc ENNReal.ofReal C * qWindowLaw R Eᶜ ^ ((1 : ℝ) / 2)
+        < ENNReal.ofReal C * ENNReal.ofReal η := by
+          refine ENNReal.mul_lt_mul_right hneC ENNReal.ofReal_ne_top ?_
+          rw [← hrpow]
+          exact ENNReal.rpow_lt_rpow hmeasure (by norm_num)
+      _ = ENNReal.ofReal (e / 4) := by
+          rw [← ENNReal.ofReal_mul hC.le]
+          congr 1
+          dsimp [η]
+          field_simp
+  have hsplit : (fun q ↦ (h q : ℂ) - G.qeval q) =ᵐ[qWindowLaw R]
+      E.indicator (fun q ↦ (h q : ℂ) - G.qeval q) +
+        Eᶜ.indicator (fun q ↦ (h q : ℂ)) := by
+    filter_upwards [] with q
+    by_cases hqE : q ∈ E
+    · simp [hqE]
+    · have hG0 : G.qeval q = 0 :=
+        qeval_eq_zero_outside_fullDigitCapQ K (by simpa [QK] using hGsupport) hqE
+      simp [hqE, hG0]
+  have hm1 : AEStronglyMeasurable
+      (E.indicator (fun q ↦ (h q : ℂ) - G.qeval q)) (qWindowLaw R) :=
+    ((h.continuous.measurable.sub (continuous_qeval G).measurable).indicator hEm).aestronglyMeasurable
+  have hm2 : AEStronglyMeasurable
+      (Eᶜ.indicator fun q ↦ (h q : ℂ)) (qWindowLaw R) :=
+    (h.continuous.measurable.indicator hEm.compl).aestronglyMeasurable
+  have hhG : eLpNorm ((fun q ↦ (h q : ℂ)) - G.qeval) 2 (qWindowLaw R)
+      < ENNReal.ofReal (e / 2) := by
+    change eLpNorm (fun q ↦ (h q : ℂ) - G.qeval q) 2 (qWindowLaw R)
+      < ENNReal.ofReal (e / 2)
+    rw [eLpNorm_congr_ae hsplit]
+    calc eLpNorm
+          (E.indicator (fun q ↦ (h q : ℂ) - G.qeval q) +
+            Eᶜ.indicator (fun q ↦ (h q : ℂ))) 2 (qWindowLaw R)
+        ≤ eLpNorm (E.indicator (fun q ↦ (h q : ℂ) - G.qeval q)) 2 (qWindowLaw R) +
+            eLpNorm (Eᶜ.indicator fun q ↦ (h q : ℂ)) 2 (qWindowLaw R) :=
+          eLpNorm_add_le hm1 hm2 (by norm_num)
+      _ < ENNReal.ofReal (e / 4) + ENNReal.ofReal (e / 4) := by
+          exact ENNReal.add_lt_add_of_le_of_lt
+            (ne_top_of_le_ne_top ENNReal.ofReal_ne_top hinside) hinside htail
+      _ = ENNReal.ofReal (e / 2) := by
+          rw [← ENNReal.ofReal_add (by positivity) (by positivity)]
+          congr 1
+          ring
+  have hdecomp : f - G.qeval = (f - (h : QWindow R → ℂ)) +
+      ((h : QWindow R → ℂ) - G.qeval) := by
+    funext q
+    simp only [Pi.add_apply, Pi.sub_apply]
+    ring
+  rw [hdecomp]
+  have hmfh : AEStronglyMeasurable (f - (h : QWindow R → ℂ)) (qWindowLaw R) :=
+    hf.aestronglyMeasurable.sub h.continuous.measurable.aestronglyMeasurable
+  have hmhG : AEStronglyMeasurable ((h : QWindow R → ℂ) - G.qeval) (qWindowLaw R) :=
+    h.continuous.measurable.aestronglyMeasurable.sub (continuous_qeval G).measurable.aestronglyMeasurable
+  calc eLpNorm ((f - (h : QWindow R → ℂ)) +
+        ((h : QWindow R → ℂ) - G.qeval)) 2 (qWindowLaw R)
+      ≤ eLpNorm (f - (h : QWindow R → ℂ)) 2 (qWindowLaw R) +
+          eLpNorm ((h : QWindow R → ℂ) - G.qeval) 2 (qWindowLaw R) :=
+        eLpNorm_add_le hmfh hmhG (by norm_num)
+    _ < ENNReal.ofReal (e / 4) + ENNReal.ofReal (e / 2) := by
+        exact ENNReal.add_lt_add_of_le_of_lt
+          (ne_top_of_le_ne_top ENNReal.ofReal_ne_top hfh) hfh hhG
+    _ < ENNReal.ofReal e := by
+        rw [← ENNReal.ofReal_add (by positivity) (by positivity)]
+        exact (ENNReal.ofReal_lt_ofReal_iff he).mpr (by linarith)
+
 /-! ### Named inputs for display (55) -/
 
-/-- **Input (step 1, density bridge).**  v5 lines 1316-1330: the algebra
-of finite sums `Σ_ℓ D_ℓ g_ℓ e(Σ c_{ℓ,t} θ_t)` is dense in `L²(μ_R)`, and
-`B^{(R)}` is bounded and `μ_R`-almost-everywhere continuous, so it is
-approximated to any accuracy.
+/-- **Step 1, density bridge.**  The bounded measurable representative
+`BwindowRep` is approximated in `L²(windowLaw R)` by finite sums
+`Σ_ℓ D_ℓ g_ℓ e(Σ c_{ℓ,t} θ_t)`.
 
-Consumes `Section6Skeleton.BwindowRep_ae_continuous` and
-`Prop64.abs_BwindowRep_le`.
-The raw formula `Bwindow` is not globally bounded (`bwindow_unbounded`),
-so the canonical contract now uses `BwindowRep`: its measurability and
-global `45/8` bound are proved above, and it agrees with
-`BremainderTrunc` on every actual irrational window.  Moreover,
-`ae_BwindowRep_eq_Bwindow` proves that its clamp is inactive
-`windowLaw`-almost everywhere.  The remaining inputs are its
-`windowLaw`-a.e. continuity and the density statement itself,
-the one v9 records after Lemma 6.3: finite sums
-`Σ_ℓ D_ℓ g_ℓ e(Σ c_{ℓ,t} θ_t)` are dense in `L²(μ_R)`.  That needs
-Stone-Weierstrass on the compact exhaustion `digitCapCube` together with
-the regularity of `μ_R` (`IsProbabilityMeasure (windowLaw R)` is now an
-instance); the Fourier tooling of `CylinderCharDense.lean` §4 is the
-natural raw material. -/
+The proof passes to `QWindow R`, where torus coordinates live in the genuine
+quotient `UnitAddTorus`; Fourier characters then separate points without the
+endpoint obstruction of real representatives.  Bounded continuous functions
+are dense in `L²(qWindowLaw R)`.  On a full-measure real cube, a finite digit
+cap gives a compact set, and Stone-Weierstrass supplies a `DenseElt`; the digit
+tail bound controls its complement.  Finally the quotient pushforward and the
+almost-everywhere canonical lift transfer the estimate back to `windowLaw R`.
+
+This route uses measurability and the global `45/8` bound of `BwindowRep`; it
+does not require `Section6Skeleton.BwindowRep_ae_continuous`. -/
 theorem density_bridge (R : ℕ) (ε : ℝ) (hε : 0 < ε) :
     ∃ G : DenseElt R,
       eLpNorm (fun w : WindowSpace R => ((BwindowRep R w : ℂ)) - G.eval w) 2 (windowLaw R)
         < ENNReal.ofReal ε := by
-  sorry
+  obtain ⟨G, hG⟩ := qDenseElt_density R (qBwindowRep R)
+    (memLp_qBwindowRep R) ε hε
+  refine ⟨G, ?_⟩
+  have hm : AEStronglyMeasurable (fun q ↦ qBwindowRep R q - G.qeval q)
+      (qWindowLaw R) :=
+    (measurable_qBwindowRep R).aestronglyMeasurable.sub
+      (continuous_qeval G).measurable.aestronglyMeasurable
+  change eLpNorm (fun q ↦ qBwindowRep R q - G.qeval q) 2 (qWindowLaw R)
+      < ENNReal.ofReal ε at hG
+  rw [qWindowLaw, eLpNorm_map_measure hm
+    (measurable_quotientWindow R).aemeasurable] at hG
+  refine (eLpNorm_congr_ae ?_).trans_lt hG
+  filter_upwards [ae_qBwindowRep_quotientWindow R] with w hw
+  rw [hw]
+  change qBwindowRep R (quotientWindow R w) - G.eval w =
+    qBwindowRep R (quotientWindow R w) - G.qeval (quotientWindow R w)
+  rw [denseElt_qeval_quotientWindow]
 
 /-- The digit block of the truncation agrees with the digit block of the
 projection: both read the digits at offsets `-R ≤ t ≤ R`. -/
