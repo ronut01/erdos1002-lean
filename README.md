@@ -4,15 +4,25 @@ This repository is the public workspace for a separate collaborative Lean 4 form
 
 ## Status
 
-**Sections 2, 3, 4, 5 and 7 are complete.** Corollary 5.3 is proved
-unconditionally, and Theorem 1.1 — the Cauchy limit law of Erdős Problem
-1002 — is proved from Proposition 6.4 alone, axiom-clean. A transitive
-closure scan over the Lean environment shows the main theorem reaches
-exactly one statement still carrying a placeholder: Proposition 6.4 of
-section 6. See **Current state** below for figures, and run
-`lake env lean scripts/closure.lean` to reproduce the leaf set.
+**Erdős Problem 1002 is proved.** `Kwon1002.ProofComplete.erdos1002Conclusion`
+is the manuscript's Theorem 1.1 — the distribution functions of
+`S_n(α)/log n` converge pointwise to the centred Cauchy law of scale
+`1/(2π)` — and it depends on exactly `propext`, `Classical.choice` and
+`Quot.sound`, with no placeholder anywhere in its dependency closure.
+The existential form Erdős asked for, `erdos1002Official`, is proved
+alongside it. Both carry `assert_no_sorry`.
 
-The formalization target is pinned by hash in `manuscript/PROVENANCE.md`.
+Reproduce it:
+
+```
+lake build
+lake env lean scripts/closure.lean   # sorry-leaves: []  for both forms
+lake env lean scripts/sweep.lean     # axiom census over the whole namespace
+```
+
+The theorem is stated in `Kwon1002/Statement.lean` against the problem's
+own data and is not restated anywhere on the route, so there is no
+paraphrase between the goal and the proof.
 
 ## Scope and provenance
 
@@ -33,19 +43,20 @@ The Lean toolchain, axiom policy, treatment of work-in-progress placeholders, CI
 
 Apache License 2.0. See [LICENSE](LICENSE).
 
-## Current state (2026-08-22)
+## Current state (2026-08-25)
 
 The Lean development builds against Lean v4.27.0 and mathlib pinned in
 `lake-manifest.json`.
 
-**2,464 theorems, 2,280 of them axiom-clean**, under the discipline this
+**2,583 theorems, 2,406 of them axiom-clean**, under the discipline this
 project enforces in CI: axioms exactly `propext`, `Classical.choice`,
 `Quot.sound`, with no `sorry` in any completed result, no `native_decide`,
 and no custom axioms anywhere, including the vendored infrastructure. The
-current measurement reports **zero** theorems on a non-standard axiom. Of
-the theorems still open, 79 carry a placeholder directly; the rest depend
-on one.  Every figure here is reproducible by running
-`lake env lean scripts/sweep.lean`.
+current measurement reports **zero** theorems on a non-standard axiom.
+Seventy-five declarations still carry a placeholder; none of them lies in
+the dependency closure of the main theorem, and they are exploratory or
+superseded statements kept for the record. Every figure here is
+reproducible by running `lake env lean scripts/sweep.lean`.
 
 **The large-deviation input is closed.** Display (16) is proved
 (`Kwon1002/LDDeviation.lean`, `continuant_large_deviation`): for all
@@ -154,9 +165,8 @@ transferred from the random stopping-time index set to the deterministic
 bulk by a window bridge in covariance currency, converted from event
 currency by a layer-cake argument.
 
-**What remains.** One statement: Proposition 6.4, in section 6, which is
-the manuscript author's own current work. `lake env lean
-scripts/closure.lean` reports it as the sole leaf of the main theorem.
+**Section 6 is complete.** Proposition 6.4 was proved by the manuscript's
+author and merged at `d514e0b`, closing the last input to Theorem 1.1.
 
 `wang_substrate/` contains Shouqiao Wang's MIT-licensed infrastructure,
 vendored verbatim at commit `d28713ac8245` with a provenance header added to
