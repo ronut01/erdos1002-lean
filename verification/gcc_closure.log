@@ -1,0 +1,20 @@
+Kwon1002.CorFinal.principal_cauchy_law_F sorry-leaves: [Kwon1002.CorFinal.bulk_offdiagonal_abs_far_sharp,
+ Kwon1002.CorFinal.largeSum_charFun_limit]
+Kwon1002.Master.erdos1002Conclusion_of_section7 sorry-leaves: [Kwon1002.prop_6_4_bounded_remainder_weak_law,
+ Kwon1002.CorFinal.bulk_offdiagonal_abs_far_sharp,
+ Kwon1002.CorFinal.largeSum_charFun_limit]
+Kwon1002.CauchyJoin.principal_cauchy_law_J sorry-leaves: [Kwon1002.CorFinal.bulk_offdiagonal_abs_far_sharp]
+Kwon1002.CauchyJoin.erdos1002Conclusion_of_section7_J sorry-leaves: [Kwon1002.prop_6_4_bounded_remainder_weak_law,
+ Kwon1002.CorFinal.bulk_offdiagonal_abs_far_sharp]
+Kwon1002.CauchyJoin.erdos1002Conclusion_final sorry-leaves: [Kwon1002.prop_6_4_bounded_remainder_weak_law,
+ Kwon1002.CorFinal.bulk_offdiagonal_abs_far_sharp]
+Kwon1002.TailTransferCauchy.principal_cauchy_law_T sorry-leaves: []
+Kwon1002.TailTransferCauchy.erdos1002Conclusion_of_prop64_T sorry-leaves: []
+Kwon1002.TailTransferCauchy.erdos1002Conclusion_final_T sorry-leaves: [Kwon1002.prop_6_4_bounded_remainder_weak_law]
+Kwon1002.TailTransferCauchy.erdos1002Official_final_T sorry-leaves: [Kwon1002.prop_6_4_bounded_remainder_weak_law]
+Kwon1002.Prop64Final.prop_6_4_bounded_remainder_weak_law sorry-leaves: []
+Kwon1002.Prop64.carry_truncation_L2_small sorry-leaves: []
+Kwon1002.Prop64.trunc_poly_L2_small sorry-leaves: []
+Kwon1002.Prop64.prop_6_4_bounded_remainder_weak_law sorry-leaves: []
+Kwon1002.ProofComplete.erdos1002Conclusion sorry-leaves: []
+Kwon1002.ProofComplete.erdos1002Official sorry-leaves: []

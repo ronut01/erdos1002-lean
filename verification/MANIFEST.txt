@@ -1,0 +1,38 @@
+[2026-08-25T02:47:38Z] pod_verify_1002.sh compiler=gcc commit=ca586907d97cbbcedc43ba4f5379caf0f3b9d050 host=Linux 6.8.0-138-generic x86_64
+[2026-08-25T02:47:38Z] ===== LEG: gcc =====
+[2026-08-25T02:47:41Z] cores=256 ram=1007GB disk_avail=199GB
+[2026-08-25T02:47:41Z] jobs=256
+[2026-08-25T03:00:01Z] STAGE1 PASS toolchain from source: Lean (version 4.27.0, commit db93fe1608548721853390a10cd40580fe7d22ae, Release)
+[2026-08-25T03:00:01Z] development HEAD: ca586907d97cbbcedc43ba4f5379caf0f3b9d050
+[2026-08-25T03:59:48Z] STAGE2 PASS development built from source with no cache
+[2026-08-25T04:01:39Z] STAGE3 PASS closure: erdos1002Conclusion has an EMPTY sorry-leaf set
+NONSTANDARD=0
+[2026-08-25T04:38:50Z] STAGE3 PASS sweep: no theorem on a non-standard axiom
+'Kwon1002.ProofComplete.erdos1002Conclusion' depends on axioms: [propext, Classical.choice, Quot.sound]
+'Kwon1002.ProofComplete.erdos1002Official' depends on axioms: [propext, Classical.choice, Quot.sound]
+[2026-08-25T04:39:06Z] STAGE3 PASS axioms: exactly propext, Classical.choice, Quot.sound
+[2026-08-25T04:42:31Z] STAGE4 PASS lean4checker replayed Kwon1002 from the oleans
+[2026-08-25T04:42:31Z] STAGE5 PASS digests recorded: 131 oleans
+[2026-08-25T04:42:31Z] ALL STAGES PASS - from-source reverification complete
+[2026-08-25T04:42:40Z] reclaimed build tree for gcc (199GB now free)
+[2026-08-25T04:42:40Z] ===== LEG: clang =====
+[2026-08-25T04:42:43Z] cores=256 ram=1007GB disk_avail=199GB
+[2026-08-25T04:42:43Z] jobs=256
+[2026-08-25T04:55:17Z] STAGE1 PASS toolchain from source: Lean (version 4.27.0, commit db93fe1608548721853390a10cd40580fe7d22ae, Release)
+[2026-08-25T04:55:22Z] development HEAD: ca586907d97cbbcedc43ba4f5379caf0f3b9d050
+[2026-08-25T05:55:06Z] STAGE2 PASS development built from source with no cache
+[2026-08-25T05:56:58Z] STAGE3 PASS closure: erdos1002Conclusion has an EMPTY sorry-leaf set
+NONSTANDARD=0
+[2026-08-25T06:34:32Z] STAGE3 PASS sweep: no theorem on a non-standard axiom
+'Kwon1002.ProofComplete.erdos1002Conclusion' depends on axioms: [propext, Classical.choice, Quot.sound]
+'Kwon1002.ProofComplete.erdos1002Official' depends on axioms: [propext, Classical.choice, Quot.sound]
+[2026-08-25T06:34:48Z] STAGE3 PASS axioms: exactly propext, Classical.choice, Quot.sound
+[2026-08-25T06:38:12Z] STAGE4 PASS lean4checker replayed Kwon1002 from the oleans
+[2026-08-25T06:38:12Z] STAGE5 PASS digests recorded: 131 oleans
+[2026-08-25T06:38:12Z] ALL STAGES PASS - from-source reverification complete
+[2026-08-25T06:38:21Z] reclaimed build tree for clang (199GB now free)
+[2026-08-25T06:38:21Z] leg exit codes: gcc=0 clang=0
+[2026-08-25T06:38:21Z] ===== CROSS-COMPILER DIGEST COMPARISON =====
+[2026-08-25T06:38:21Z] DIGEST PASS: every Kwon1002 olean is byte-identical across the two independently built toolchains
+[2026-08-25T06:38:21Z] BOTH LEGS COMPLETE
+[2026-08-25T06:38:21Z] packaging results
