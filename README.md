@@ -24,6 +24,29 @@ The theorem is stated in `Kwon1002/Statement.lean` against the problem's
 own data and is not restated anywhere on the route, so there is no
 paraphrase between the goal and the proof.
 
+## What the formalization found
+
+Beyond the theorem, this project caught a class of defect that reading
+does not: statements that were false as written, a class that provably
+could not contain what it was assumed to contain, a duplicate declaration
+whose resolution depended on import order and which the axiom checker was
+structurally blind to, and a silent vacuity above one level. Several led
+to revisions of the manuscript between versions 5 and 10.
+
+They are collected, with their counterexamples and repairs, in
+[FINDINGS.md](FINDINGS.md). Every counterexample cited there is itself a
+proved theorem in this repository.
+
+## Independent reverification
+
+The completed development was rebuilt from source on a machine that had
+never seen it, twice, under Lean toolchains compiled independently with
+gcc and with clang: mathlib and the development built with no cache, the
+project's own gates re-run, the whole environment replayed through
+`lean4checker`, and olean digests compared across the two legs. Both legs
+passed every stage and all 131 oleans were byte-identical. Logs and
+method are in [verification/](verification/README.md).
+
 ## Scope and provenance
 
 - Sangyoon Kwon's mathematical manuscript remains his separately submitted, sole-authored work.

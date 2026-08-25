@@ -1,13 +1,34 @@
-# Reconciliation against manuscript v8
+# Reconciliation against the manuscript
 
-Every section of the v8 manuscript checked against the Lean development,
-statement by statement. v8 is pinned by hash in `manuscript/PROVENANCE.md`.
+**This file is a historical record, and its framing is superseded.**
 
-**Nothing in the development is invalidated by v8.** No completed,
-axiom-clean result rests on a step v8 removed. What follows is the list of
-amendments, in priority order, followed by the section-by-section record.
+It was written while the formalization was in progress, to track what the
+manuscript said against what the development could prove. Every item
+below that is described as blocking, open, or missing has since been
+closed. The proof is complete: `ProofComplete.erdos1002Conclusion`
+depends on exactly `propext`, `Classical.choice` and `Quot.sound`, with
+an empty sorry-leaf set, reverified from source under two independently
+compiled toolchains (see `verification/`).
 
-## Amendments that block work
+What survives as useful is the record of **what the formalization found
+that reading did not** — statements that were false as written, hypotheses
+that were missing, and classes that could not contain what they were
+assumed to contain. Those findings are listed here with their
+counterexamples and their repairs, and they are the reason several
+statements in the manuscript were revised between versions 5 and 10.
+
+Read the section headings below as "what was found", not "what blocks
+work". The current state of the development is in the README; the
+verification record is in `verification/README.md`.
+
+The target is now manuscript v10, pinned by hash in
+`manuscript/PROVENANCE.md`. The v8 reconciliation carried forward to v9
+and v10 unchanged, since neither altered a theorem statement, numbered
+equation, or constant.
+
+---
+
+## Findings: statements that were false, narrow, or mis-stated
 
 ### 1. Two canonical statements are false, and are refuted in this tree
 
