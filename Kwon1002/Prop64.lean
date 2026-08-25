@@ -11,19 +11,16 @@ import Mathlib.MeasureTheory.Integral.IntervalIntegral.Periodic
 import Mathlib.MeasureTheory.Function.ContinuousMapDense
 
 /-!
-# Proposition 6.4 of v5: the bounded-remainder weak law, reduced to named inputs
+# Proposition 6.4 support
 
-This file carries out the assembly step of Section 6 of manuscript v5
-(`manuscript/erdos1002_cauchy_limit_revision_v5.tex`, lines 1295-1463) and
-of the revision note `manuscript/proposition_6_4_revision_note.pdf`.
+This file proves the reusable algebraic and `L²` support for Section 6 of the
+current v10 manuscript and the Proposition 6.4 revision note.
 
-Two targets of `Kwon1002.Section6Skeleton` are reproduced here verbatim,
-`display_55_monomial_approximation` and
-`prop_6_4_bounded_remainder_weak_law`, and both are *proved* from a short
-list of explicitly named inputs.  The inputs are the analytic facts of the
-section; everything that is bookkeeping (Minkowski, Chebyshev, the change
-of variables along `π_{R+M,R}`, the passage from a complex to a real
-combination of monomials, the order of the three limits) is carried out.
+The display-(55) approximation is proved here.  The carry and full-state
+transfer proofs necessarily import this support module, so their canonical
+declarations and the final Minkowski assembly live downstream in
+`Kwon1002.Prop64Final`; keeping placeholder declarations here would create an
+import-direction artifact.
 
 ## What is proved outright
 
@@ -41,15 +38,9 @@ combination of monomials, the order of the three limits) is carried out.
   revision note, `B^{(R)} → G → G_M → G_M 1_E → P_{R,M}`, including the
   identity `‖f ∘ π_{R+M,R}‖_{L²(μ_{R+M})} = ‖f‖_{L²(μ_R)}` coming from
   `windowProj_map_windowLaw`.
-* `prop_6_4_bounded_remainder_weak_law` from the three `L²` inputs
-  (carry truncation, polynomial approximation, polynomial variance), with
-  the limits taken in the order `n → ∞`, then `M → ∞`, then `R → ∞`.
-
-## Inputs left sorried
-
-Each is stated in this file with the manuscript step it corresponds to and
-the obstruction that prevents closing it here.  None of them is a
-restatement of a target; each is a strictly smaller analytic fact.
+The completed downstream assembly takes the limits in the manuscript order
+`n → ∞`, then `M → ∞`, then `R → ∞` and is guarded against the canonical
+statement in `Section6Skeleton`.
 -/
 
 open MeasureTheory Set Filter
@@ -263,52 +254,7 @@ theorem card_bulkJ_le (n : ℕ) : ((bulkJ n).card : ℝ) ≤ Lnorm n / lyapunov 
     _ = (mIndex n : ℝ) + 1 := by push_cast; ring
     _ ≤ Lnorm n / lyapunov + 1 := by linarith
 
-/-! ## Named inputs for Proposition 6.4
-
-The three `L²` facts the proof of Proposition 6.4 consumes, together with
-the `L²` membership of the three families of random variables. -/
-
-/-- **Input (carry truncation).**  v5 (57) together with the boundedness of
-`Φ` and `W` and `p_R → 0`: for every accuracy `ε` there is a truncation
-radius `R` for which the bounded remainder and its carry-truncated version
-are within `ε` in `L²`, uniformly over the bulk, for all large `n`.
-
-Consumes `Section6Skeleton.carry_coupling` (57),
-`Section6Skeleton.exists_absolute_carry_bound`,
-`Section6Skeleton.noResetProb_tendsto_zero`, and the boundedness of the
-integrand.  **Obstruction.**  `carry_coupling` is Lemma 6.3-gated and
-still sorried in the skeleton.  The other inputs are now in the tree:
-`exists_absolute_carry_bound` is proved there, `noResetProb_tendsto_zero`
-is proved as `CarryGraph.noResetProb_tendsto_zero`, and the uniform
-bounds `|B_j| ≤ C₀` and `|B_j^{(R)}| ≤ 45/8` are `principal_term` and
-`abs_BremainderTrunc_le` below, so once (57) closes this statement is
-Chebyshev bookkeeping. -/
-theorem carry_truncation_L2_small :
-    ∀ ε > 0, ∃ R : ℕ, ∀ᶠ n : ℕ in atTop, ∀ j ∈ bulkJ n,
-      eLpNorm (fun α => Bremainder α n j - BremainderTrunc α n R j) 2
-          (volume.restrict (Ioo (0 : ℝ) 1)) ≤ ENNReal.ofReal ε := by
-  sorry
-
-/-- **Input (polynomial approximation, transferred).**  Display (55) at
-radius `R + M` combined with (56): for every accuracy there is a
-real-valued finite combination `P` of the monomials (32) whose values at
-the actual times `j` approximate the carry-truncated remainder in `L²`,
-uniformly over the bulk, for all large `n`.
-
-Consumes `display_55_monomial_approximation` (proved below from the chain
-of the revision note) and `Section6Skeleton.actual_L2_transfer`.
-**Obstruction.**  `actual_L2_transfer` is sorried, and the present
-statement is its `eLpNorm` form: converting the skeleton's
-`|∫ ‖·‖² - δ²| < ε` into an `eLpNorm` bound needs the `L²`-membership of
-the integrand, which is the content of `memLp_BremainderTrunc` and
-`memLp_symbolAt` below. -/
-theorem trunc_poly_L2_small (R : ℕ) :
-    ∀ ε > 0, ∃ M K : ℕ, ∃ P : WindowSymbol (R + M) K,
-      (∀ w : WindowSpace (R + M), (P.evalWindow w).im = 0) ∧
-      ∀ᶠ n : ℕ in atTop, ∀ j ∈ bulkJ n,
-        eLpNorm (fun α => BremainderTrunc α n R j - (P.at α n j).re) 2
-            (volume.restrict (Ioo (0 : ℝ) 1)) ≤ ENNReal.ofReal ε := by
-  sorry
+/-! ## Polynomial variance input for Proposition 6.4 -/
 
 /-- **Input (variance of the polynomial part).**  For a *fixed* finite
 combination of monomials the alternating centered average has variance
@@ -589,147 +535,6 @@ theorem memLp_symbolAt {R K : ℕ} (P : WindowSymbol R K) (n j : ℕ) :
   refine le_trans ?_ (norm_symbolAt_le P α n j)
   rw [Real.norm_eq_abs]
   exact Complex.abs_re_le_norm _
-
-/-! ## Proposition 6.4 -/
-
-/-- The `L²` convergence behind Proposition 6.4: the centered alternating
-average of the bounded remainders tends to `0` in `L²(dα)`.  The three
-limits are taken in the manuscript's order, `n → ∞` for fixed `R, M`, then
-`M → ∞`, then `R → ∞`; here that order is visible as the order in which
-the three inputs are invoked, each one fixing data that the next one uses. -/
-theorem remainderAvg_eLpNorm_small :
-    ∀ η : ℝ, 0 < η → ∀ᶠ n : ℕ in atTop,
-      eLpNorm (centeredAvg (Lnorm n) (bulkJ n) (fun j α => Bremainder α n j)) 2
-          (volume.restrict (Ioo (0 : ℝ) 1)) ≤ ENNReal.ofReal η := by
-  intro η hη
-  have hlyne : lyapunov ≠ 0 := ne_of_gt lyapunov_pos
-  have hlp : 0 < 1 / lyapunov := one_div_pos.mpr lyapunov_pos
-  obtain ⟨A, hApos, hA⟩ : ∃ A : ℝ, 0 < A ∧ (1 : ℝ) / lyapunov + 1 = A :=
-    ⟨1 / lyapunov + 1, by linarith, rfl⟩
-  have hAne : A ≠ 0 := ne_of_gt hApos
-  set b : ℝ := η / (3 * (2 * A)) with hbdef
-  have hbpos : 0 < b := by
-    rw [hbdef]; apply div_pos hη; linarith
-  -- Step 1: fix `R` so that the carry truncation costs at most `b` per index.
-  obtain ⟨R, hR⟩ := carry_truncation_L2_small b hbpos
-  -- Step 2: fix `M, K, P` so that the monomial approximation costs at most `b` per index.
-  obtain ⟨M, K, P, _hPim, hP⟩ := trunc_poly_L2_small R b hbpos
-  -- Step 3: for these fixed data the polynomial average has vanishing variance.
-  have hvar : ∀ᶠ n : ℕ in atTop,
-      eLpNorm (centeredAvg (Lnorm n) (bulkJ n) (fun j α => (P.at α n j).re)) 2
-        (volume.restrict (Ioo (0 : ℝ) 1)) ≤ ENNReal.ofReal (η / 3) :=
-    ENNReal.tendsto_nhds_zero.mp (poly_centered_avg_L2_tendsto_zero R M K P)
-      (ENNReal.ofReal (η / 3)) (by simp [ENNReal.ofReal_pos]; linarith)
-  filter_upwards [hR, hP, hvar, eventually_ge_atTop 3] with n h1 h2 h3 hn3
-  set μ : Measure ℝ := volume.restrict (Ioo (0 : ℝ) 1) with hμ
-  set L : ℝ := Lnorm n with hL
-  have hLpos : 0 < L := lt_of_lt_of_le zero_lt_one (one_le_Lnorm hn3)
-  have hL1 : 1 ≤ L := one_le_Lnorm hn3
-  set s : Finset ℕ := bulkJ n with hs
-  set ZB : ℕ → ℝ → ℝ := fun j α => Bremainder α n j with hZB
-  set ZT : ℕ → ℝ → ℝ := fun j α => BremainderTrunc α n R j with hZT
-  set ZP : ℕ → ℝ → ℝ := fun j α => (P.at α n j).re with hZP
-  set D1 : ℕ → ℝ → ℝ := fun j α => ZB j α - ZT j α with hD1
-  set D2 : ℕ → ℝ → ℝ := fun j α => ZT j α - ZP j α with hD2
-  -- the constant produced by Minkowski plus `|J_n| ≤ L/λ + 1`
-  have hcard : (2 / L) * s.card * b ≤ η / 3 := by
-    have hc := card_bulkJ_le n
-    rw [← hs, ← hL] at hc
-    have hLne : L ≠ 0 := ne_of_gt hLpos
-    have hLinv : 1 / L ≤ 1 := by
-      rw [div_le_one hLpos]; exact hL1
-    have h0 : (0 : ℝ) ≤ (s.card : ℝ) := Nat.cast_nonneg _
-    have hstep : (1 / L) * (s.card : ℝ) ≤ A := by
-      have hmul : (1 / L) * (s.card : ℝ) ≤ (1 / L) * (L / lyapunov + 1) := by
-        apply mul_le_mul_of_nonneg_left hc (by positivity)
-      have hexp : (1 / L) * (L / lyapunov + 1) = 1 / lyapunov + 1 / L := by
-        field_simp <;> ring
-      rw [hexp] at hmul
-      rw [← hA]
-      linarith
-    have heq : (2 / L) * (s.card : ℝ) * b = 2 * ((1 / L) * (s.card : ℝ)) * b := by
-      ring
-    rw [heq]
-    have hbb : 2 * ((1 / L) * (s.card : ℝ)) * b ≤ 2 * A * b := by
-      apply mul_le_mul_of_nonneg_right _ hbpos.le
-      linarith
-    have hfin : 2 * A * b = η / 3 := by
-      rw [hbdef]
-      field_simp <;> ring
-    linarith
-  -- integrability and `L²` membership
-  have hmB : ∀ j ∈ s, MemLp (ZB j) 2 μ := fun j _ => memLp_Bremainder n j
-  have hmT : ∀ j ∈ s, MemLp (ZT j) 2 μ := fun j _ => memLp_BremainderTrunc R n j
-  have hmP : ∀ j ∈ s, MemLp (ZP j) 2 μ := fun j _ => memLp_symbolAt P n j
-  have hiB : ∀ j ∈ s, Integrable (ZB j) μ := fun j hj => (hmB j hj).integrable (by norm_num)
-  have hiT : ∀ j ∈ s, Integrable (ZT j) μ := fun j hj => (hmT j hj).integrable (by norm_num)
-  have hiP : ∀ j ∈ s, Integrable (ZP j) μ := fun j hj => (hmP j hj).integrable (by norm_num)
-  -- the three `L²` bounds
-  have hb1 : eLpNorm (centeredAvg L s D1) 2 μ ≤ ENNReal.ofReal (η / 3) := by
-    refine le_trans (eLpNorm_centeredAvg_le hLpos hbpos.le
-      (fun j hj => (hmB j hj).sub (hmT j hj)) (fun j hj => h1 j hj)) ?_
-    exact ENNReal.ofReal_le_ofReal hcard
-  have hb2 : eLpNorm (centeredAvg L s D2) 2 μ ≤ ENNReal.ofReal (η / 3) := by
-    refine le_trans (eLpNorm_centeredAvg_le hLpos hbpos.le
-      (fun j hj => (hmT j hj).sub (hmP j hj)) (fun j hj => h2 j hj)) ?_
-    exact ENNReal.ofReal_le_ofReal hcard
-  -- the decomposition
-  have hdec : centeredAvg L s ZB
-      = fun α => (centeredAvg L s D1 α + centeredAvg L s D2 α) + centeredAvg L s ZP α := by
-    funext α
-    have e1 := centeredAvg_sub (L := L) (s := s) hiB hiT α
-    have e2 := centeredAvg_sub (L := L) (s := s) hiT hiP α
-    rw [← hD1] at e1
-    rw [← hD2] at e2
-    linarith
-  have hm1 : AEStronglyMeasurable (centeredAvg L s D1) μ :=
-    aestronglyMeasurable_centeredAvg (fun j hj => ((hmB j hj).sub (hmT j hj)).1)
-  have hm2 : AEStronglyMeasurable (centeredAvg L s D2) μ :=
-    aestronglyMeasurable_centeredAvg (fun j hj => ((hmT j hj).sub (hmP j hj)).1)
-  have hm3 : AEStronglyMeasurable (centeredAvg L s ZP) μ :=
-    aestronglyMeasurable_centeredAvg (fun j hj => (hmP j hj).1)
-  rw [hdec]
-  have htri1 : eLpNorm (fun α => (centeredAvg L s D1 α + centeredAvg L s D2 α)
-        + centeredAvg L s ZP α) 2 μ
-      ≤ eLpNorm (fun α => centeredAvg L s D1 α + centeredAvg L s D2 α) 2 μ
-        + eLpNorm (centeredAvg L s ZP) 2 μ :=
-    eLpNorm_add_le (hm1.add hm2) hm3 (by norm_num)
-  have htri2 : eLpNorm (fun α => centeredAvg L s D1 α + centeredAvg L s D2 α) 2 μ
-      ≤ eLpNorm (centeredAvg L s D1) 2 μ + eLpNorm (centeredAvg L s D2) 2 μ :=
-    eLpNorm_add_le hm1 hm2 (by norm_num)
-  calc eLpNorm (fun α => (centeredAvg L s D1 α + centeredAvg L s D2 α)
-          + centeredAvg L s ZP α) 2 μ
-      ≤ (eLpNorm (centeredAvg L s D1) 2 μ + eLpNorm (centeredAvg L s D2) 2 μ)
-          + eLpNorm (centeredAvg L s ZP) 2 μ := le_trans htri1 (by gcongr)
-    _ ≤ (ENNReal.ofReal (η / 3) + ENNReal.ofReal (η / 3)) + ENNReal.ofReal (η / 3) := by
-        gcongr
-    _ = ENNReal.ofReal η := by
-        rw [← ENNReal.ofReal_add (by linarith) (by linarith),
-          ← ENNReal.ofReal_add (by linarith) (by linarith)]
-        congr 1
-        ring
-
-/-- **Proposition 6.4** (Bounded-remainder weak law), v5 lines 1295-1303,
-display (54):
-`(1/L) Σ_{j ∈ J_n} (-1)^j (B_j - E B_j) → 0` in probability.
-
-**Reading.**  "In probability" is with respect to Lebesgue `α` on
-`(0,1)`, the measure every §4-§6 estimate uses, and `E B_j` is
-`∫_0^1 B_j dα`.  The order of limits in the proof is `n → ∞`, then
-`M → ∞`, then `R → ∞` (v5 line 1462). -/
-theorem prop_6_4_bounded_remainder_weak_law :
-    ∀ ε > 0,
-      Tendsto
-        (fun n : ℕ => (volume.restrict (Ioo (0 : ℝ) 1)).real
-          {α : ℝ | ε ≤ |(1 / Lnorm n) *
-            ∑ j ∈ bulkJ n, (-1 : ℝ) ^ j *
-              (Bremainder α n j - ∫ β in Ioo (0 : ℝ) 1, Bremainder β n j)|})
-        atTop (𝓝 0) := by
-  intro ε hε
-  exact tendsto_measReal_of_eLpNorm
-    (f := fun n => centeredAvg (Lnorm n) (bulkJ n) (fun j α => Bremainder α n j))
-    (fun n => aestronglyMeasurable_centeredAvg (fun j _ => (memLp_Bremainder n j).1))
-    remainderAvg_eLpNorm_small hε
 
 /-! ## The window-symbol algebra
 
@@ -2841,21 +2646,14 @@ theorem display_55_monomial_approximation (R : ℕ) :
 
 /-! ## Statement identity against `Section6Skeleton`
 
-`display_55_monomial_approximation` and `prop_6_4_bounded_remainder_weak_law`
-are reproduced in this file token for token from
-`Kwon1002/Section6Skeleton.lean` and are proved here.  They cannot be merged
-into the skeleton by delegation, because this file *imports* the skeleton;
-the two `example`s below are the drift guard instead.  Each elaborates the
-skeleton's declaration and this file's declaration at the same type, so a
-change to either statement breaks the build. -/
+`display_55_monomial_approximation` is reproduced here token for token from
+`Kwon1002/Section6Skeleton.lean` and proved.  The completed Proposition 6.4
+and its canonical drift guard live in `Kwon1002.Prop64Final`, after all
+analytic providers are available. -/
 
 /-- Statement identity, type check only. -/
 example : @_root_.Kwon1002.display_55_monomial_approximation
     = @display_55_monomial_approximation := rfl
-
-/-- Statement identity, type check only. -/
-example : @_root_.Kwon1002.prop_6_4_bounded_remainder_weak_law
-    = @prop_6_4_bounded_remainder_weak_law := rfl
 
 end
 

@@ -15,6 +15,37 @@ the placeholder inputs in `Kwon1002.Prop64`.
 open MeasureTheory Set Filter
 open scoped BigOperators Topology ENNReal
 
+namespace Kwon1002.Prop64
+
+noncomputable section
+
+/-- The canonical carry-truncation input, placed after its proved transfer
+provider to avoid the old import-direction placeholder. -/
+theorem carry_truncation_L2_small :
+    ∀ ε > 0, ∃ R : ℕ, ∀ᶠ n : ℕ in atTop, ∀ j ∈ bulkJ n,
+      eLpNorm (fun α => Bremainder α n j - BremainderTrunc α n R j) 2
+          (volume.restrict (Ioo (0 : ℝ) 1)) ≤ ENNReal.ofReal ε :=
+  Prop64Carry.carry_truncation_L2_small_of_noResetIndicatorTransfer9
+    Prop64SpecialTransfers.noResetIndicatorTransfer9
+
+/-- The canonical display-(55)--(56) polynomial input, placed after its
+proved squared-error transfer provider. -/
+theorem trunc_poly_L2_small (R : ℕ) :
+    ∀ ε > 0, ∃ M K : ℕ, ∃ P : WindowSymbol (R + M) K,
+      (∀ w : WindowSpace (R + M), (P.evalWindow w).im = 0) ∧
+      ∀ᶠ n : ℕ in atTop, ∀ j ∈ bulkJ n,
+        eLpNorm (fun α => BremainderTrunc α n R j - (P.at α n j).re) 2
+            (volume.restrict (Ioo (0 : ℝ) 1)) ≤ ENNReal.ofReal ε :=
+  Prop64SquaredError.trunc_poly_L2_small_of_squaredErrorBulkTransfer
+    Prop64SpecialTransfers.squaredErrorBulkTransferProvider R
+
+assert_no_sorry carry_truncation_L2_small
+assert_no_sorry trunc_poly_L2_small
+
+end
+
+end Kwon1002.Prop64
+
 namespace Kwon1002.Prop64Final
 
 noncomputable section
@@ -25,8 +56,7 @@ theorem carry_truncation_L2_small_clean :
     ∀ ε > 0, ∃ R : ℕ, ∀ᶠ n : ℕ in atTop, ∀ j ∈ bulkJ n,
       eLpNorm (fun α => Bremainder α n j - BremainderTrunc α n R j) 2
           (volume.restrict (Ioo (0 : ℝ) 1)) ≤ ENNReal.ofReal ε :=
-  Prop64Carry.carry_truncation_L2_small_of_noResetIndicatorTransfer9
-    Prop64SpecialTransfers.noResetIndicatorTransfer9
+  Prop64.carry_truncation_L2_small
 
 theorem trunc_poly_L2_small_clean (R : ℕ) :
     ∀ ε > 0, ∃ M K : ℕ, ∃ P : WindowSymbol (R + M) K,
@@ -34,8 +64,7 @@ theorem trunc_poly_L2_small_clean (R : ℕ) :
       ∀ᶠ n : ℕ in atTop, ∀ j ∈ bulkJ n,
         eLpNorm (fun α => BremainderTrunc α n R j - (P.at α n j).re) 2
             (volume.restrict (Ioo (0 : ℝ) 1)) ≤ ENNReal.ofReal ε :=
-  Prop64SquaredError.trunc_poly_L2_small_of_squaredErrorBulkTransfer
-    Prop64SpecialTransfers.squaredErrorBulkTransferProvider R
+  Prop64.trunc_poly_L2_small R
 
 /-- The manuscript's three limits, in the order `n → ∞`, then `M → ∞`,
 then `R → ∞`, with every input now machine-checked. -/
@@ -183,3 +212,40 @@ assert_no_sorry prop_6_4_bounded_remainder_weak_law
 end
 
 end Kwon1002.Prop64Final
+
+namespace Kwon1002.Prop64
+
+noncomputable section
+
+/-- The canonical `L²` assembly, now declared after both proved analytic
+inputs rather than above them with placeholders. -/
+theorem remainderAvg_eLpNorm_small :
+    ∀ η : ℝ, 0 < η → ∀ᶠ n : ℕ in atTop,
+      eLpNorm (centeredAvg (Lnorm n) (bulkJ n) (fun j α => Bremainder α n j)) 2
+          (volume.restrict (Ioo (0 : ℝ) 1)) ≤ ENNReal.ofReal η :=
+  Prop64Final.remainderAvg_eLpNorm_small_clean
+
+/-- The canonical Proposition 6.4 declaration, with the import-direction
+artifact removed. -/
+theorem prop_6_4_bounded_remainder_weak_law :
+    ∀ ε > 0,
+      Tendsto
+        (fun n : ℕ => (volume.restrict (Ioo (0 : ℝ) 1)).real
+          {α : ℝ | ε ≤ |(1 / Lnorm n) *
+            ∑ j ∈ bulkJ n, (-1 : ℝ) ^ j *
+              (Bremainder α n j - ∫ β in Ioo (0 : ℝ) 1, Bremainder β n j)|})
+        atTop (𝓝 0) :=
+  Prop64Final.prop_6_4_bounded_remainder_weak_law
+
+/-- The relocated canonical declaration still has exactly the manuscript
+statement from `Section6Skeleton`. -/
+example : @_root_.Kwon1002.prop_6_4_bounded_remainder_weak_law =
+    @prop_6_4_bounded_remainder_weak_law := rfl
+
+assert_no_sorry remainderAvg_eLpNorm_small
+assert_no_sorry prop_6_4_bounded_remainder_weak_law
+
+end
+
+
+end Kwon1002.Prop64

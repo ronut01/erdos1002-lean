@@ -39,5 +39,8 @@ run_meta report ``Kwon1002.TailTransferCauchy.erdos1002Conclusion_of_prop64_T
 run_meta report ``Kwon1002.TailTransferCauchy.erdos1002Conclusion_final_T
 run_meta report ``Kwon1002.TailTransferCauchy.erdos1002Official_final_T
 run_meta report ``Kwon1002.Prop64Final.prop_6_4_bounded_remainder_weak_law
+run_meta report ``Kwon1002.Prop64.carry_truncation_L2_small
+run_meta report ``Kwon1002.Prop64.trunc_poly_L2_small
+run_meta report ``Kwon1002.Prop64.prop_6_4_bounded_remainder_weak_law
 run_meta report ``Kwon1002.ProofComplete.erdos1002Conclusion
 run_meta report ``Kwon1002.ProofComplete.erdos1002Official
