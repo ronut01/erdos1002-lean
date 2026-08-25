@@ -6,13 +6,25 @@ formalized against.
 
 ## Current target
 
-**Version 9, dated August 11, 2026.**
+**Version 10, dated August 23, 2026.**
 
 | File | sha256 |
 |---|---|
-| `erdos1002_cauchy_limit_revision_v9.pdf` | `c695c9214310ac75abe1f0f62c6fd5c25f3e7a8fb34bffd62faa086e6e6fe2bd` |
-| `erdos1002_cauchy_limit_revision_v9.tex` | `2b0de746256a544a41233f0768d5dfd5d21b95fca1d08200974e336e61957ade` |
-| `erdos1002_v8_to_v9.diff` (author-supplied) | `59ca90124fe53e4bb97a1b94548208b5e600e2129c5ef01d069238b9d611802d` |
+| `erdos1002_cauchy_limit_revision_v10.pdf` | `c5afbbfd25915bfda39a8b923d219b11b99e4718b493b1506616fbeeeb789038` |
+| `erdos1002_cauchy_limit_revision_v10.tex` | `f28f32d2bdcd5d78eab751b77c851b2dbf94009f2ed0810db9a671b676a0224a` |
+
+## What changed from v9 to v10
+
+Verified independently by diffing the two TeX sources.  No theorem
+statement, numbered equation, constant, or Section 6 proof step changed.
+
+- The author affiliation, date, subject classification, keywords, and PDF
+  metadata were updated.
+- The Section 5 factorial-moment argument now explicitly records the passage
+  from compactly supported smooth test functions to indicators by inner and
+  outer approximation on compact continuity sets.  The truncation windows
+  used in the proof are noted to be finite unions of intervals.  This matches
+  the one-sided indicator approximation already used in the Lean development.
 
 ## What changed from v8 to v9
 
@@ -37,6 +49,14 @@ No reconciliation work arises: every formalized statement targeted at v8
 is unchanged in v9.
 
 ## Superseded
+
+**Version 9, dated August 11, 2026.**
+
+| File | sha256 |
+|---|---|
+| `erdos1002_cauchy_limit_revision_v9.pdf` | `c695c9214310ac75abe1f0f62c6fd5c25f3e7a8fb34bffd62faa086e6e6fe2bd` |
+| `erdos1002_cauchy_limit_revision_v9.tex` | `2b0de746256a544a41233f0768d5dfd5d21b95fca1d08200974e336e61957ade` |
+| `erdos1002_v8_to_v9.diff` (author-supplied) | `59ca90124fe53e4bb97a1b94548208b5e600e2129c5ef01d069238b9d611802d` |
 
 **Version 8, dated August 6, 2026.**
 
