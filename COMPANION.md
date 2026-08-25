@@ -1,6 +1,6 @@
 # A machine-checked proof of Erdős Problem 1002
 
-**Ibby Mian and Shayaan Siddique**
+**Ibrahim Mian and Shayaan Siddique**
 *Millennium Research*
 
 *Draft for the author's review. Not yet submitted.*
