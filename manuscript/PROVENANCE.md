@@ -6,6 +6,22 @@ formalized against.
 
 ## Current target
 
+**Version 11, dated August 25, 2026** — the arXiv submission version.
+
+| File | sha256 |
+|---|---|
+| `erdos1002_cauchy_limit_revision_v11.pdf` | `e309fe0acb753476a4d0495fa1d801291df51173ba90197c5b0a7c725a3759fb` |
+| `erdos1002_cauchy_limit_revision_v11.tex` | `2b8730c824620fe4483c4e8f0b6b8f2d2a7bb0efdac45f59627ca8504957fde4` |
+
+Changes from v10, verified independently by diffing the TeX (25 lines,
+no mathematics): the date; a sentence in the introduction recording that
+a Lean 4 formalization has been completed and independently verified; a
+bibliography entry for this repository, cited from the acknowledgments;
+and the author's correction of a collaborator's name to its publication
+form.
+
+## Superseded target
+
 **Version 10, dated August 23, 2026.**
 
 | File | sha256 |
