@@ -1,5 +1,5 @@
 import Kwon1002.PoissonLimit
-import Kwon1002.Section6Skeleton
+import Kwon1002.Prop64Final
 import Kwon1002.CorFinal
 import Mathlib.NumberTheory.Harmonic.Bounds
 
@@ -30,8 +30,8 @@ hypotheses.
 2. `Prop64Statement` — Proposition 6.4, the bounded-remainder weak law.
    Definitionally the statement of
    `Kwon1002.prop_6_4_bounded_remainder_weak_law` (guard at the foot of this
-   file).  This is the manuscript author's current work; §6 is not touched
-   here.
+   file).  The canonical root name is imported from `Kwon1002.Prop64Final`
+   and is backed by the completed, axiom-clean §6 proof.
 3. `Section7EndTerms c` — §7's Lemma 7.1 together with the §7/§4 index-set
    bridge, defined in Part F.  Its two halves are the `O(H)` trimming below
    `c·H` and the passage between `Marks.bulkIndices c α n` (random, §7) and
@@ -621,9 +621,9 @@ def PrincipalCauchyLaw (c : ℝ) : Prop :=
         (volume {α : ℝ | α ∈ Ioo (0 : ℝ) 1 ∧ bulkSum c α n - b n ≤ x}).toReal)
       atTop (𝓝 (cauchyLimitCDF x))
 
-/-- Proposition 6.4, the bounded-remainder weak law: the statement of
-`Kwon1002.prop_6_4_bounded_remainder_weak_law`, reproduced token for token.
-(Checked by the `example` at the very bottom of this file.) -/
+/-- Proposition 6.4, the bounded-remainder weak law: the statement of the
+completed `Kwon1002.prop_6_4_bounded_remainder_weak_law`, reproduced token for
+token.  Checked by the `example` at the very bottom of this file. -/
 def Prop64Statement : Prop :=
   ∀ ε > 0,
     Tendsto
@@ -770,11 +770,10 @@ master assembly leaves `Section7EndTerms c` as the *only* statement between the
 development and Kwon's Theorem 1.1 that is not already a named target
 elsewhere in `Kwon1002/`.
 
-This declaration is sorry-tainted, through
-`Kwon1002.CorFinal.principal_cauchy_law_F` and
-`Kwon1002.prop_6_4_bounded_remainder_weak_law` and through nothing else; it is
-recorded because it is the shape of the endgame, not because it proves
-anything.
+This declaration now uses the completed Proposition 6.4.  Its only remaining
+historical leaves come through `Kwon1002.CorFinal.principal_cauchy_law_F`;
+the fully discharged principal-law route is supplied later by
+`Kwon1002.TailTransferCauchy`.
 
 Hypothesis 1 is fed from `CorFinal`, not from the canonical
 `Kwon1002.principal_cauchy_law`: the two are the same `Prop` (the guard below
@@ -1480,8 +1479,8 @@ end Kwon1002
 
 
 /- **Statement guards.**  Each `example` forces the hypothesis defined above to
-be the *same statement* as the canonical one in the tree.  They mention sorried
-declarations, so they are anonymous and nothing proved above depends on them. -/
+be the *same statement* as the canonical one in the tree.  They are anonymous,
+so nothing proved above depends on the guards themselves. -/
 example : ∀ c : ℝ, Kwon1002.Master.PrincipalCauchyLaw c := @Kwon1002.principal_cauchy_law
 
 example : ∀ c : ℝ, Kwon1002.Master.PrincipalCauchyLaw c :=

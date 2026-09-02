@@ -57,8 +57,9 @@ It does **not** reach
 `TupleFinal.goodSet_mark_factorization_intervals`,
 `TupleFinal.bulk_window_bridge_tuple` or
 `FiveFinal.deterministic_oneLevel_intensity`.  The same scan on
-`Master.erdos1002Conclusion_of_section7` adds only
-`prop_6_4_bounded_remainder_weak_law`.  `Master.PrincipalCauchyLaw` does not
+`Master.erdos1002Conclusion_of_section7` no longer adds a §6 leaf, because
+`prop_6_4_bounded_remainder_weak_law` is now completed.
+`Master.PrincipalCauchyLaw` does not
 quantify over a set `B` at all — it is a statement about the distribution
 functions of `bulkSum c α n − b n` — so the set-quantified machinery is internal
 to routes the assembly does not take.  Closing (35b) would close a true

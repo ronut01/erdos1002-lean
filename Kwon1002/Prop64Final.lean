@@ -200,10 +200,6 @@ theorem prop_6_4_bounded_remainder_weak_law :
       (fun j _ => (Prop64.memLp_Bremainder n j).1))
     remainderAvg_eLpNorm_small_clean hε
 
-/-- Statement-drift guard against the canonical Proposition 6.4. -/
-example : @_root_.Kwon1002.prop_6_4_bounded_remainder_weak_law =
-    @prop_6_4_bounded_remainder_weak_law := rfl
-
 assert_no_sorry carry_truncation_L2_small_clean
 assert_no_sorry trunc_poly_L2_small_clean
 assert_no_sorry remainderAvg_eLpNorm_small_clean
@@ -237,11 +233,6 @@ theorem prop_6_4_bounded_remainder_weak_law :
         atTop (𝓝 0) :=
   Prop64Final.prop_6_4_bounded_remainder_weak_law
 
-/-- The relocated canonical declaration still has exactly the manuscript
-statement from `Section6Skeleton`. -/
-example : @_root_.Kwon1002.prop_6_4_bounded_remainder_weak_law =
-    @prop_6_4_bounded_remainder_weak_law := rfl
-
 assert_no_sorry remainderAvg_eLpNorm_small
 assert_no_sorry prop_6_4_bounded_remainder_weak_law
 
@@ -249,3 +240,44 @@ end
 
 
 end Kwon1002.Prop64
+
+namespace Kwon1002
+
+noncomputable section
+
+/-- **Display (56)** under its canonical root-namespace name, obtained from
+the proved full-state squared-error bulk-transfer provider. -/
+theorem actual_L2_transfer (R M K : ℕ) (P : WindowSymbol (R + M) K) (δRM : ℝ)
+    (hδnonneg : 0 ≤ δRM)
+    (hδ : eLpNorm
+        (fun w : WindowSpace (R + M) =>
+          ((BwindowRep R (windowProj (Nat.le_add_right R M) w) : ℂ) - P.evalWindow w))
+        2 (windowLaw (R + M)) = ENNReal.ofReal δRM) :
+    ∀ ε > 0, ∀ᶠ n : ℕ in atTop, ∀ j ∈ bulkJ n,
+      |(∫ α in Ioo (0 : ℝ) 1,
+          ‖((BremainderTrunc α n R j : ℂ)) - P.at α n j‖ ^ 2) - δRM ^ 2| < ε :=
+  Prop64SquaredError.actual_L2_transfer_of_squaredErrorBulkTransfer R M K P δRM
+    (Prop64SpecialTransfers.squaredErrorBulkTransferProvider R M K P δRM hδnonneg hδ)
+
+/-- **Proposition 6.4** under the canonical root-namespace name, now backed
+by the completed centered-`L²` proof rather than the historical skeleton. -/
+theorem prop_6_4_bounded_remainder_weak_law :
+    ∀ ε > 0,
+      Tendsto
+        (fun n : ℕ => (volume.restrict (Ioo (0 : ℝ) 1)).real
+          {α : ℝ | ε ≤ |(1 / Lnorm n) *
+            ∑ j ∈ bulkJ n, (-1 : ℝ) ^ j *
+              (Bremainder α n j - ∫ β in Ioo (0 : ℝ) 1, Bremainder β n j)|})
+        atTop (𝓝 0) :=
+  Prop64.prop_6_4_bounded_remainder_weak_law
+
+example : @prop_6_4_bounded_remainder_weak_law =
+    @Prop64.prop_6_4_bounded_remainder_weak_law := rfl
+
+assert_no_sorry actual_L2_transfer
+assert_no_sorry prop_6_4_bounded_remainder_weak_law
+
+end
+
+
+end Kwon1002

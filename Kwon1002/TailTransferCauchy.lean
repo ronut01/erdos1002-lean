@@ -41,11 +41,10 @@ sorry-free, so nothing is gained by restating them.
 
 ## The effect on the closure
 
-`CauchyJoin.erdos1002Conclusion_final` has sorry-leaves
-`{prop_6_4_bounded_remainder_weak_law, CorFinal.bulk_offdiagonal_abs_far_sharp}`.
-`erdos1002Conclusion_final_T` below has the single leaf
-`{Kwon1002.prop_6_4_bounded_remainder_weak_law}` — the manuscript author's
-Proposition 6.4, §6, untouched here.
+`CauchyJoin.erdos1002Conclusion_final` retains the historical leaf
+`{CorFinal.bulk_offdiagonal_abs_far_sharp}`.  The theorem
+`erdos1002Conclusion_final_T` below replaces that leaf with the proved transfer
+and consumes the completed canonical Proposition 6.4, so its closure is empty.
 
 `Kwon1002/CorFinal.lean` and `Kwon1002/CauchyJoin.lean` are deliberately **not**
 edited.
@@ -300,8 +299,9 @@ theorem principal_cauchy_law_T (c : ℝ) :
 /-! ## Part II, the master theorem -/
 
 /-- `Kwon1002.Master.erdos1002Conclusion_of_section7`, reproduced token for
-token, with hypothesis 1 fed from `principal_cauchy_law_T`.  Single sorry-leaf:
-`prop_6_4_bounded_remainder_weak_law`. -/
+token, with hypothesis 1 fed from the axiom-clean
+`principal_cauchy_law_T` and Proposition 6.4 fed from its completed canonical
+declaration. -/
 theorem erdos1002Conclusion_of_section7_T (c : ℝ) (hstop : Master.Section7EndTerms c) :
     Erdos1002Conclusion :=
   Master.erdos1002Conclusion_of c (principal_cauchy_law_T c)
@@ -324,12 +324,11 @@ theorem erdos1002Official_of_prop64_T (hprop64 : Master.Prop64Statement) :
     (principal_cauchy_law_T 0) hprop64
 
 /-- **The endgame.**  Kwon's Theorem 1.1, with Proposition 6.4 fed from its
-canonical name.  Sorry-leaves: exactly
-`{Kwon1002.prop_6_4_bounded_remainder_weak_law}`. -/
+completed canonical name.  This declaration is axiom-clean. -/
 theorem erdos1002Conclusion_final_T : Erdos1002Conclusion :=
   erdos1002Conclusion_of_prop64_T prop_6_4_bounded_remainder_weak_law
 
-/-- The official form, same single leaf. -/
+/-- The official form, likewise axiom-clean. -/
 theorem erdos1002Official_final_T : Erdos1002Official :=
   erdos1002Official_of_prop64_T prop_6_4_bounded_remainder_weak_law
 

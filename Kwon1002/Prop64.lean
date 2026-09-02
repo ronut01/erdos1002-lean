@@ -9,6 +9,7 @@ import Mathlib.Topology.ContinuousMap.StoneWeierstrass
 import Mathlib.Analysis.Fourier.AddCircleMulti
 import Mathlib.MeasureTheory.Integral.IntervalIntegral.Periodic
 import Mathlib.MeasureTheory.Function.ContinuousMapDense
+import Mathlib.Util.AssertNoSorry
 
 /-!
 # Proposition 6.4 support
@@ -2644,19 +2645,41 @@ theorem display_55_monomial_approximation (R : ℕ) :
         ring
     _ < ENNReal.ofReal ε := (ENNReal.ofReal_lt_ofReal_iff hε).mpr (by linarith)
 
-/-! ## Statement identity against `Section6Skeleton`
-
-`display_55_monomial_approximation` is reproduced here token for token from
-`Kwon1002/Section6Skeleton.lean` and proved.  The completed Proposition 6.4
-and its canonical drift guard live in `Kwon1002.Prop64Final`, after all
-analytic providers are available. -/
-
-/-- Statement identity, type check only. -/
-example : @_root_.Kwon1002.display_55_monomial_approximation
-    = @display_55_monomial_approximation := rfl
+/-! The root-namespace canonical name is installed below, after this proved
+declaration is available.  Proposition 6.4 itself is installed downstream in
+`Kwon1002.Prop64Final`, after all analytic providers are available. -/
 
 end
 
 end Prop64
+
+end Kwon1002
+
+namespace Kwon1002
+
+noncomputable section
+
+/-- **Display (55), corrected**, under the canonical root-namespace name.
+
+The proof is the completed density bridge in `Kwon1002.Prop64`; placing the
+alias here rather than in the upstream skeleton prevents the canonical name
+from carrying `sorryAx` because of import direction. -/
+theorem display_55_monomial_approximation (R : ℕ) :
+    ∀ ε > 0, ∃ M K : ℕ, ∃ P : WindowSymbol (R + M) K,
+      (∀ w : WindowSpace (R + M), (P.evalWindow w).im = 0) ∧
+      eLpNorm
+          (fun w : WindowSpace (R + M) =>
+            ((BwindowRep R (windowProj (Nat.le_add_right R M) w) : ℂ) - P.evalWindow w))
+          2 (windowLaw (R + M))
+        < ENNReal.ofReal ε :=
+  Prop64.display_55_monomial_approximation R
+
+example : @display_55_monomial_approximation =
+    @Prop64.display_55_monomial_approximation := rfl
+
+assert_no_sorry display_55_monomial_approximation
+
+end
+
 
 end Kwon1002

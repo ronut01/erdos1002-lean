@@ -73,17 +73,16 @@ Everything is phrased in the §2-§4 vocabulary already in the tree:
    `L²(μ_{R+M})`, with a real-valued finite combination of the
    monomials (32) at radius `R + M`.
 
-## Build status
+## Current status
 
-This file has **not** been machine-checked.  At the time it was written
-the working copy had no `.lake/build` tree for `Kwon1002` and 1912 of the
-7516 Mathlib modules had no `.olean`, on a filesystem with under 1 GiB
-free, so `lake env lean` could not be run at all.  The statements are the
-deliverable; the handful of short proofs below (`fibreMatrix_det`,
-`exists_admissible_kappa_delta`, `carryMap_eq_zero_of_mem_resetSet`,
-`windowProj_actualWindow`, `windowProj_stationaryWindow`,
-`measurable_windowProj`, `windowProj_map_windowLaw`) are written out but
-still need a compile pass.
+This historical skeleton is machine-checked, but several early declarations
+remain explicit proof obligations and therefore still use `sorry`.  The three
+final declarations most likely to be mistaken for the completed result are
+intentionally **not** declared here: display (55) is proved canonically in
+`Kwon1002.Prop64`, while display (56) and Proposition 6.4 are installed under
+their root-namespace names only after their proved providers are available in
+`Kwon1002.Prop64Final`.  The completed Theorem 1.1 path is
+`Kwon1002.ProofComplete`.
 -/
 
 open MeasureTheory Set Filter
@@ -896,69 +895,21 @@ theorem WindowSymbol.evalWindow_actualWindow {R' K : ℕ} (U : WindowSymbol R' K
   unfold WindowSymbol.evalWindow WindowSymbol.at
   simp [hword, hTm, hT0]
 
-/-- **Display (55), corrected** (v5 lines 1307-1408, and the revision
-note `manuscript/proposition_6_4_revision_note.pdf`).
+/-!
+## Completed display (55), display (56), and Proposition 6.4
 
-For every `R` and every `ε > 0` there are `M, K` and a *real-valued*
-finite linear combination `P_{R,M}` of the monomials (32) **at radius
-`R + M`** with
-`‖B^{(R)} ∘ π_{R+M,R} - P_{R,M}‖_{L²(μ_{R+M})} < ε`.
+Their full statements and proofs live downstream, where all analytic providers
+are available without an import cycle:
 
-The radius grows with `M` because approximating `x_{j+R}` by its first
-`M` future digits consumes `a_{j+R+1}, …, a_{j+R+M}`; the extra left
-coordinates of the symmetric radius-`R+M` word are harmless and are
-removed by the digit truncation `E_{M,K}`.  The chain behind the
-statement is `B^{(R)} → G → G_M → G_M 1_{E_{M,K}} → P_{R,M}`, with the
-three `L²` errors each below `ε/4` (density in `L²(μ_R)` and the
-pushforward identity; uniform continuity of the finitely many
-continuous factors against the continued-fraction contraction
-`O_R(F_M^{-2})`; and `μ_{R+M}(E_{M,K}^c) = O_R(M/K)` from Lemma 3.1(ii)),
-after which (31) turns the surviving finite word/character data into
-monomials with central Fourier modes `(r,s) = (B_{ℓ,w}, A_{ℓ,w})`
-on the orbit-consistent stationary support, hence `windowLaw`-almost
-everywhere. -/
-theorem display_55_monomial_approximation (R : ℕ) :
-    ∀ ε > 0, ∃ M K : ℕ, ∃ P : WindowSymbol (R + M) K,
-      (∀ w : WindowSpace (R + M), (P.evalWindow w).im = 0) ∧
-      eLpNorm
-          (fun w : WindowSpace (R + M) =>
-            ((BwindowRep R (windowProj (Nat.le_add_right R M) w) : ℂ) - P.evalWindow w))
-          2 (windowLaw (R + M))
-        < ENNReal.ofReal ε := by
-  sorry
+* `Kwon1002.display_55_monomial_approximation` is installed in `Prop64`;
+* `Kwon1002.actual_L2_transfer` is installed in `Prop64Final` from the proved
+  squared-error bulk-transfer provider;
+* `Kwon1002.prop_6_4_bounded_remainder_weak_law` is installed in
+  `Prop64Final` from the completed centered-`L²` assembly.
 
-/-- **(56)** `sup_{j ∈ J_n} E|B_j^{(R)} - P_{R,M,j}|² = δ_{R,M}² + o_n(1)`
-(v5 lines 1410-1416): Lemma 6.3 at window radius `R + M`, applied to the
-bounded, `μ_{R+M}`-almost-everywhere continuous function
-`|B^{(R)} ∘ π_{R+M,R} - P_{R,M}|²`. -/
-theorem actual_L2_transfer (R M K : ℕ) (P : WindowSymbol (R + M) K) (δRM : ℝ)
-    (hδnonneg : 0 ≤ δRM)
-    (hδ : eLpNorm
-        (fun w : WindowSpace (R + M) =>
-          ((BwindowRep R (windowProj (Nat.le_add_right R M) w) : ℂ) - P.evalWindow w))
-        2 (windowLaw (R + M)) = ENNReal.ofReal δRM) :
-    ∀ ε > 0, ∀ᶠ n : ℕ in atTop, ∀ j ∈ bulkJ n,
-      |(∫ α in Ioo (0 : ℝ) 1,
-          ‖((BremainderTrunc α n R j : ℂ)) - P.at α n j‖ ^ 2) - δRM ^ 2| < ε := by
-  sorry
-
-/-- **Proposition 6.4** (Bounded-remainder weak law), v5 lines 1295-1303,
-display (54):
-`(1/L) Σ_{j ∈ J_n} (-1)^j (B_j - E B_j) → 0` in probability.
-
-**Reading.**  "In probability" is with respect to Lebesgue `α` on
-`(0,1)`, the measure every §4-§6 estimate uses, and `E B_j` is
-`∫_0^1 B_j dα`.  The order of limits in the proof is `n → ∞`, then
-`M → ∞`, then `R → ∞` (v5 line 1462). -/
-theorem prop_6_4_bounded_remainder_weak_law :
-    ∀ ε > 0,
-      Tendsto
-        (fun n : ℕ => (volume.restrict (Ioo (0 : ℝ) 1)).real
-          {α : ℝ | ε ≤ |(1 / Lnorm n) *
-            ∑ j ∈ bulkJ n, (-1 : ℝ) ^ j *
-              (Bremainder α n j - ∫ β in Ioo (0 : ℝ) 1, Bremainder β n j)|})
-        atTop (𝓝 0) := by
-  sorry
+Keeping those canonical names out of this upstream skeleton prevents a reader
+from finding a stale `sorry` when searching for the completed theorem.
+-/
 
 end
 

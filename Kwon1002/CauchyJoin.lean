@@ -54,11 +54,12 @@ gained by restating it here.
 `{bulk_offdiagonal_abs_far_sharp, largeSum_charFun_limit}`.
 `principal_cauchy_law_J` has sorry-leaves `{bulk_offdiagonal_abs_far_sharp}`.
 
-`Master.erdos1002Conclusion_of_section7` has sorry-leaves
-`{prop_6_4_bounded_remainder_weak_law, bulk_offdiagonal_abs_far_sharp,
-largeSum_charFun_limit}`; `erdos1002Conclusion_of_section7_J` below, and the
-unconditional `erdos1002Conclusion_final`, have
-`{prop_6_4_bounded_remainder_weak_law, bulk_offdiagonal_abs_far_sharp}`.
+`Master.erdos1002Conclusion_of_section7` has the two historical §5 leaves
+`{bulk_offdiagonal_abs_far_sharp, largeSum_charFun_limit}`;
+`erdos1002Conclusion_of_section7_J` below, and the unconditional
+`erdos1002Conclusion_final`, retain only
+`{bulk_offdiagonal_abs_far_sharp}`.  Proposition 6.4 is now supplied by its
+completed canonical root declaration.
 
 `Kwon1002/CorFinal.lean` is deliberately **not** edited: its `sorry` stays where
 it is, as with the five earlier instances, and this module is the machine-checked
@@ -278,14 +279,13 @@ theorem principal_cauchy_law_J (c : ℝ) :
 /-! ## Part III, the master theorem
 
 `Kwon1002/Master.lean` proves Kwon's Theorem 1.1 from three hypotheses and
-`Kwon1002/Section7Bridge.lean` discharges the third outright, so what is left is
-Corollary 5.3 (Part II above) and Proposition 6.4 (the manuscript author's
-current work, untouched here). -/
+`Kwon1002/Section7Bridge.lean` discharges the third outright.  Corollary 5.3 is
+supplied by Part II above, and Proposition 6.4 now comes from the completed
+canonical declaration in `Kwon1002.Prop64Final`. -/
 
 /-- `Kwon1002.Master.erdos1002Conclusion_of_section7`, reproduced token for
 token, with hypothesis 1 fed from `principal_cauchy_law_J` rather than from
-`CorFinal.principal_cauchy_law_F`.  Sorry-leaves:
-`prop_6_4_bounded_remainder_weak_law` and
+`CorFinal.principal_cauchy_law_F`.  Its only historical leaf is
 `CorFinal.bulk_offdiagonal_abs_far_sharp`. -/
 theorem erdos1002Conclusion_of_section7_J (c : ℝ) (hstop : Master.Section7EndTerms c) :
     Erdos1002Conclusion :=
@@ -307,10 +307,9 @@ theorem erdos1002Official_of_prop64 (hprop64 : Master.Prop64Statement) :
   Section7.erdos1002Official_of_principal_and_prop64 0 le_rfl
     (principal_cauchy_law_J 0) hprop64
 
-/-- **The endgame.**  Kwon's Theorem 1.1, with Proposition 6.4 fed from its
-canonical name.  Sorry-leaves: exactly
-`{Kwon1002.prop_6_4_bounded_remainder_weak_law,
-Kwon1002.CorFinal.bulk_offdiagonal_abs_far_sharp}`. -/
+/-- **The endgame.**  Kwon's Theorem 1.1, with the completed Proposition 6.4
+fed from its canonical name.  The only historical leaf here is
+`Kwon1002.CorFinal.bulk_offdiagonal_abs_far_sharp`. -/
 theorem erdos1002Conclusion_final : Erdos1002Conclusion :=
   erdos1002Conclusion_of_prop64 prop_6_4_bounded_remainder_weak_law
 
