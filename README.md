@@ -1,6 +1,6 @@
 # Erdős 1002 Lean Formalization
 
-This repository is the public workspace for a separate collaborative Lean 4 formalization of Sangyoon Kwon's proof of [Erdős Problem 1002](https://www.erdosproblems.com/1002).
+This repository contains the completed collaborative Lean 4 formalization of Sangyoon Kwon's proof of [Erdős Problem 1002](https://www.erdosproblems.com/1002).
 
 ## Status
 
@@ -50,7 +50,7 @@ method are in [verification/](verification/README.md).
 ## Scope and provenance
 
 - Sangyoon Kwon's mathematical manuscript remains his separately submitted, sole-authored work.
-- This repository is intended for the separate collaborative Lean 4 companion project with Ibby Mian and Shayaan Siddique.
+- This repository is the separate collaborative Lean 4 companion project with Ibrahim Mian and Shayaan Siddique.
 - The independent pre-collaboration audit was completed and published before this collaboration began. Subsequent review and development are collaborative work.
 - This project formalizes Kwon's proof architecture and is distinct from Shouqiao Wang's independent proof and formalization.
 
@@ -60,13 +60,11 @@ See the [independent verification report](https://github.com/ibrahimmian36/Tesse
 
 Repository collaborators may commit and push directly to `main`; pull requests are not required. Force-pushing to or deleting `main` should remain disabled.
 
-The Lean toolchain, axiom policy, treatment of work-in-progress placeholders, CI checks, module structure, and contribution workflow will be agreed on before formalization begins.
-
 ## License
 
 Apache License 2.0. See [LICENSE](LICENSE).
 
-## Current state (2026-08-25)
+## Verification snapshot (2026-08-25)
 
 The Lean development builds against Lean v4.27.0 and mathlib pinned in
 `lake-manifest.json`.
@@ -74,8 +72,8 @@ The Lean development builds against Lean v4.27.0 and mathlib pinned in
 **2,583 theorems, 2,406 of them axiom-clean**, under the discipline this
 project enforces in CI: axioms exactly `propext`, `Classical.choice`,
 `Quot.sound`, with no `sorry` in any completed result, no `native_decide`,
-and no custom axioms anywhere, including the vendored infrastructure. The
-current measurement reports **zero** theorems on a non-standard axiom.
+and no custom axioms anywhere, including the vendored infrastructure. This
+measurement reports **zero** theorems on a non-standard axiom.
 Seventy-five declarations still carry a placeholder; none of them lies in
 the dependency closure of the main theorem, and they are exploratory or
 superseded statements kept for the record. Every figure here is
@@ -196,8 +194,8 @@ vendored verbatim at commit `d28713ac8245` with a provenance header added to
 each file, and used with his explicit agreement. See `wang_substrate/PROVENANCE.md`.
 
 `manuscript/` holds every version of the manuscript received, pinned by
-sha256 in `manuscript/PROVENANCE.md`. The current target is **version 9**
-(August 11, 2026). The v8-to-v9 diff is verified minimal — a reference,
-a clarifying paragraph, and the date, with no statement, equation, or
-constant changed — so the completed v8 reconciliation
-(`RECONCILIATION_V8.md`) carries over to v9 unchanged.
+sha256 in `manuscript/PROVENANCE.md`. The current target is **version 11**
+(August 25, 2026), the arXiv submission version. No theorem statement,
+numbered equation, or constant changed between the reconciled v8 target and
+v11, so the completed v8 reconciliation (`RECONCILIATION_V8.md`) carries over
+unchanged. See `manuscript/PROVENANCE.md` for the version-by-version record.

@@ -21,10 +21,10 @@ Read the section headings below as "what was found", not "what blocks
 work". The current state of the development is in the README; the
 verification record is in `verification/README.md`.
 
-The target is now manuscript v10, pinned by hash in
-`manuscript/PROVENANCE.md`. The v8 reconciliation carried forward to v9
-and v10 unchanged, since neither altered a theorem statement, numbered
-equation, or constant.
+The current target is manuscript v11, pinned by hash in
+`manuscript/PROVENANCE.md`. The v8 reconciliation carried forward through
+v11 unchanged: v9 and v10 did not alter a theorem statement, numbered
+equation, or constant, and v11 introduced no mathematical change.
 
 ---
 

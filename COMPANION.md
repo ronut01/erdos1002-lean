@@ -221,7 +221,7 @@ obsolete obstruction notes cost more time than open goals.
 Repository: `github.com/ronut01/erdos1002-lean`. Lean `v4.27.0`, mathlib
 pinned in `lake-manifest.json`. Every manuscript version received is
 pinned by sha256 in `manuscript/PROVENANCE.md`; the current target is
-version 10.
+version 11.
 
 ## Acknowledgements
 
